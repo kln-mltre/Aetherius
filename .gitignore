@@ -10,6 +10,9 @@ venv/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 
 # Node / TypeScript SDK
 node_modules/
@@ -33,7 +36,8 @@ training/runs/
 .env.*
 !.env.example
 
-# OS / editor
+# OS / editor / tooling
 .DS_Store
 .idea/
 .vscode/
+.claude/

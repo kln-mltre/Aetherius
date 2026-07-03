@@ -46,7 +46,7 @@ all     = [
   "onnxruntime>=1.17", "pillow>=10.3", "opencv-python-headless>=4.9", "numpy>=1.26",
   "anthropic>=0.25",
 ]
-dev = ["pytest>=8.1", "pytest-asyncio>=0.23", "mypy>=1.9", "ruff>=0.4"]
+dev = ["pytest>=8.1", "pytest-asyncio>=0.23", "pytest-cov>=5.0", "mypy>=1.9", "ruff>=0.4"]
 
 [project.scripts]
 aetherius = "aetherius.cli:main"
@@ -67,6 +67,8 @@ exclude = ["legacy_examples", "training", "tests", "docs", "examples", "sdks"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Verbatim reference code kept for provenance (see legacy_examples/README.md); never linted.
+extend-exclude = ["legacy_examples"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -76,3 +78,25 @@ files = ["src/aetherius"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# src-layout on PYTHONPATH so the suite runs on a bare checkout, before any editable install.
+pythonpath = ["src"]
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib"
+markers = [
+  "unit: isolated unit test, no network or browser I/O",
+  "integration: spans several modules or the daemon",
+  "contracts: guards the language-agnostic contracts (JSON Schema, OpenAPI, events)",
+  "browser: requires the [browser] extra (Playwright)",
+  "vision: requires the [vision] extra (onnxruntime, opencv)",
+  "agent: requires the [agent] extra (anthropic)",
+  "slow: long-running test, excluded from fast runs",
+]
+
+# Coverage is reported, not gated: the core is still stubs, so a threshold would be noise.
+# Raise the bar (add fail_under) as the Act engines land.
+[tool.coverage.run]
+source = ["aetherius"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

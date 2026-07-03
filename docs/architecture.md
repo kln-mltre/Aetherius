@@ -23,3 +23,13 @@ les parties au fil de l'implémentation.
 - `import aetherius` reste léger : aucune dépendance lourde importée au niveau module.
 - Le dictionnaire d'actions (`core/actions/registry.py`) est l'unique source ; le catalogue du
   builder en est une projection (pas de duplication).
+- Les tests co-évoluent avec le code : chaque module de logique a son test miroir dans `tests/`,
+  les contrats sont gardés par des tests, et la suite passe sans dépendances lourdes (skips
+  propres). Voir [testing.md](testing.md).
+
+## Tests & CI
+
+`make check` enchaîne ruff + mypy + pytest ; `make check-all` ajoute le SDK TypeScript. La CI
+(`.github/workflows/ci.yml`) rejoue exactement ces cibles sur Python 3.11/3.12 et compile le SDK
+TypeScript. Les tests miroir de `src/` vivent dans `tests/` (unitaires, intégration, contrats) ;
+détails et conventions dans [testing.md](testing.md).

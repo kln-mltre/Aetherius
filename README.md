@@ -383,16 +383,38 @@ pip install aetherius[agent]     # + Act IV (Phantom)
 pip install aetherius[all]
 ```
 
-Puis lance la Console :
+Puis pour lancer la Console :
 ```bash
 aetherius            # centre de contrôle interactif dans le terminal
 ```
 
+## Développement
+
+Pour travailler sur Aetherius (et pas seulement le consommer). Prérequis : Python 3.11+ et, pour le
+SDK TypeScript, Node 20+.
+
+```bash
+git clone <repo> && cd Aetherius
+make install-dev          # installe le paquet en editable + les outils de dev
+```
+
+Le `Makefile` est le point d'entrée unique — les mêmes cibles servent en local et en CI :
+
+```bash
+make check                # avant de commit : format + lint (ruff) + types (mypy) + tests (pytest)
+make test                 # tests seuls, avec couverture
+make check-all            # tout le dépôt : Python + SDK TypeScript
+make help                 # liste des cibles
+```
+
+Conventions de contribution (discipline de test, invariants, structure des tests) :
+[`CONTRIBUTING.md`](CONTRIBUTING.md) et [`docs/testing.md`](docs/testing.md).
+
 ## État d'avancement
 
 - [x] Vision, concept des 4 Acts, format Blueprint, architecture.
-- [x] Squelette : arborescence + stubs + contrats + exemples (ce commit).
-- [ ] Act I — Vector (implémentation).
+- [x] Squelette : arborescence + stubs + contrats + exemples.
+- [ ] Act I — Vector.
 - [ ] Act II — Continuum.
 - [ ] Système de discrétion (humanizer + gestures + fingerprint + session).
 - [ ] Recorder (blueprint + gestes).

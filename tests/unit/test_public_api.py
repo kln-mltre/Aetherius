@@ -27,10 +27,11 @@ def test_public_surface() -> None:
     assert hasattr(aetherius, "Aetherius")
 
 
-def test_run_is_not_implemented_yet() -> None:
-    # Current skeleton contract: the facade exists, the runtime is the next milestone.
-    with pytest.raises(NotImplementedError):
-        aetherius.Aetherius().run("does-not-matter.json")
+def test_run_raises_on_missing_file() -> None:
+    from aetherius.core.errors import BlueprintLoadError
+
+    with pytest.raises(BlueprintLoadError):
+        aetherius.Aetherius().run("/nonexistent/blueprint.json")
 
 
 def test_import_stays_lightweight() -> None:

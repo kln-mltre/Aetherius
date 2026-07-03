@@ -414,7 +414,7 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 
 - [x] Vision, concept des 4 Acts, format Blueprint, architecture.
 - [x] Squelette : arborescence + stubs + contrats + exemples.
-- [ ] Act I — Vector.
+- [x] **Act I — Vector** : moteur HTTP/API complet. `Aetherius().run(blueprint, inputs=...)` fonctionnel. Couverture : http.request (form/JSON/params/headers), extraction JSONPath avec `where` et mapping de champs, extraction HTML CSS/XPath, authentification (NoAuth/Bearer/Basic/Cookie/CAS form-login), retries/backoff (tenacity), moteur de templates Jinja2 (`{{ inputs.x | add_days(7) }}`), bus d'événements, hiérarchie d'erreurs typées. 69 tests, mypy strict, lint propre.
 - [ ] Act II — Continuum.
 - [ ] Système de discrétion (humanizer + gestures + fingerprint + session).
 - [ ] Recorder (blueprint + gestes).

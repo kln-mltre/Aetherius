@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aetherius.dev/contracts/blueprint.schema.json",
+  "title": "Aetherius Blueprint",
+  "description": "The declarative instruction file executed by Aetherius. Language-agnostic source of truth shared by the Python core and every SDK.",
+  "type": "object",
+  "required": ["aetherius", "name", "act"],
+  "additionalProperties": false,
+  "properties": {
+    "aetherius": {
+      "type": "string",
+      "description": "Blueprint format version.",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Dotted identifier, e.g. domain.task.",
+      "minLength": 1
+    },
+    "description": { "type": "string" },
+    "act": {
+      "description": "Execution engine.",
+      "enum": ["conduit", "marionette", "oracle", "phantom"]
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Declared, typed parameters that make the Blueprint reusable.",
+      "additionalProperties": { "$ref": "#/$defs/inputSpec" }
+    },
+    "secrets": {
+      "type": "array",
+      "description": "Names of runtime-only secrets. Values are injected at execution and never stored in the file.",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "vars": {
+      "type": "object",
+      "description": "Local constants (domains, paths) available for interpolation."
+    },
+    "options": { "$ref": "#/$defs/options" },
+    "vision": {
+      "type": "object",
+      "description": "Vision configuration for Oracle/Phantom.",
+      "properties": { "model": { "type": "string" } },
+      "additionalProperties": true
+    },
+    "goal": {
+      "type": "string",
+      "description": "High-level objective for Phantom (Act IV) when the run is not fully scripted."
+    },
+    "constraints": {
+      "type": "array",
+      "description": "Guardrails for Phantom.",
+      "items": { "type": "string" }
+    },
+    "steps": {
+      "type": "array",
+      "description": "The ordered action sequence (the action dictionary).",
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Shape of the returned data, via interpolation of step results."
+    }
+  },
+  "anyOf": [
+    { "required": ["steps"] },
+    { "required": ["goal"] }
+  ],
+  "$defs": {
+    "inputSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["string", "number", "integer", "boolean", "date", "path", "object", "array"] },
+        "required": { "type": "boolean", "default": false },
+        "format": { "type": "string" },
+        "default": {},
+        "description": { "type": "string" }
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Visible browser + cursor overlay + slow-mo for browser Acts; structured terminal logs otherwise."
+        },
+        "stealth": { "$ref": "#/$defs/stealth" },
+        "session": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "profile": { "type": "string" },
+            "persist": { "type": "boolean", "default": false }
+          }
+        },
+        "timeout_ms": { "type": "integer", "minimum": 0 },
+        "retries": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max": { "type": "integer", "minimum": 0 },
+            "backoff": { "enum": ["none", "linear", "exponential"] }
+          }
+        }
+      }
+    },
+    "stealth": {
+      "description": "Modular discretion. Off by default; a preset name; or an inline configuration.",
+      "oneOf": [
+        { "type": "string", "description": "\"off\" or a named preset." },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mouse": { "enum": ["off", "gestures"] },
+            "keyboard": { "enum": ["off", "human"] },
+            "scroll": { "enum": ["off", "eased"] },
+            "timing": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": { "distraction": { "type": "number", "minimum": 0, "maximum": 1 } }
+            },
+            "fingerprint": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "description": "A single action. Parameters depend on the action; extra properties are allowed and validated per-action by the engine.",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" }
+      },
+      "required": ["action"],
+      "additionalProperties": true
+    }
+  }
+}

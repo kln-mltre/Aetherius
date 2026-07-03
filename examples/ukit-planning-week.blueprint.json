@@ -1,0 +1,48 @@
+{
+  "aetherius": "1.0",
+  "name": "ukit.planning.week",
+  "description": "Act I (Conduit) rebuild of UKit PlanningApiService: fetch a week of timetable events for a group.",
+  "act": "conduit",
+  "inputs": {
+    "group": { "type": "string", "required": true, "description": "Group federation id." },
+    "monday": { "type": "string", "format": "date", "required": true, "description": "First day of the week (YYYY-MM-DD)." }
+  },
+  "vars": { "domain": "https://ade-web.exemple.fr" },
+  "steps": [
+    {
+      "id": "week",
+      "action": "http.request",
+      "method": "POST",
+      "url": "{{ vars.domain }}/calendar/data",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Accept": "application/json"
+      },
+      "form": {
+        "start": "{{ inputs.monday }}",
+        "end": "{{ inputs.monday | add_days(7) }}",
+        "resType": "103",
+        "calView": "agendaWeek",
+        "federationIds[]": "{{ inputs.group }}",
+        "colourScheme": "3"
+      },
+      "expect": { "status": 200 },
+      "extract": {
+        "events": {
+          "from": "json",
+          "path": "$[*]",
+          "where": "item.eventCategory != 'Vacances'",
+          "fields": {
+            "id": "$.id",
+            "start": "$.start",
+            "end": "$.end",
+            "category": "$.eventCategory",
+            "color": "$.backgroundColor",
+            "description": "$.description"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": { "events": "{{ steps.week.events }}" }
+}

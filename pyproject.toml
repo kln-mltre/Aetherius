@@ -1,0 +1,78 @@
+# Aetherius packaging.
+# src-layout, PEP 621 metadata. Heavy dependencies are grouped in optional extras so an Act I
+# (Conduit) user never pulls Playwright, ONNX or the Anthropic SDK. The Console ships in the base
+# install so `aetherius` works out of the box.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aetherius"
+description = "A fixed, robust web-bot engine driven by declarative instruction files (Blueprints)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+dynamic = ["version"]
+authors = [{ name = "Kylian Malartre" }]
+keywords = ["automation", "scraping", "browser", "playwright", "bot", "stealth", "agent"]
+
+# Base install: core engine + Act I (Conduit) + the daemon + the terminal Console.
+dependencies = [
+  "pydantic>=2.6",
+  "pydantic-settings>=2.2",
+  "pyyaml>=6.0",
+  "jsonschema>=4.21",
+  "httpx>=0.27",
+  "tenacity>=8.2",
+  "jsonpath-ng>=1.6",
+  "parsel>=1.9",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "websockets>=12.0",
+  "typer>=0.12",
+  "textual>=0.60",
+  "rich>=13.7",
+  "questionary>=2.0",
+]
+
+[project.optional-dependencies]
+browser = ["playwright>=1.44"]                 # Act II - Marionette
+vision  = ["onnxruntime>=1.17", "pillow>=10.3", "opencv-python-headless>=4.9", "numpy>=1.26"]  # Act III - Oracle
+agent   = ["anthropic>=0.25"]                  # Act IV - Phantom (default planner)
+stealth = ["numpy>=1.26"]                      # gesture math
+all     = [
+  "playwright>=1.44",
+  "onnxruntime>=1.17", "pillow>=10.3", "opencv-python-headless>=4.9", "numpy>=1.26",
+  "anthropic>=0.25",
+]
+dev = ["pytest>=8.1", "pytest-asyncio>=0.23", "mypy>=1.9", "ruff>=0.4"]
+
+[project.scripts]
+aetherius = "aetherius.cli:main"
+
+[project.urls]
+Repository = "https://github.com/kln/Aetherius"
+
+[tool.hatch.version]
+path = "src/aetherius/version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aetherius"]
+
+# Reference material only; never shipped in the distribution.
+[tool.hatch.build]
+exclude = ["legacy_examples", "training", "tests", "docs", "examples", "sdks"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src/aetherius"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

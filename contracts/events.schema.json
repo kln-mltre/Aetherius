@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aetherius.dev/contracts/events.schema.json",
+  "title": "Aetherius Run Event",
+  "description": "A single event emitted during a run. Streamed over the daemon WebSocket and rendered by the debug sinks. Language-agnostic contract shared by the core and the SDKs.",
+  "type": "object",
+  "required": ["run_id", "type", "ts"],
+  "additionalProperties": false,
+  "properties": {
+    "run_id": { "type": "string" },
+    "ts": { "type": "string", "format": "date-time" },
+    "type": {
+      "enum": ["progress", "step_started", "step_finished", "debug", "artifact", "error", "done"]
+    },
+    "step_id": { "type": "string" },
+    "level": { "enum": ["debug", "info", "warning", "error"] },
+    "message": { "type": "string" },
+    "data": { "type": "object", "description": "Type-specific payload." },
+    "artifact": {
+      "type": "object",
+      "description": "Reference to a produced artifact (screenshot, HAR, DOM snapshot).",
+      "properties": {
+        "kind": { "enum": ["screenshot", "har", "dom", "log"] },
+        "path": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

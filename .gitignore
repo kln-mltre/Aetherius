@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Node / TypeScript SDK
+node_modules/
+sdks/typescript/dist/
+*.tsbuildinfo
+
+# Aetherius runtime artifacts
+src/aetherius/models/store/*
+!src/aetherius/models/store/.gitkeep
+runs/
+profiles/
+*.har
+
+# Training assets (kept out of git; heavy)
+training/datasets/
+training/checkpoints/
+training/runs/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

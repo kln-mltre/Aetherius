@@ -1,0 +1,119 @@
+# Aetherius local daemon API.
+# Language-agnostic contract for the FastAPI gateway that lets any language drive the engine.
+# This is the design sketch; the server implementation in src/aetherius/server must conform to it,
+# and the SDK client types are generated from it.
+
+openapi: 3.1.0
+info:
+  title: Aetherius Daemon
+  version: 0.1.0
+  description: >
+    Local HTTP + WebSocket gateway to the Aetherius engine. Binds to 127.0.0.1 by default.
+    Submit a Blueprint with its inputs and secrets, then poll the result or stream live events.
+
+servers:
+  - url: http://127.0.0.1:8787
+
+paths:
+  /v1/runs:
+    post:
+      summary: Submit a Blueprint for execution.
+      operationId: createRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RunRequest" }
+      responses:
+        "202":
+          description: Run accepted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunHandle" }
+
+  /v1/runs/{runId}:
+    get:
+      summary: Fetch run status and result.
+      operationId: getRun
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Run state.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+
+  /v1/runs/{runId}/events:
+    get:
+      summary: WebSocket upgrade streaming the run event feed.
+      description: Each message conforms to contracts/events.schema.json.
+      operationId: streamRunEvents
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      responses:
+        "101": { description: Switching Protocols (WebSocket). }
+
+  /v1/blueprints/validate:
+    post:
+      summary: Validate a Blueprint against the schema and the selected Act capabilities.
+      operationId: validateBlueprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200":
+          description: Validation report.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationReport" }
+
+  /v1/schema:
+    get:
+      summary: Return the Blueprint JSON Schema.
+      operationId: getSchema
+      responses:
+        "200": { description: JSON Schema document. }
+
+  /v1/recorder/sessions:
+    post:
+      summary: Start a recorder session that emits a Blueprint from live actions.
+      operationId: startRecorder
+      responses:
+        "202": { description: Recorder session started. }
+
+components:
+  schemas:
+    RunRequest:
+      type: object
+      required: [blueprint]
+      properties:
+        blueprint:
+          description: Inline Blueprint object, or a path resolvable by the daemon.
+          oneOf: [{ type: object }, { type: string }]
+        inputs: { type: object }
+        secrets: { type: object, additionalProperties: { type: string } }
+    RunHandle:
+      type: object
+      properties:
+        run_id: { type: string }
+    Run:
+      type: object
+      properties:
+        run_id: { type: string }
+        status: { type: string, enum: [queued, running, succeeded, failed] }
+        outputs: { type: object }
+        error: { type: string, nullable: true }
+    ValidationReport:
+      type: object
+      properties:
+        valid: { type: boolean }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              path: { type: string }
+              message: { type: string }

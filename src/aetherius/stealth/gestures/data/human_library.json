@@ -1,0 +1,5 @@
+{
+  "schema": "aetherius/gesture-library@1",
+  "description": "Recorded human mouse gestures. Each gesture is an ordered list of [x, y, t] points where x/y are pixel offsets from the gesture origin and t is the accumulated time offset in seconds. Populated by the gesture recorder; the mouse humanizer downsamples, analyzes and replays these via scale+rotation transforms.",
+  "gestures": []
+}

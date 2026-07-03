@@ -1,0 +1,31 @@
+{
+  "aetherius": "1.0",
+  "name": "tiktok.upload",
+  "description": "Act III (Oracle) rebuild of the TikTok stealth upload: vision-located targets, humanized input, persistent warmed profile.",
+  "act": "oracle",
+  "inputs": {
+    "video": { "type": "path", "required": true, "description": "Path to the video file to upload." },
+    "caption": { "type": "string", "required": true }
+  },
+  "options": {
+    "session": { "profile": "tiktok", "persist": true },
+    "stealth": {
+      "mouse": "gestures",
+      "keyboard": "human",
+      "scroll": "eased",
+      "timing": { "distraction": 0.1 },
+      "fingerprint": "chrome-desktop"
+    },
+    "debug": false
+  },
+  "vision": { "model": "tiktok-studio-ui@1" },
+  "steps": [
+    { "action": "navigate", "url": "https://www.tiktok.com/tiktokstudio/upload?lang=fr" },
+    { "action": "wait", "min_ms": 3500, "max_ms": 6000 },
+    { "action": "upload", "target": { "vision": "upload dropzone" }, "file": "{{ inputs.video }}" },
+    { "action": "type", "target": { "vision": "caption textarea" }, "text": "{{ inputs.caption }}" },
+    { "action": "wait", "min_ms": 2000, "max_ms": 4500 },
+    { "action": "click", "target": { "vision": "Post button" } },
+    { "action": "wait_for", "target": { "vision": "publish success toast" }, "timeout_ms": 35000 }
+  ]
+}

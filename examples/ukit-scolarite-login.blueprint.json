@@ -1,0 +1,41 @@
+{
+  "aetherius": "1.0",
+  "name": "ukit.scolarite.cold",
+  "description": "Act II (Marionette) rebuild of the UKit hidden-WebView scrape: CAS login then extract profile and mailbox data.",
+  "act": "marionette",
+  "secrets": ["cas_user", "cas_pass"],
+  "options": {
+    "session": { "profile": "scolarite", "persist": true },
+    "debug": false
+  },
+  "steps": [
+    { "action": "navigate", "url": "https://cas.exemple.fr/login" },
+    { "action": "fill", "selector": "#username", "value": "{{ secrets.cas_user }}" },
+    { "action": "fill", "selector": "#password", "value": "{{ secrets.cas_pass }}" },
+    { "action": "click", "selector": "input[name=submit]" },
+    { "action": "wait_for", "selector": ".ent-dashboard", "timeout_ms": 15000, "on_timeout": "fail:LOGIN_FAILED" },
+    { "action": "emit", "event": "LOGIN_SUCCESS" },
+    { "action": "navigate", "url": "https://ent.exemple.fr/dossier" },
+    {
+      "action": "extract",
+      "outputs": {
+        "firstName": { "selector": ".identity .firstname", "as": "text" },
+        "studentNumber": { "selector": "#num-etudiant", "as": "text" },
+        "ine": { "selector": "#ine", "as": "text" },
+        "email": { "selector": ".mail", "as": "text" }
+      }
+    },
+    { "action": "navigate", "url": "https://webmail.exemple.fr" },
+    {
+      "action": "extract",
+      "outputs": { "unread": { "selector": ".unread-count", "as": "number" } }
+    }
+  ],
+  "outputs": {
+    "firstName": "{{ steps.dossier.firstName }}",
+    "studentNumber": "{{ steps.dossier.studentNumber }}",
+    "ine": "{{ steps.dossier.ine }}",
+    "email": "{{ steps.dossier.email }}",
+    "unread": "{{ steps.mailbox.unread }}"
+  }
+}

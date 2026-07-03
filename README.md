@@ -62,8 +62,8 @@ Un agent décisionnel autonome. Boucle **percevoir → raisonner → agir** : il
 `claude-opus-4-8`, remplaçable par un VLM local) décide de l'action suivante, et l'action est jouée
 via la couche de discrétion. Pour les objectifs non scriptés et la résilience maximale.
 
-> Aetherius est destiné à l'automatisation **autorisée** : tes propres comptes, tes propres données,
-> tes propres workflows.
+> Aetherius est destiné à l'automatisation **autorisée** : ses propres comptes, ses propres données,
+> ses propres workflows.
 
 ## Les fichiers d'instructions : les Blueprints
 
@@ -233,7 +233,7 @@ Depuis la Console, sans écrire de JSON à la main :
 - **Explorer et comprendre** les 4 Acts et les modèles de vision disponibles (fiches explicatives).
 - **Gérer les profils/sessions** persistants et lancer un warmup.
 - **Piloter le daemon** (démarrer/arrêter) et la configuration.
-- **Parcourir ta bibliothèque** de Blueprints (dupliquer, éditer, supprimer).
+- **Parcourir la bibliothèque** de Blueprints (dupliquer, éditer, supprimer).
 
 ### Créer un Blueprint : trois voies
 
@@ -319,7 +319,7 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 - **Contrats** ([`contracts/`](contracts/)) : JSON Schema du Blueprint + OpenAPI du daemon = source
   de vérité ; les types des SDK en sont générés.
 
-### Exécuter un Blueprint depuis ton code
+### Exécuter un Blueprint depuis le code applicatif
 
 La Console sert à *créer et gérer* les Blueprints. L'**exécution**, elle, se fait directement depuis
 le code applicatif, en chargeant un Blueprint **existant** — la Console n'est jamais requise au runtime.

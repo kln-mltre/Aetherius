@@ -25,6 +25,19 @@ class NullSink:
         pass
 
 
+def format_event(event: RunEvent) -> str:
+    """Render a RunEvent as a single-line human-readable string.
+
+    Shared by LogSink and the Console's EventLog widget so the two presentations never drift.
+    """
+    msg = f"[{event.type.value}]"
+    if event.step_id:
+        msg += f" step={event.step_id}"
+    if event.message:
+        msg += f" {event.message}"
+    return msg
+
+
 class LogSink:
     """Writes events to Python logging.
 
@@ -39,9 +52,4 @@ class LogSink:
         level = getattr(logging, level_str.upper(), logging.INFO)
         if not self._debug and level < logging.INFO:
             return
-        msg = f"[{event.type.value}]"
-        if event.step_id:
-            msg += f" step={event.step_id}"
-        if event.message:
-            msg += f" {event.message}"
-        _log.log(level, msg)
+        _log.log(level, format_event(event))

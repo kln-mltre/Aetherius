@@ -18,12 +18,17 @@ from ..runtime.context import RunContext, resolve_inputs
 from ..runtime.result import Result, RunStatus, StepResult
 
 
-def _make_driver(act: str) -> Any:
-    if act == "vector":
-        from ...acts.vector.driver import VectorDriver
+IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector"})
 
-        return VectorDriver()
-    raise ActionError(f"Act {act!r} is not implemented yet. Only 'vector' is available in Act I.")
+
+def _make_driver(act: str) -> Any:
+    if act not in IMPLEMENTED_ACTS:
+        raise ActionError(
+            f"Act {act!r} is not implemented yet. Only 'vector' is available in Act I."
+        )
+    from ...acts.vector.driver import VectorDriver
+
+    return VectorDriver()
 
 
 class RunEngine:

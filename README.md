@@ -227,6 +227,11 @@ Aetherius n'est pas qu'une bibliothèque : c'est aussi une **Console interactive
 aetherius            # ouvre la Console
 ```
 
+> **État actuel** : la Console est navigable de bout en bout. Library, Runs et Catalog sont
+> pleinement fonctionnels pour Act I (Vector) ; le Blueprint Studio, le Recorder et Sessions/
+> Settings (daemon) affichent honnêtement leur jalon en attente tant que builder/recorder/
+> stealth/daemon ne sont pas implémentés. Détails : [docs/console.md](docs/console.md).
+
 Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
 - **Lancer des runs** et suivre en direct leurs événements, logs et artefacts.
@@ -415,10 +420,15 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 - [x] Vision, concept des 4 Acts, format Blueprint, architecture.
 - [x] Squelette : arborescence + stubs + contrats + exemples.
 - [x] **Act I — Vector** : moteur HTTP/API complet. `Aetherius().run(blueprint, inputs=...)` fonctionnel. Couverture : http.request (form/JSON/params/headers), extraction JSONPath avec `where` et mapping de champs, extraction HTML CSS/XPath, authentification (NoAuth/Bearer/Basic/Cookie/CAS form-login), retries/backoff (tenacity), moteur de templates Jinja2 (`{{ inputs.x | add_days(7) }}`), bus d'événements, hiérarchie d'erreurs typées. 69 tests, mypy strict, lint propre.
+- [x] **Console (Textual)** : navigation complète (`aetherius` ou `aetherius console`) — Library,
+  Runs et Catalog fonctionnels pour Act I (parcours des Blueprints, exécution avec formulaire
+  d'inputs/secrets et flux d'événements en direct, catalogue des 4 Acts). CLI scriptable
+  (`aetherius run|validate`). Sessions, Settings et Recorder affichent honnêtement leur jalon en
+  attente ; voir [docs/console.md](docs/console.md).
 - [ ] Act II — Continuum.
 - [ ] Système de discrétion (humanizer + gestures + fingerprint + session).
 - [ ] Recorder (blueprint + gestes).
-- [ ] Builder headless + Console (Blueprint Studio, runs, catalogue, sessions).
+- [ ] Builder headless (Blueprint Studio).
 - [ ] Daemon + SDK TypeScript.
 - [ ] Act III — Oracle (vision + entraînement).
 - [ ] Act IV — Phantom (agent).

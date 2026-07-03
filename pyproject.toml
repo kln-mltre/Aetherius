@@ -1,6 +1,6 @@
 # Aetherius packaging.
 # src-layout, PEP 621 metadata. Heavy dependencies are grouped in optional extras so an Act I
-# (Conduit) user never pulls Playwright, ONNX or the Anthropic SDK. The Console ships in the base
+# (Vector) user never pulls Playwright, ONNX or the Anthropic SDK. The Console ships in the base
 # install so `aetherius` works out of the box.
 
 [build-system]
@@ -17,7 +17,7 @@ dynamic = ["version"]
 authors = [{ name = "Kylian Malartre" }]
 keywords = ["automation", "scraping", "browser", "playwright", "bot", "stealth", "agent"]
 
-# Base install: core engine + Act I (Conduit) + the daemon + the terminal Console.
+# Base install: core engine + Act I (Vector) + the daemon + the terminal Console.
 dependencies = [
   "pydantic>=2.6",
   "pydantic-settings>=2.2",
@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-browser = ["playwright>=1.44"]                 # Act II - Marionette
+browser = ["playwright>=1.44"]                 # Act II - Continuum
 vision  = ["onnxruntime>=1.17", "pillow>=10.3", "opencv-python-headless>=4.9", "numpy>=1.26"]  # Act III - Oracle
 agent   = ["anthropic>=0.25"]                  # Act IV - Phantom (default planner)
 stealth = ["numpy>=1.26"]                      # gesture math

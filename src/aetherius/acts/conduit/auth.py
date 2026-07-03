@@ -1,1 +1,1 @@
-"""Authentication strategies for Conduit: cookie, bearer, basic and form-login (CAS style)."""
+"""Authentication strategies for Vector: cookie, bearer, basic and form-login (CAS style)."""

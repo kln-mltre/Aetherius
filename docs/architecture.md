@@ -9,7 +9,7 @@ les parties au fil de l'implémentation.
    `openapi.yaml`, `events.schema.json`. Tout le reste s'y conforme.
 2. **Cœur** (`src/aetherius/core/`) — indépendant du moteur : modèle de Blueprint, dictionnaire
    d'actions, runtime, extraction, bus d'événements, erreurs typées, protocole `ActDriver`.
-3. **Acts** (`src/aetherius/acts/`) — quatre drivers interchangeables (Conduit, Marionette, Oracle,
+3. **Acts** (`src/aetherius/acts/`) — quatre drivers interchangeables (Vector, Continuum, Oracle,
    Phantom) derrière l'interface commune, avec un modèle de *capabilities*.
 4. **Discrétion** (`src/aetherius/stealth/`) — couche transverse injectée dans les Acts navigateur.
 5. **Outils** — `recorder/` (génération de Blueprints/gestes), `builder/` (construction headless),

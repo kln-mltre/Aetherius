@@ -1,1 +1,1 @@
-"""Act II - Marionette: scripted browser automation via Playwright."""
+"""Act II - Continuum: scripted browser automation via Playwright."""

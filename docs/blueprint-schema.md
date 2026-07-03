@@ -9,7 +9,7 @@ Exemples exécutables : [`examples/`](../examples/).
 |-------|------|------|
 | `aetherius` | string | Version du format (ex. `"1.0"`). |
 | `name` | string | Identifiant pointé, ex. `domaine.tache`. |
-| `act` | enum | `conduit` \| `marionette` \| `oracle` \| `phantom`. |
+| `act` | enum | `vector` \| `continuum` \| `oracle` \| `phantom`. |
 | `inputs` | object | Paramètres typés (réutilisabilité). |
 | `secrets` | string[] | Noms des secrets injectés au runtime, jamais stockés. |
 | `vars` | object | Constantes locales. |

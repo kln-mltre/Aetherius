@@ -1,7 +1,7 @@
 # Aetherius
 
-> Se veut être le produit du concept de bot web modulaire, poussé à son paroxysme.   
-> Capable de réaliser, sous base d'un simple fichier d'instructions, n'importe quelle tâche.
+> Se veut le produit du concept de bot web modulaire, poussé à son paroxysme.   
+> Capable de réaliser, sur la base d'un simple fichier d'instructions, n'importe quelle tâche.
 
 ## La vision
 
@@ -19,7 +19,7 @@ Aetherius est conçu pour être **exporté comme bibliothèque** et alimenter to
 récupérer un emploi du temps via API, scraper une page derrière un login, publier une vidéo en
 restant indétectable, ou lâcher un agent autonome sur une tâche non scriptée.
 
-Aetherius est à la fois une **bibliothèque** (que tes apps consomment, en direct ou via un daemon)
+Aetherius est à la fois une **bibliothèque** (consommée en direct ou via un daemon par les apps clientes)
 et un **outil** : une **Console dans le terminal** pour créer, tester et gérer tout ça sans écrire
 une ligne de JSON à la main.
 
@@ -30,21 +30,21 @@ Blueprint choisit l'Act adapté à la tâche.
 
 | Act | Nom | Moteur | Quand l'utiliser |
 |-----|-----|--------|------------------|
-| **I** | **Conduit** | Requêtes HTTP/API | Les données sont derrière une API ou des endpoints stables. Le cas « axios ». Le plus rapide. |
-| **II** | **Marionette** | Navigateur scripté (Playwright) | Il faut un vrai navigateur : login, JS, session, DOM. Sélecteurs connus et stables. |
+| **I** | **Vector** | Requêtes HTTP/API | Les données sont derrière une API ou des endpoints stables. Le cas « axios ». Le plus rapide. |
+| **II** | **Continuum** | Navigateur scripté (Playwright) | Il faut un vrai navigateur : login, JS, session, DOM. Sélecteurs connus et stables. |
 | **III** | **Oracle** | Navigateur guidé par vision + discrétion | L'UI est fragile/obfusquée : Aetherius « voit » l'écran via un petit modèle entraîné et agit avec discrétion. |
 | **IV** | **Phantom** | Agent autonome | Objectif non scripté. Perçoit, raisonne, agit en boucle. Résilience maximale. Le plus lourd. |
 
 Plus l'Act est élevé, plus le Blueprint est **haut-niveau** (on décrit *quoi*, plus *comment*) et
 plus les dépendances sont lourdes (installées à la demande via des *extras*).
 
-### Act I — Conduit
+### Act I — Vector
 Client HTTP robuste : requêtes GET/POST, encodage form/JSON, en-têtes, retries avec backoff,
 pagination, stratégies d'authentification (cookie, bearer, basic, form-login type CAS), extraction
 déclarative (JSONPath pour le JSON, CSS/XPath pour le HTML). Remplace les services `axios` écrits à
 la main ; les constantes magiques disséminées deviennent des `inputs` typés et documentés.
 
-### Act II — Marionette
+### Act II — Continuum
 Automatisation d'un vrai navigateur (Playwright) qui suit le Blueprint à la lettre : navigation,
 remplissage, clics, attentes, extraction DOM, bridge JavaScript injecté. Gère les scénarios qui
 exigent un navigateur : login, cookies de session, contenu rendu par JS. C'est l'équivalent propre
@@ -73,7 +73,7 @@ Un Blueprint est un fichier JSON déclaratif et versionné. Enveloppe :
 {
   "aetherius": "1.0",
   "name": "domaine.tache",
-  "act": "conduit",
+  "act": "vector",
   "inputs":  { "param": { "type": "string", "required": true } },
   "secrets": ["cle_injectee_au_runtime"],
   "vars":    { "domain": "https://exemple.fr" },
@@ -101,14 +101,14 @@ Un Blueprint est un fichier JSON déclaratif et versionné. Enveloppe :
 Le format est défini une fois pour toutes dans [`contracts/blueprint.schema.json`](contracts/blueprint.schema.json).
 Des exemples exécutables (dérivés de vrais projets) sont dans [`examples/`](examples/).
 
-### Exemple — Act I (Conduit) : emploi du temps par API
+### Exemple — Act I (Vector) : emploi du temps par API
 Voir [`examples/ukit-planning-week.blueprint.json`](examples/ukit-planning-week.blueprint.json).
 
 ```json
 {
   "aetherius": "1.0",
   "name": "ukit.planning.week",
-  "act": "conduit",
+  "act": "vector",
   "inputs": {
     "group":  { "type": "string", "required": true },
     "monday": { "type": "string", "format": "date", "required": true }
@@ -152,14 +152,14 @@ Voir [`examples/ukit-planning-week.blueprint.json`](examples/ukit-planning-week.
 Les constantes autrefois codées en dur (`resType`, `colourScheme`) sont explicites, le filtrage
 `Vacances` et le parsing sont déclaratifs, et le groupe/la date sont des `inputs` réutilisables.
 
-### Exemple — Act II (Marionette) : login CAS + scraping
+### Exemple — Act II (Continuum) : login CAS + scraping
 Voir [`examples/ukit-scolarite-login.blueprint.json`](examples/ukit-scolarite-login.blueprint.json).
 
 ```json
 {
   "aetherius": "1.0",
   "name": "ukit.scolarite.cold",
-  "act": "marionette",
+  "act": "continuum",
   "secrets": ["cas_user", "cas_pass"],
   "options": { "session": { "profile": "scolarite", "persist": true }, "debug": false },
   "steps": [
@@ -227,7 +227,7 @@ Aetherius n'est pas qu'une bibliothèque : c'est aussi une **Console interactive
 aetherius            # ouvre la Console
 ```
 
-Depuis la Console, sans écrire de JSON à la main, tu peux :
+Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
 - **Lancer des runs** et suivre en direct leurs événements, logs et artefacts.
 - **Explorer et comprendre** les 4 Acts et les modèles de vision disponibles (fiches explicatives).
@@ -237,13 +237,13 @@ Depuis la Console, sans écrire de JSON à la main, tu peux :
 
 ### Créer un Blueprint : trois voies
 
-1. **Le Blueprint Studio (guidé, rapide, sans JSON)** — dans la Console. Tu choisis un Act (avec son
-   explication), tu ajoutes des steps via des formulaires, et un **aperçu JSON live** se met à jour
-   en étant validé contre le schéma en temps réel. L'option la plus rapide pour la majorité des cas.
-2. **Le Recorder (par démonstration)** — pour les tâches d'automatisation navigateur : tu réalises
-   l'action dans un navigateur visible, Aetherius capture et recrache un Blueprint propre, avec
+1. **Le Blueprint Studio (guidé, rapide, sans JSON)** — dans la Console. Sélection de l'Act (avec
+   son explication), ajout des steps via des formulaires, **aperçu JSON live** validé contre le
+   schéma en temps réel. L'option la plus rapide pour la majorité des cas.
+2. **Le Recorder (par démonstration)** — pour les tâches d'automatisation navigateur : l'action est
+   réalisée dans un navigateur visible, Aetherius capture et recrache un Blueprint propre, avec
    **synthèse de sélecteurs robustes** (privilégie `data-testid`/aria/texte avant les chemins CSS
-   fragiles). Idéal quand cliquer soi-même est plus simple que décrire.
+   fragiles). Idéal quand la démonstration directe est plus simple que la description.
 3. **JSON à la main** — pour les power users qui veulent le contrôle total.
 
 La logique de construction vit dans un module `builder/` *headless* : la Console n'en est que
@@ -303,7 +303,7 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 
 ```
 ┌─────────────┐   Blueprint + inputs + secrets    ┌──────────────────────────┐
-│  Ton app    │ ────────────────────────────────► │  Aetherius Daemon        │
+│  App        │ ────────────────────────────────► │  Aetherius Daemon        │
 │ (TS/Python) │        HTTP  +  WebSocket          │  (FastAPI)               │
 │  SDK mince  │ ◄──────────────────────────────── │  Runtime → Act I..IV     │
 └─────────────┘   résultat + flux d'événements     └──────────────────────────┘
@@ -322,7 +322,7 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 ### Exécuter un Blueprint depuis ton code
 
 La Console sert à *créer et gérer* les Blueprints. L'**exécution**, elle, se fait directement depuis
-ton code, en chargeant un Blueprint **existant** — la Console n'est jamais requise au runtime.
+le code applicatif, en chargeant un Blueprint **existant** — la Console n'est jamais requise au runtime.
 
 Python (in-process, sans daemon) :
 ```python
@@ -353,7 +353,7 @@ console.log(result.outputs.events);
 src/aetherius/
   core/        blueprint (models/loader/validator/template), actions (le dictionnaire),
                runtime (engine/context/selector/result), extraction, events, errors, driver
-  acts/        conduit (I), marionette (II), oracle (III), phantom (IV)
+  acts/        vector (I), continuum (II), oracle (III), phantom (IV)
   stealth/     policy, humanizer (mouse/keyboard/scroll/timing), gestures, fingerprint,
                session (store/warmup), ml (optionnel)
   recorder/    blueprint_recorder, gesture_recorder, capture, selector_synth
@@ -376,8 +376,8 @@ typées (jamais avalées) ; les Acts sont des drivers interchangeables derrière
 ## Installation (cible)
 
 ```bash
-pip install aetherius            # cœur + Act I (Conduit) + daemon + Console
-pip install aetherius[browser]   # + Act II (Marionette)
+pip install aetherius            # cœur + Act I (Vector) + daemon + Console
+pip install aetherius[browser]   # + Act II (Continuum)
 pip install aetherius[vision]    # + Act III (Oracle)
 pip install aetherius[agent]     # + Act IV (Phantom)
 pip install aetherius[all]
@@ -392,8 +392,8 @@ aetherius            # centre de contrôle interactif dans le terminal
 
 - [x] Vision, concept des 4 Acts, format Blueprint, architecture.
 - [x] Squelette : arborescence + stubs + contrats + exemples (ce commit).
-- [ ] Act I — Conduit (implémentation).
-- [ ] Act II — Marionette.
+- [ ] Act I — Vector (implémentation).
+- [ ] Act II — Continuum.
 - [ ] Système de discrétion (humanizer + gestures + fingerprint + session).
 - [ ] Recorder (blueprint + gestes).
 - [ ] Builder headless + Console (Blueprint Studio, runs, catalogue, sessions).
@@ -401,9 +401,9 @@ aetherius            # centre de contrôle interactif dans le terminal
 - [ ] Act III — Oracle (vision + entraînement).
 - [ ] Act IV — Phantom (agent).
 
-## Reprendre le contexte (sessions futures)
+## Sources de référence
 
-Ce README + [`legacy_examples/README.md`](legacy_examples/README.md) (carte de provenance) suffisent
-à reprendre le projet : la vision, les 4 Acts, le format Blueprint et l'architecture y sont figés.
-Les fichiers de [`legacy_examples/`](legacy_examples/) sont les cas d'usage réels qui ont fondé
-chaque décision.
+Ce README et [`legacy_examples/README.md`](legacy_examples/README.md) constituent la documentation
+de référence complète du projet : vision, 4 Acts, format Blueprint, architecture. Les fichiers de
+[`legacy_examples/`](legacy_examples/) (carte de provenance) sont les cas d'usage réels à l'origine
+de chaque décision de conception.

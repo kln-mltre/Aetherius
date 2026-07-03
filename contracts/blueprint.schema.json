@@ -20,7 +20,7 @@
     "description": { "type": "string" },
     "act": {
       "description": "Execution engine.",
-      "enum": ["conduit", "marionette", "oracle", "phantom"]
+      "enum": ["vector", "continuum", "oracle", "phantom"]
     },
     "inputs": {
       "type": "object",

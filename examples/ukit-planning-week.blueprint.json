@@ -1,8 +1,8 @@
 {
   "aetherius": "1.0",
   "name": "ukit.planning.week",
-  "description": "Act I (Conduit) rebuild of UKit PlanningApiService: fetch a week of timetable events for a group.",
-  "act": "conduit",
+  "description": "Act I (Vector) rebuild of UKit PlanningApiService: fetch a week of timetable events for a group.",
+  "act": "vector",
   "inputs": {
     "group": { "type": "string", "required": true, "description": "Group federation id." },
     "monday": { "type": "string", "format": "date", "required": true, "description": "First day of the week (YYYY-MM-DD)." }

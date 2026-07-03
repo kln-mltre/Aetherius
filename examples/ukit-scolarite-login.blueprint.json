@@ -1,8 +1,8 @@
 {
   "aetherius": "1.0",
   "name": "ukit.scolarite.cold",
-  "description": "Act II (Marionette) rebuild of the UKit hidden-WebView scrape: CAS login then extract profile and mailbox data.",
-  "act": "marionette",
+  "description": "Act II (Continuum) rebuild of the UKit hidden-WebView scrape: CAS login then extract profile and mailbox data.",
+  "act": "continuum",
   "secrets": ["cas_user", "cas_pass"],
   "options": {
     "session": { "profile": "scolarite", "persist": true },

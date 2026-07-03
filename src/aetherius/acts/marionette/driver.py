@@ -1,1 +1,1 @@
-"""Marionette driver: follows the Blueprint literally against a real browser page."""
+"""Continuum driver: follows the Blueprint literally against a real browser page."""

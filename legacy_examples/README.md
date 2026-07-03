@@ -13,8 +13,8 @@ Application mobile. Deux patterns d'accès au web qui fondent **Act I** et **Act
 
 | Fichier | Ce qu'il fait | Fonde |
 |---------|---------------|-------|
-| `PlanningApiService.ts` | Récupère l'emploi du temps via `axios` : GET liste de groupes, POST form-encodé (`qs.stringify`, `arrayFormat: repeat`) pour les événements, parsing/tri/filtrage manuels. | **Act I — Conduit** : `acts/conduit/` (client httpx, form-encoding, extraction déclarative). Voir `examples/ukit-planning-week.blueprint.json`. |
-| `WebBrowserScreen.tsx` | WebView `react-native-webview` avec `injectedJavaScript` (login CAS auto) et pont `postMessage` ↔ `onMessage`. | **Act II — Marionette** : `acts/marionette/` (browser scripté, bridge JS injecté), et le **mode debug** (WebView visible). |
+| `PlanningApiService.ts` | Récupère l'emploi du temps via `axios` : GET liste de groupes, POST form-encodé (`qs.stringify`, `arrayFormat: repeat`) pour les événements, parsing/tri/filtrage manuels. | **Act I — Vector** : `acts/vector/` (client httpx, form-encoding, extraction déclarative). Voir `examples/ukit-planning-week.blueprint.json`. |
+| `WebBrowserScreen.tsx` | WebView `react-native-webview` avec `injectedJavaScript` (login CAS auto) et pont `postMessage` ↔ `onMessage`. | **Act II — Continuum** : `acts/continuum/` (browser scripté, bridge JS injecté), et le **mode debug** (WebView visible). |
 | `CredentialsContext.tsx` | Orchestration du scraping caché : modes cold/hot, stockage sécurisé, machine à événements (`LOGIN_SUCCESS`, `PROGRESS`, `ENT_DATA`, `DOSSIER_DATA`, `MAILBOX_DATA`, `DEBUG`). | **Act II** + le **bus d'événements** (`core/events/`) et la **gestion de session** (`stealth/session/`). Voir `examples/ukit-scolarite-login.blueprint.json`. |
 
 Fragilités observées (que l'archi corrige) : constantes magiques répétées (`resType:'103'`,

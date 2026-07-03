@@ -1,1 +1,1 @@
-"""Conduit driver: executes http.request and extraction steps against endpoints, no browser."""
+"""Vector driver: executes http.request and extraction steps against endpoints, no browser."""

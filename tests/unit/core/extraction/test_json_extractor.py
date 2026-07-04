@@ -60,8 +60,10 @@ def test_fields_mapping() -> None:
         )
     }
     result = extract_json(_BODY, spec)
-    for event in result["events"]:
-        assert set(event.keys()) == {"id", "category"}
+    assert result["events"] == [
+        {"id": "1", "category": "Cours"},
+        {"id": "3", "category": "TD"},
+    ]
 
 
 def test_invalid_json_raises() -> None:

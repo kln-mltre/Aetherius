@@ -81,7 +81,7 @@ def _extract_fields(item_dict: dict[str, Any], fields: dict[str, str]) -> dict[s
     """Extract sub-fields from a single matched item using relative JSONPath expressions."""
     result: dict[str, Any] = {}
     for field_name, path in fields.items():
-        matches = jpath_parse(path).find([item_dict])
+        matches = jpath_parse(path).find(item_dict)
         if not matches:
             result[field_name] = None
         elif len(matches) == 1:

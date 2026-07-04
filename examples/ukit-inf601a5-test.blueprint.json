@@ -1,0 +1,48 @@
+{
+  "aetherius": "1.0",
+  "name": "ukit.perso.inf601a5",
+  "description": "Live smoke test against the real UKit ADE server (kbdev.io), group INF601A5, week of 2026-02-02.",
+  "act": "vector",
+  "inputs": {
+    "group": { "type": "string", "required": true, "default": "INF601A5", "description": "Group federation id." },
+    "monday": { "type": "string", "format": "date", "required": true, "default": "2026-02-02", "description": "First day of the week (YYYY-MM-DD)." }
+  },
+  "vars": { "domain": "https://ukit.kbdev.io/Home" },
+  "steps": [
+    {
+      "id": "week",
+      "action": "http.request",
+      "method": "POST",
+      "url": "{{ vars.domain }}/GetCalendarData",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Accept": "application/json"
+      },
+      "form": {
+        "start": "{{ inputs.monday }}",
+        "end": "{{ inputs.monday | add_days(7) }}",
+        "resType": "103",
+        "calView": "agendaWeek",
+        "federationIds[]": "{{ inputs.group }}",
+        "colourScheme": "3"
+      },
+      "expect": { "status": 200 },
+      "extract": {
+        "events": {
+          "from": "json",
+          "path": "$[*]",
+          "where": "item.eventCategory != 'Vacances'",
+          "fields": {
+            "id": "$.id",
+            "start": "$.start",
+            "end": "$.end",
+            "category": "$.eventCategory",
+            "color": "$.backgroundColor",
+            "description": "$.description"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": { "events": "{{ steps.week.events }}" }
+}

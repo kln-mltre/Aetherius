@@ -1,0 +1,71 @@
+# Console (Textual)
+
+Le centre de contrôle terminal (voir aussi le [README](../README.md)). `aetherius` ou
+`aetherius console` ouvre l'app Textual [`console/app.py`](../src/aetherius/console/app.py) ;
+`aetherius run|validate` sont les chemins scriptables non-interactifs
+([`cli.py`](../src/aetherius/cli.py)).
+
+## Plan des écrans
+
+```
+Home ─┬─ Library   (parcourt et valide les Blueprints — examples/ + ./blueprints/)
+      ├─ Runs      (atteint uniquement depuis Library ; formulaire d'inputs/secrets,
+      │             exécution + événements en direct, résultat final)
+      ├─ Catalog   (les 4 Acts, statut d'implémentation, capabilities par Act)
+      ├─ Sessions  (en attente : stealth/session)
+      ├─ Settings  (en attente : daemon)
+      ├─ Recorder  (en attente : recorder)
+      └─ Builder   (en attente : builder headless — Blueprint Studio)
+```
+
+`core/runtime/engine.py::IMPLEMENTED_ACTS` est la seule source de vérité pour « quel Act est
+exécutable » — Home, Catalog et Runs la lisent tous ; ne jamais dupliquer cette liste.
+
+Les écrans en attente (`console/screens/sessions.py`, `settings.py`, `recorder.py`,
+`screens/builder/screen.py`) partagent une base commune,
+[`console/screens/_pending.py`](../src/aetherius/console/screens/_pending.py) : ils affichent ce
+que l'écran fera et le jalon dont il dépend, sans fausse interactivité.
+
+## Streamer les événements d'un run : le pattern Sink
+
+`RunEngine.run()` est synchrone et bloquant ; la Console le pilote depuis un worker Textual
+(`@work(thread=True)`, voir [`console/screens/runs.py`](../src/aetherius/console/screens/runs.py)).
+[`console/run_bridge.py`](../src/aetherius/console/run_bridge.py) fournit `TextualRunSink`, un
+`Sink` (voir [`core/events/sinks.py`](../src/aetherius/core/events/sinks.py)) qui relaie chaque
+`RunEvent` vers un widget via `App.call_from_thread` — le mécanisme Textual pour franchir la
+frontière thread-worker → thread-UI. Ne lève jamais.
+
+Tout futur écran qui doit streamer des événements d'un run (Act II+, daemon) doit réutiliser ce
+même pattern plutôt que d'en inventer un nouveau.
+
+## Widgets réutilisables
+
+- [`widgets/event_log.py`](../src/aetherius/console/widgets/event_log.py) — `EventLog(RichLog)`,
+  flux d'événements coloré par niveau.
+- [`widgets/form.py`](../src/aetherius/console/widgets/form.py) — `BlueprintInputForm`, formulaire
+  généré depuis `Blueprint.inputs`/`secrets`.
+- [`widgets/json_preview.py`](../src/aetherius/console/widgets/json_preview.py) — `JsonPreview`,
+  rendu JSON coloré (Rich `Syntax`).
+- [`widgets/run_summary.py`](../src/aetherius/console/widgets/run_summary.py) — `RunSummary`,
+  résultat final d'un run (statut, étapes, outputs). Masqué tant qu'aucun résultat n'est arrivé,
+  révélé puis scrollé en vue à la fin du run.
+
+## Thème et direction artistique
+
+[`console/theme.py`](../src/aetherius/console/theme.py) est la source unique de la DA :
+« éther nocturne » — antiquité mystique sombre, adaptée au terminal (un fond clair y rend mal ;
+décision verrouillée par un test). Dominantes : violet crépusculaire (structure), pourpre tyrien
+(le mystique, le « pas encore révélé »), vert laurier foncé (succès, lierre) ; le texte reste
+clair de lune pour la lisibilité et l'or impérial est réservé aux étoiles et au wordmark.
+Ornements : frises mosaïque `▚▞` (`frieze()` horizontal, `frieze_column()` vertical — colonnes
+des écrans en attente), étoiles `✦` (`starred()` pour les titres, marqueurs du menu Home,
+bouton Run), guirlande de lierre `❧─❦─❧` (`garland()` — le *hedera*, la feuille de lierre des
+inscriptions romaines). Wordmark AETHERIVS généré avec pyfiglet (police `ansi_shadow`,
+outil de dev uniquement, résultat figé — jamais de dépendance runtime ; alignement gardé par un
+test). Toute couleur affichée par un écran vient de ce module (jamais de couleur en dur ailleurs).
+
+Répartition des styles : la mise en page propre à un widget réutilisable vit dans son
+`DEFAULT_CSS` (scopé) ; [`console/console.tcss`](../src/aetherius/console/console.tcss) ne
+contient que le layout au niveau écran. Règle d'ergonomie : les conteneurs de contenu utilisent
+`height: auto` + corps d'écran en `VerticalScroll`, pour que rien ne soit compressé ni perdu
+dans un terminal bas (les champs de formulaire gardent leur hauteur, l'écran scrolle).

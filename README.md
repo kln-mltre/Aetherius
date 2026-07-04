@@ -1,5 +1,19 @@
 # Aetherius
 
+```text
+▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚
+ ˚ ✦ ·       ✦      · ˚       ✦ ·      ˚ ·     ✦    · ˚ ✦      · ✦ ˚
+ █████╗ ███████╗████████╗██╗  ██╗███████╗██████╗ ██╗██╗   ██╗███████╗
+██╔══██╗██╔════╝╚══██╔══╝██║  ██║██╔════╝██╔══██╗██║██║   ██║██╔════╝
+███████║█████╗     ██║   ███████║█████╗  ██████╔╝██║██║   ██║███████╗
+██╔══██║██╔══╝     ██║   ██╔══██║██╔══╝  ██╔══██╗██║╚██╗ ██╔╝╚════██║
+██║  ██║███████╗   ██║   ██║  ██║███████╗██║  ██║██║ ╚████╔╝ ███████║
+╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝  ╚══════╝
+            ❧──────────────────── ❦ ────────────────────❧
+                     ✦  per nubes, ad aethera  ✦
+▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚▞▚
+```
+
 > Se veut le produit du concept de bot web modulaire, poussé à son paroxysme.   
 > Capable de réaliser, sur la base d'un simple fichier d'instructions, n'importe quelle tâche.
 
@@ -22,6 +36,8 @@ restant indétectable, ou lâcher un agent autonome sur une tâche non scriptée
 Aetherius est à la fois une **bibliothèque** (consommée en direct ou via un daemon par les apps clientes)
 et un **outil** : une **Console dans le terminal** pour créer, tester et gérer tout ça sans écrire
 une ligne de JSON à la main.
+
+<p align="center"><sub>▚▞▚ ✦ ▞▚▞</sub></p>
 
 ## Le concept : 4 Acts
 
@@ -64,6 +80,8 @@ via la couche de discrétion. Pour les objectifs non scriptés et la résilience
 
 > Aetherius est destiné à l'automatisation **autorisée** : ses propres comptes, ses propres données,
 > ses propres workflows.
+
+<p align="center"><sub>▚▞▚ ✦ ▞▚▞</sub></p>
 
 ## Les fichiers d'instructions : les Blueprints
 
@@ -218,6 +236,8 @@ Voir [`examples/tiktok-upload.blueprint.json`](examples/tiktok-upload.blueprint.
 }
 ```
 
+<p align="center"><sub>▚▞▚ ✦ ▞▚▞</sub></p>
+
 ## La Console Aetherius : tout gérer depuis le terminal
 
 Aetherius n'est pas qu'une bibliothèque : c'est aussi une **Console interactive dans le terminal**
@@ -226,6 +246,11 @@ Aetherius n'est pas qu'une bibliothèque : c'est aussi une **Console interactive
 ```bash
 aetherius            # ouvre la Console
 ```
+
+> **État actuel** : la Console est navigable de bout en bout. Library, Runs et Catalog sont
+> pleinement fonctionnels pour Act I (Vector) ; le Blueprint Studio, le Recorder et Sessions/
+> Settings (daemon) affichent honnêtement leur jalon en attente tant que builder/recorder/
+> stealth/daemon ne sont pas implémentés. Détails : [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
@@ -297,6 +322,8 @@ En complément, un *gesture recorder* capture des traces de souris humaines rée
 bibliothèque de gestes du système de discrétion. (Le Blueprint recorder, lui, est décrit plus haut
 dans « Créer un Blueprint : trois voies ».)
 
+<p align="center"><sub>▚▞▚ ✦ ▞▚▞</sub></p>
+
 ## Interopérabilité multi-langage
 
 Le cœur est en Python ; il est exposé à tous les langages via un **daemon local**.
@@ -346,6 +373,8 @@ const result = await client.run("blueprints/ukit-planning-week.blueprint.json", 
 });
 console.log(result.outputs.events);
 ```
+
+<p align="center"><sub>▚▞▚ ✦ ▞▚▞</sub></p>
 
 ## Architecture du dépôt
 
@@ -410,15 +439,22 @@ make help                 # liste des cibles
 Conventions de contribution (discipline de test, invariants, structure des tests) :
 [`CONTRIBUTING.md`](CONTRIBUTING.md) et [`docs/testing.md`](docs/testing.md).
 
+<p align="center"><sub>▚▞▚ ✦ ▞▚▞</sub></p>
+
 ## État d'avancement
 
 - [x] Vision, concept des 4 Acts, format Blueprint, architecture.
 - [x] Squelette : arborescence + stubs + contrats + exemples.
-- [ ] Act I — Vector.
+- [x] **Act I — Vector** : moteur HTTP/API complet. `Aetherius().run(blueprint, inputs=...)` fonctionnel. Couverture : http.request (form/JSON/params/headers), extraction JSONPath avec `where` et mapping de champs, extraction HTML CSS/XPath, authentification (NoAuth/Bearer/Basic/Cookie/CAS form-login), retries/backoff (tenacity), moteur de templates Jinja2 (`{{ inputs.x | add_days(7) }}`), bus d'événements, hiérarchie d'erreurs typées. 69 tests, mypy strict, lint propre.
+- [x] **Console (Textual)** : navigation complète (`aetherius` ou `aetherius console`) — Library,
+  Runs et Catalog fonctionnels pour Act I (parcours des Blueprints, exécution avec formulaire
+  d'inputs/secrets et flux d'événements en direct, catalogue des 4 Acts). CLI scriptable
+  (`aetherius run|validate`). Sessions, Settings et Recorder affichent honnêtement leur jalon en
+  attente ; voir [docs/console.md](docs/console.md).
 - [ ] Act II — Continuum.
 - [ ] Système de discrétion (humanizer + gestures + fingerprint + session).
 - [ ] Recorder (blueprint + gestes).
-- [ ] Builder headless + Console (Blueprint Studio, runs, catalogue, sessions).
+- [ ] Builder headless (Blueprint Studio).
 - [ ] Daemon + SDK TypeScript.
 - [ ] Act III — Oracle (vision + entraînement).
 - [ ] Act IV — Phantom (agent).
@@ -429,3 +465,7 @@ Ce README et [`legacy_examples/README.md`](legacy_examples/README.md) constituen
 de référence complète du projet : vision, 4 Acts, format Blueprint, architecture. Les fichiers de
 [`legacy_examples/`](legacy_examples/) (carte de provenance) sont les cas d'usage réels à l'origine
 de chaque décision de conception.
+
+---
+
+<p align="center"><sub>❧ ▚▞▚ &nbsp;✦&nbsp; per nubes, ad aethera &nbsp;✦&nbsp; ▚▞▚ ❦</sub></p>

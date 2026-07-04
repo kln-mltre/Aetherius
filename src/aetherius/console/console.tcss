@@ -1,0 +1,92 @@
+/* Aetherius Console stylesheet: screen-level layout only. Rules that belong to a single
+   reusable widget live in that widget's DEFAULT_CSS (scoped), not here. */
+
+Screen {
+    align: center top;
+}
+
+.console-title {
+    text-style: bold;
+    padding: 1 2 0 2;
+}
+
+.console-subtitle {
+    color: $text-muted;
+    padding: 0 2 1 2;
+}
+
+.console-body {
+    width: 100%;
+    height: 1fr;
+    padding: 0 2;
+}
+
+.console-placeholder {
+    width: 100%;
+    height: 1fr;
+    align: center middle;
+    padding: 2 4;
+}
+
+.console-placeholder Static {
+    text-align: center;
+}
+
+.pending-frame {
+    height: auto;
+    align: center middle;
+}
+
+.pending-column {
+    width: auto;
+    padding: 0 2;
+}
+
+.pending-content {
+    width: 1fr;
+    height: auto;
+}
+
+.console-footer-hint {
+    color: $text-muted;
+    padding: 1 2;
+}
+
+.run-actions {
+    height: auto;
+    padding: 1 0;
+}
+
+RunsScreen BlueprintInputForm {
+    border: double $accent;
+}
+
+#run-button {
+    border: double $accent;
+    background: $panel;
+    color: $accent;
+    text-style: bold;
+    padding: 0 3;
+}
+
+#run-button:hover {
+    background: $accent 20%;
+}
+
+#run-button:focus {
+    text-style: bold;
+}
+
+#home-banner {
+    width: 100%;
+    padding: 1 0 0 0;
+    text-align: center;
+}
+
+#home-status {
+    text-align: center;
+}
+
+#home-menu {
+    margin: 1 0 0 0;
+}

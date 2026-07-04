@@ -1,11 +1,39 @@
-"""Result and StepResult models: structured outputs, extracted data, artifacts and status returned to the caller."""
+"""Result and StepResult: structured outputs returned to the caller after a Blueprint run."""
 
 from __future__ import annotations
 
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
-class Result:
-    """Outcome of executing a Blueprint, returned by :class:`aetherius.Aetherius`.
+from pydantic import BaseModel, Field
 
-    Skeleton placeholder: the concrete fields (status, outputs, extracted data, artifacts, timing)
-    are defined with the runtime. It exists now so the public return type is a real, typed anchor.
-    """
+
+class RunStatus(str, Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
+    PARTIAL = "partial"
+
+
+class StepResult(BaseModel):
+    step_id: str | None
+    action: str
+    status: RunStatus
+    outputs: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
+    duration_ms: float
+
+
+class Result(BaseModel):
+    run_id: str
+    blueprint_name: str
+    status: RunStatus
+    outputs: dict[str, Any] = Field(default_factory=dict)
+    step_results: list[StepResult] = Field(default_factory=list)
+    error: str | None = None
+    started_at: datetime
+    finished_at: datetime
+
+    @property
+    def duration_ms(self) -> float:
+        return (self.finished_at - self.started_at).total_seconds() * 1000

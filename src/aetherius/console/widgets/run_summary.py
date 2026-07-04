@@ -9,17 +9,42 @@ from textual.containers import Vertical
 from textual.widgets import DataTable, Static
 
 from ...core.runtime.result import Result, RunStatus
+from ..theme import AMBER, LAUREL, POMPEIAN
 from .json_preview import JsonPreview
 
 _STATUS_STYLE: dict[RunStatus, str] = {
-    RunStatus.SUCCESS: "bold green",
-    RunStatus.FAILED: "bold red",
-    RunStatus.PARTIAL: "bold yellow",
+    RunStatus.SUCCESS: f"bold {LAUREL}",
+    RunStatus.FAILED: f"bold {POMPEIAN}",
+    RunStatus.PARTIAL: f"bold {AMBER}",
 }
 
 
 class RunSummary(Vertical):
-    """Composed once, then populated by `show(result)` after a worker completes."""
+    """Hidden until `show(result)` reveals it once a run completes; `reset()` hides it again."""
+
+    DEFAULT_CSS = """
+    RunSummary {
+        display: none;
+        height: auto;
+        border: double $success;
+        padding: 0 1 1 1;
+    }
+    RunSummary.-revealed {
+        display: block;
+    }
+    #run-summary-status {
+        height: auto;
+        padding: 1 0;
+    }
+    #run-summary-steps {
+        height: auto;
+        max-height: 12;
+    }
+    #run-summary-outputs {
+        height: auto;
+        margin-top: 1;
+    }
+    """
 
     def compose(self) -> ComposeResult:
         yield Static("", id="run-summary-status")
@@ -36,7 +61,7 @@ class RunSummary(Vertical):
         style = _STATUS_STYLE.get(result.status, "")
         text = Text(f"{result.status.value} — {result.duration_ms:.1f} ms", style=style)
         if result.error:
-            text.append(f"\n{result.error}", style="red")
+            text.append(f"\n{result.error}", style=POMPEIAN)
         status_line.update(text)
 
         steps = self.query_one("#run-summary-steps", DataTable)
@@ -50,3 +75,8 @@ class RunSummary(Vertical):
             )
 
         self.query_one("#run-summary-outputs", JsonPreview).show(result.outputs)
+        self.add_class("-revealed")
+
+    def reset(self) -> None:
+        """Hide the previous result while a new run is in flight."""
+        self.remove_class("-revealed")

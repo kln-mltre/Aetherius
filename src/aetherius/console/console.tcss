@@ -1,5 +1,5 @@
-/* Aetherius Console stylesheet. Shared layout rules for every screen; widget-local rules that
-   are meaningless outside their own widget live in that widget's DEFAULT_CSS instead. */
+/* Aetherius Console stylesheet: screen-level layout only. Rules that belong to a single
+   reusable widget live in that widget's DEFAULT_CSS (scoped), not here. */
 
 Screen {
     align: center top;
@@ -28,29 +28,65 @@ Screen {
     padding: 2 4;
 }
 
+.console-placeholder Static {
+    text-align: center;
+}
+
+.pending-frame {
+    height: auto;
+    align: center middle;
+}
+
+.pending-column {
+    width: auto;
+    padding: 0 2;
+}
+
+.pending-content {
+    width: 1fr;
+    height: auto;
+}
+
 .console-footer-hint {
     color: $text-muted;
     padding: 1 2;
 }
 
-.badge-available {
-    color: $success;
+.run-actions {
+    height: auto;
+    padding: 1 0;
+}
+
+RunsScreen BlueprintInputForm {
+    border: double $accent;
+}
+
+#run-button {
+    border: double $accent;
+    background: $panel;
+    color: $accent;
+    text-style: bold;
+    padding: 0 3;
+}
+
+#run-button:hover {
+    background: $accent 20%;
+}
+
+#run-button:focus {
     text-style: bold;
 }
 
-.badge-pending {
-    color: $text-muted;
+#home-banner {
+    width: 100%;
+    padding: 1 0 0 0;
+    text-align: center;
 }
 
-.form-field {
-    padding: 0 0 1 0;
+#home-status {
+    text-align: center;
 }
 
-.form-field Label {
-    padding: 0 0 0 0;
-}
-
-.run-actions {
-    padding: 1 0;
-    align: left middle;
+#home-menu {
+    margin: 1 0 0 0;
 }

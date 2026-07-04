@@ -22,6 +22,19 @@ class BlueprintInputForm(Vertical):
     pre-check for required fields before a run is allowed to start.
     """
 
+    # height: auto everywhere: fields must keep their natural height and let the screen scroll,
+    # never get squeezed into overlapping fractions when the terminal is short.
+    DEFAULT_CSS = """
+    BlueprintInputForm {
+        height: auto;
+        padding: 1 1 0 1;
+    }
+    BlueprintInputForm .form-field {
+        height: auto;
+        padding-bottom: 1;
+    }
+    """
+
     def __init__(self, inputs: dict[str, InputSpec], secrets: list[str]) -> None:
         super().__init__()
         self._inputs = inputs

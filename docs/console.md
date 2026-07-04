@@ -47,4 +47,25 @@ même pattern plutôt que d'en inventer un nouveau.
 - [`widgets/json_preview.py`](../src/aetherius/console/widgets/json_preview.py) — `JsonPreview`,
   rendu JSON coloré (Rich `Syntax`).
 - [`widgets/run_summary.py`](../src/aetherius/console/widgets/run_summary.py) — `RunSummary`,
-  résultat final d'un run (statut, étapes, outputs).
+  résultat final d'un run (statut, étapes, outputs). Masqué tant qu'aucun résultat n'est arrivé,
+  révélé puis scrollé en vue à la fin du run.
+
+## Thème et direction artistique
+
+[`console/theme.py`](../src/aetherius/console/theme.py) est la source unique de la DA :
+« éther nocturne » — antiquité mystique sombre, adaptée au terminal (un fond clair y rend mal ;
+décision verrouillée par un test). Dominantes : violet crépusculaire (structure), pourpre tyrien
+(le mystique, le « pas encore révélé »), vert laurier foncé (succès, lierre) ; le texte reste
+clair de lune pour la lisibilité et l'or impérial est réservé aux étoiles et au wordmark.
+Ornements : frises mosaïque `▚▞` (`frieze()` horizontal, `frieze_column()` vertical — colonnes
+des écrans en attente), étoiles `✦` (`starred()` pour les titres, marqueurs du menu Home,
+bouton Run), guirlande de lierre `❧─❦─❧` (`garland()` — le *hedera*, la feuille de lierre des
+inscriptions romaines). Wordmark AETHERIVS généré avec pyfiglet (police `ansi_shadow`,
+outil de dev uniquement, résultat figé — jamais de dépendance runtime ; alignement gardé par un
+test). Toute couleur affichée par un écran vient de ce module (jamais de couleur en dur ailleurs).
+
+Répartition des styles : la mise en page propre à un widget réutilisable vit dans son
+`DEFAULT_CSS` (scopé) ; [`console/console.tcss`](../src/aetherius/console/console.tcss) ne
+contient que le layout au niveau écran. Règle d'ergonomie : les conteneurs de contenu utilisent
+`height: auto` + corps d'écran en `VerticalScroll`, pour que rien ne soit compressé ni perdu
+dans un terminal bas (les champs de formulaire gardent leur hauteur, l'écran scrolle).

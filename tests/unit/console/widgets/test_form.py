@@ -45,6 +45,23 @@ async def test_collect_returns_filled_values() -> None:
 
 
 @pytest.mark.asyncio
+async def test_fields_keep_full_height_in_short_terminals() -> None:
+    # Regression: fields used to be squeezed into overlapping fractions when the terminal was
+    # shorter than the form; they must keep their natural height and let the screen scroll.
+    inputs = {f"field{i}": InputSpec(type="string") for i in range(6)}
+    app = _FormHarness(inputs, secrets=[])
+
+    async with app.run_test(size=(80, 12)) as pilot:
+        await pilot.pause()
+
+        fields = list(app.query(".form-field"))
+
+        assert len(fields) == 6
+        # Label (1 line) + Input (3 lines): anything below 4 means the field got crushed.
+        assert all(field.size.height >= 4 for field in fields)
+
+
+@pytest.mark.asyncio
 async def test_validation_errors_flags_missing_required_input() -> None:
     inputs = {"group": InputSpec(type="string", required=True)}
     app = _FormHarness(inputs, secrets=[])

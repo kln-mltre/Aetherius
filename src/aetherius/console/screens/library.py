@@ -10,7 +10,7 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
-from ..theme import ACT_LABELS, PER_ACT_COLOR
+from ..theme import ACT_LABELS, LAUREL, PER_ACT_COLOR, POMPEIAN, starred
 from .library_scan import BlueprintEntry, discover_blueprint_dirs, scan_blueprints
 
 
@@ -26,7 +26,7 @@ class LibraryScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Vertical(classes="console-body"):
-            yield Static("Blueprint Library", classes="console-title")
+            yield Static(starred("Blueprint Library"), classes="console-title")
             yield Static(
                 "Select a valid Blueprint and press Enter to open it in Runs.",
                 classes="console-subtitle",
@@ -52,13 +52,13 @@ class LibraryScreen(Screen[None]):
         for entry in self._entries:
             if entry.error:
                 act_cell: str | Text = "-"
-                status_cell: str | Text = Text(f"invalid: {entry.error}", style="bold red")
+                status_cell: str | Text = Text(f"invalid: {entry.error}", style=f"bold {POMPEIAN}")
             else:
                 assert entry.blueprint is not None and entry.act is not None
                 label = ACT_LABELS.get(entry.act, entry.act)
                 color = PER_ACT_COLOR.get(entry.act, "white")
                 act_cell = Text(label, style=color)
-                status_cell = Text("valid", style="bold green")
+                status_cell = Text("valid", style=f"bold {LAUREL}")
             name = entry.blueprint.name if entry.blueprint else entry.path.stem
             table.add_row(name, act_cell, status_cell, str(entry.path), key=str(entry.path))
 

@@ -9,7 +9,7 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
-from ..theme import ACT_LABELS, PER_ACT_COLOR
+from ..theme import ACT_LABELS, LAUREL, PER_ACT_COLOR, STONE, starred
 from ...core.actions.base import ACT_CAPABILITIES
 from ...core.runtime.engine import IMPLEMENTED_ACTS
 
@@ -29,7 +29,7 @@ class CatalogScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Vertical(classes="console-body"):
-            yield Static("Act Catalog", classes="console-title")
+            yield Static(starred("Act Catalog"), classes="console-title")
             yield Static(
                 "Each Blueprint declares one Act; a step using an unsupported action fails "
                 "validation before it ever runs.",
@@ -45,9 +45,9 @@ class CatalogScreen(Screen[None]):
             label = ACT_LABELS[act]
             color = PER_ACT_COLOR[act]
             status = (
-                Text("implemented", style="bold green")
+                Text("implemented", style=f"bold {LAUREL}")
                 if act in IMPLEMENTED_ACTS
-                else Text("not runnable yet", style="dim")
+                else Text("not runnable yet", style=STONE)
             )
             capabilities = ", ".join(sorted(cap.value for cap in ACT_CAPABILITIES[act]))
             table.add_row(

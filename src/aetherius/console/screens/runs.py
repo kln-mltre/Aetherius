@@ -6,7 +6,7 @@ from pathlib import Path
 
 from textual import work
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, VerticalScroll
 from textual.css.query import NoMatches
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Static
@@ -16,14 +16,22 @@ from ...core.blueprint.models import Blueprint
 from ...core.blueprint.validator import validate_for_act
 from ...core.errors import AetheriusError
 from ...core.runtime.engine import IMPLEMENTED_ACTS, RunEngine
+from ...core.runtime.result import Result
 from ..run_bridge import TextualRunSink
+from ..theme import starred
 from ..widgets.event_log import EventLog
 from ..widgets.form import BlueprintInputForm
 from ..widgets.run_summary import RunSummary
 
 
 class RunsScreen(Screen[None]):
-    """Load a Blueprint, collect its inputs, run it, and show live events + the final result."""
+    """Load a Blueprint, collect its inputs, run it, and show live events + the final result.
+
+    The body is a VerticalScroll so every section stays reachable in short terminals.
+    """
+
+    # Land directly in the first form field instead of the scroll container.
+    AUTO_FOCUS = "BlueprintInputForm Input"
 
     def __init__(self, blueprint_path: Path) -> None:
         super().__init__()
@@ -39,7 +47,7 @@ class RunsScreen(Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with Vertical(classes="console-body"):
+        with VerticalScroll(classes="console-body"):
             if self._load_error is not None:
                 yield Static(f"Cannot load Blueprint: {self._load_error}", classes="console-title")
                 yield Footer()
@@ -47,7 +55,7 @@ class RunsScreen(Screen[None]):
 
             assert self._blueprint is not None
             bp = self._blueprint
-            yield Static(f"Run — {bp.name}", classes="console-title")
+            yield Static(starred(f"Run — {bp.name}"), classes="console-title")
             yield Static(f"Path: {self._blueprint_path}", classes="console-subtitle")
 
             if bp.act not in IMPLEMENTED_ACTS:
@@ -59,11 +67,17 @@ class RunsScreen(Screen[None]):
                 yield Footer()
                 return
 
-            yield BlueprintInputForm(bp.inputs, bp.secrets)
-            with Vertical(classes="run-actions"):
-                yield Button("Run", id="run-button", variant="primary")
-            yield EventLog(id="run-event-log")
-            yield RunSummary(id="run-summary")
+            form = BlueprintInputForm(bp.inputs, bp.secrets)
+            form.border_title = "✦ Inputs ✦"
+            yield form
+            with Horizontal(classes="run-actions"):
+                yield Button("✦ Run ✦", id="run-button", variant="primary")
+            event_log = EventLog(id="run-event-log")
+            event_log.border_title = "✦ Events ✦"
+            yield event_log
+            summary = RunSummary(id="run-summary")
+            summary.border_title = "✦ Result ✦"
+            yield summary
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -80,6 +94,7 @@ class RunsScreen(Screen[None]):
         input_values, secret_values = form.collect()
         event.button.disabled = True
         self.query_one("#run-event-log", EventLog).clear()
+        self.query_one("#run-summary", RunSummary).reset()
         self._run_blueprint(input_values, secret_values)
 
     @work(thread=True, exclusive=True)
@@ -95,8 +110,13 @@ class RunsScreen(Screen[None]):
             self.app.call_from_thread(self._reenable_run_button)
             return
 
-        self.app.call_from_thread(self.query_one("#run-summary", RunSummary).show, result)
-        self.app.call_from_thread(self._reenable_run_button)
+        self.app.call_from_thread(self._show_result, result)
+
+    def _show_result(self, result: Result) -> None:
+        summary = self.query_one("#run-summary", RunSummary)
+        summary.show(result)
+        summary.scroll_visible()
+        self._reenable_run_button()
 
     def _reenable_run_button(self) -> None:
         # The screen may have been popped while the worker was still running; that's fine,

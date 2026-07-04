@@ -8,17 +8,28 @@ from textual.widgets import RichLog
 
 from ...core.events.models import EventType, RunEvent
 from ...core.events.sinks import format_event
+from ..theme import AMBER, POMPEIAN, STONE
 
 _LEVEL_STYLE: dict[str, str] = {
-    "debug": "dim",
+    "debug": STONE,
     "info": "",
-    "warning": "yellow",
-    "error": "bold red",
+    "warning": AMBER,
+    "error": f"bold {POMPEIAN}",
 }
 
 
 class EventLog(RichLog):
     """Scrolling, color-coded view of the RunEvents emitted by a Blueprint run."""
+
+    # Fixed height with internal scroll: the stream must never push the result summary
+    # (or anything else) out of the screen.
+    DEFAULT_CSS = """
+    EventLog {
+        height: 12;
+        border: double $primary;
+        padding: 0 1;
+    }
+    """
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(markup=False, wrap=True, auto_scroll=True, **kwargs)  # type: ignore[arg-type]

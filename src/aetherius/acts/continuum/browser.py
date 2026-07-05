@@ -73,7 +73,7 @@ class BrowserSession:
         self._pw = sync_playwright().start()
 
         headless = not self._debug
-        slow_mo = _DEBUG_SLOW_MO_MS if self._debug else 0
+        slow_mo = self._slow_mo_ms()
         context_options = self._context_options()
 
         if self._profile_dir is not None:
@@ -96,6 +96,18 @@ class BrowserSession:
         if self._debug:
             # Visible cursor + red click ripple, re-installed on every navigation.
             self._context.add_init_script(DEBUG_OVERLAY_JS)
+
+    def _slow_mo_ms(self) -> int:
+        """Debug slow-motion delay, but 0 whenever inputs are humanized.
+
+        slow_mo delays *every* Playwright op. That is fine for plain actions, but the humanizer
+        issues dozens of mouse.move/wheel calls per gesture and supplies its own realistic timing;
+        stacking slow_mo on top would shred each gesture into a slow, ugly stutter. So when discretion
+        humanizes inputs, the humanizer owns the pacing and slow_mo stays off, even in debug.
+        """
+        if self._debug and not humanized_actions(self._stealth):
+            return _DEBUG_SLOW_MO_MS
+        return 0
 
     def _context_options(self) -> dict[str, Any]:
         """Playwright context options for the active fingerprint profile (empty when none)."""

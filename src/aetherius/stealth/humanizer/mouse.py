@@ -136,3 +136,18 @@ class HumanMouse:
         self._page.mouse.down()
         self._sleep(self._rng.uniform(0.05, 0.1))  # natural press-hold variance
         self._page.mouse.up()
+
+    def park(self) -> None:
+        """Idle the cursor near the bottom of the viewport, away from interactive elements.
+
+        A natural resting behaviour during long waits: a real user's cursor drifts off the controls
+        rather than hovering them. Generalizes BioMouse.park_mouse_at_bottom.
+        """
+        size = self._page.evaluate(
+            "() => ({ width: window.innerWidth, height: window.innerHeight })"
+        )
+        width, height = float(size["width"]), float(size["height"])
+        self.move_to(
+            self._rng.uniform(50.0, max(50.0, width - 50.0)),
+            height - self._rng.uniform(20.0, 50.0),
+        )

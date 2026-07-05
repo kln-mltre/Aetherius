@@ -84,6 +84,8 @@ class ContinuumDriver(SharedActionsMixin):
             case "emit":
                 return self._emit(step, ctx, bus, renderer)
             case "wait":
+                if human is not None:
+                    human.park()  # drift the cursor off the controls while idling, like a person
                 return self._wait(step, renderer)
             case "set":
                 return self._set(step, renderer)

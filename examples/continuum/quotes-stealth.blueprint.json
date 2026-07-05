@@ -1,7 +1,7 @@
 {
   "aetherius": "1.0",
   "name": "quotes.scrape.stealth",
-  "description": "Act II (Continuum) avec la couche de discretion activee : fingerprint chrome-desktop, souris a gestes rejoues, frappe humaine et scroll adouci. Scrape quotes.toscrape.com en se comportant comme un humain (clic sur la pagination via un vrai geste souris). Zero config, executable tel quel depuis 'aetherius run' ou la Console.",
+  "description": "Act II (Continuum) avec la couche de discretion activee : fingerprint chrome-desktop, souris a gestes rejoues, frappe humaine et scroll adouci. En mode debug on voit le curseur rouge glisser vers le titre, deriver vers le bas pendant l'attente (parking), puis cliquer la pagination par un vrai geste. Scrape quotes.toscrape.com de facon indetectable. Zero config, executable tel quel depuis 'aetherius run' ou la Console.",
   "act": "continuum",
   "vars": { "domain": "https://quotes.toscrape.com" },
   "options": {
@@ -25,7 +25,9 @@
         "auteur": { "selector": ".quote .author", "as": "text" }
       }
     },
-    { "action": "scroll", "dy": 600 },
+    { "action": "hover", "selector": "h1 a" },
+    { "action": "wait", "ms": 1000 },
+    { "action": "scroll", "dy": 400 },
     { "action": "click", "selector": "li.next a" },
     { "action": "wait_for", "selector": ".quote", "timeout_ms": 15000 },
     {

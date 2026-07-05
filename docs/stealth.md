@@ -61,7 +61,8 @@ Le driver route alors les actions interactives (`click`/`hover`/`fill`/`type`/`s
   - `keyboard.py` : `plan_typing` (frappe, typo+correction, délais espaces/spéciaux, pure) et
     `human_type` ;
   - `mouse.py` : `plan_replay` (transform scale+rotation d'un geste, pure) et `HumanMouse` (rejeu
-    point par point, clic off-center, micro-pauses) ;
+    point par point, clic off-center, micro-pauses, `park` du curseur vers le bas pendant les
+    attentes) ;
   - `input.py` : façade `HumanInput` (click/hover/fill/type/scroll), l'unique objet manipulé par
     l'Act. Chaque méthode dégrade par feature (souris off → clic Playwright brut, etc.).
 - **[`gestures/`](../src/aetherius/stealth/gestures/)** — `library.py` (`GestureLibrary` :
@@ -112,7 +113,9 @@ ML (`stealth/ml/`) est un upgrade optionnel, pas un prérequis. Le cœur stealth
 ## Tester la discrétion
 
 Exemple réel, exécutable tel quel (fenêtre visible car `debug: true` — on **voit** la souris humaine
-se déplacer et cliquer la pagination) :
+glisser vers le titre, dériver vers le bas pendant l'attente, puis cliquer la pagination). En debug,
+le `slow_mo` de Playwright est automatiquement neutralisé quand les entrées sont humanisées : le
+humanizer fournit déjà son propre timing, et empiler `slow_mo` par-dessus hacherait chaque geste :
 
 ```bash
 aetherius run examples/continuum/quotes-stealth.blueprint.json

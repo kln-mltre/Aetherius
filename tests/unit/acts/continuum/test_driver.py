@@ -124,6 +124,14 @@ def test_dispatch_stays_plain_when_no_human_facade() -> None:
     page.locator.assert_called_once_with("#b")
 
 
+def test_wait_parks_the_cursor_when_humanized() -> None:
+    driver, _ = _driver_with_page()
+    human = driver._session.human  # MagicMock facade
+    bp = _bp([{"action": "wait", "ms": 0}])
+    driver.run_step(bp.steps[0], _ctx(bp), _null_bus(), lambda v: v)
+    human.park.assert_called_once()
+
+
 def test_dispatch_unsupported_action_raises() -> None:
     driver, _ = _driver_with_page()
     bp = _bp([{"action": "http.request", "url": "x"}])

@@ -71,6 +71,11 @@ class HumanInput:
     def scroll_by(self, amount: float) -> None:
         human_scroll(self.page, amount, rng=self._rng, sleep=self._sleep)
 
+    def park(self) -> None:
+        """Idle the cursor away from controls during a wait (no-op unless the mouse is humanized)."""
+        if self._mouse is not None:
+            self._mouse.park()
+
     def _focus(self, locator: Any) -> None:
         if self._mouse is not None:
             self._mouse.click(locator)

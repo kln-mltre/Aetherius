@@ -63,3 +63,16 @@ def test_scroll_by_drives_the_wheel() -> None:
     human, page = _human(StealthPolicy(scroll="eased"))
     human.scroll_by(250.0)
     assert page.mouse.wheel.called
+
+
+def test_park_is_noop_without_mouse() -> None:
+    human, page = _human(StealthPolicy(keyboard="human"))  # mouse off
+    human.park()
+    page.evaluate.assert_not_called()
+
+
+def test_park_uses_mouse_when_enabled() -> None:
+    human, page = _human(StealthPolicy(mouse="gestures"))
+    page.evaluate.return_value = {"width": 1200, "height": 800}
+    human.park()
+    assert page.mouse.move.called

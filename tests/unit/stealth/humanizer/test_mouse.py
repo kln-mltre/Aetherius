@@ -78,3 +78,13 @@ def test_move_to_locator_scrolls_target_into_view_first() -> None:
     mouse = HumanMouse(page, _library(), rng=Random(0), sleep=lambda _: None)
     mouse.move_to_locator(locator)
     locator.scroll_into_view_if_needed.assert_called_once_with()
+
+
+def test_park_drifts_cursor_toward_the_bottom() -> None:
+    page = MagicMock()
+    page.evaluate.return_value = {"width": 1200, "height": 800}
+    mouse = HumanMouse(page, _library(), rng=Random(0), sleep=lambda _: None)
+    mouse.park()
+    x, y = page.mouse.move.call_args_list[-1].args
+    assert 50.0 <= x <= 1150.0
+    assert 750.0 <= y <= 780.0  # height minus a small margin

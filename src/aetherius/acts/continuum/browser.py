@@ -7,13 +7,18 @@ lazily so ``import aetherius`` never pulls it in; a missing extra surfaces as a 
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
 from ...core.errors import DependencyError
+from .debug_overlay import DEBUG_OVERLAY_JS
 
-# Slow-motion delay (ms) applied to every action when debug is on, so a human can follow along.
-_DEBUG_SLOW_MO_MS = 300
+# Slow-motion delay (ms) inserted before every action when debug is on, so a human can follow along.
+_DEBUG_SLOW_MO_MS = 500
+# How long the window lingers after the last step (or a failure) in debug, so it does not just
+# flash and vanish before the final state can be read.
+_DEBUG_LINGER_MS = 2500
 
 
 def _import_playwright() -> Any:
@@ -78,6 +83,10 @@ class BrowserSession:
 
         self._context.set_default_timeout(self._timeout_ms)
 
+        if self._debug:
+            # Visible cursor + red click ripple, re-installed on every navigation.
+            self._context.add_init_script(DEBUG_OVERLAY_JS)
+
     @property
     def page(self) -> Any:
         """The active Playwright page. Valid only between ``start`` and ``close``."""
@@ -86,7 +95,14 @@ class BrowserSession:
         return self._page
 
     def close(self) -> None:
-        """Tear down page, context, browser and Playwright, tolerating partial startup."""
+        """Tear down page, context, browser and Playwright, tolerating partial startup.
+
+        In debug mode, linger briefly first so the final page (or the point of failure) stays on
+        screen instead of vanishing the instant the run ends.
+        """
+        if self._debug and self._page is not None:
+            time.sleep(_DEBUG_LINGER_MS / 1000)
+
         for closer in (
             self._context,
             self._browser,

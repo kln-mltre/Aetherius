@@ -14,6 +14,7 @@ import pytest
 pytestmark = pytest.mark.browser
 pytest.importorskip("playwright")
 
+from aetherius.acts.continuum.debug_overlay import DEBUG_OVERLAY_JS  # noqa: E402
 from aetherius.core.blueprint.models import Blueprint  # noqa: E402
 from aetherius.core.runtime.engine import RunEngine  # noqa: E402
 from aetherius.core.runtime.result import RunStatus  # noqa: E402
@@ -73,6 +74,25 @@ def test_continuum_login_and_extract() -> None:
     assert result.status is RunStatus.SUCCESS, result.error
     assert result.outputs["firstName"] == "Bob"
     assert result.outputs["unread"] == 3
+
+
+def test_debug_overlay_injects_cursor_and_ripple() -> None:
+    # Drive the overlay script directly (headless), so the debug aid is locked without opening a
+    # window or waiting on the debug linger. It must add a cursor and spawn a ripple on click.
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        context.add_init_script(DEBUG_OVERLAY_JS)
+        page = context.new_page()
+        page.goto(
+            "data:text/html,<button id='b' style='position:absolute;top:80px;left:80px'>x</button>"
+        )
+        assert page.locator(".__ae-cursor").count() == 1
+        page.locator("#b").click()
+        assert page.locator(".__ae-ripple").count() >= 1
+        browser.close()
 
 
 def test_continuum_wait_for_timeout_fails_with_code() -> None:

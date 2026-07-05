@@ -49,12 +49,15 @@ class RunEngine:
         run_id = uuid.uuid4().hex
         started_at = datetime.now(timezone.utc)
 
+        from ...config.secrets import resolve_secrets
+
         resolved_inputs = resolve_inputs(blueprint, inputs)
+        resolved_secrets = resolve_secrets(blueprint.secrets, secrets)
         ctx = RunContext(
             run_id=run_id,
             blueprint=blueprint,
             inputs=resolved_inputs,
-            secrets=dict(secrets or {}),
+            secrets=resolved_secrets,
             started_at=started_at,
         )
 

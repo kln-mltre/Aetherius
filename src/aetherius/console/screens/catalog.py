@@ -9,7 +9,7 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
-from ..theme import ACT_LABELS, LAUREL, PER_ACT_COLOR, STONE, starred
+from ..theme import ACT_LABELS, LAUREL, STONE, act_color, starred
 from ...core.actions.base import ACT_CAPABILITIES
 from ...core.runtime.engine import IMPLEMENTED_ACTS
 
@@ -43,10 +43,11 @@ class CatalogScreen(Screen[None]):
         table.add_columns("Act", "Status", "Description", "Actions")
         for act in _ACT_ORDER:
             label = ACT_LABELS[act]
-            color = PER_ACT_COLOR[act]
+            implemented = act in IMPLEMENTED_ACTS
+            color = act_color(act, implemented)
             status = (
                 Text("implemented", style=f"bold {LAUREL}")
-                if act in IMPLEMENTED_ACTS
+                if implemented
                 else Text("not runnable yet", style=STONE)
             )
             capabilities = ", ".join(sorted(cap.value for cap in ACT_CAPABILITIES[act]))

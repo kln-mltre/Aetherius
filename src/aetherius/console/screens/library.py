@@ -10,8 +10,22 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
-from ..theme import ACT_LABELS, LAUREL, PER_ACT_COLOR, POMPEIAN, starred
-from .library_scan import BlueprintEntry, discover_blueprint_dirs, scan_blueprints
+from ...core.runtime.engine import IMPLEMENTED_ACTS
+from ..theme import ACT_LABELS, AMBER, LAUREL, POMPEIAN, STONE, act_color, starred
+from .library_scan import (
+    BlueprintEntry,
+    EntryStatus,
+    discover_blueprint_dirs,
+    entry_status,
+    scan_blueprints,
+)
+
+# How each status reads in the table: label + colour. Runnable is the only "go" state.
+_STATUS_STYLE: dict[EntryStatus, tuple[str, str]] = {
+    EntryStatus.READY: ("ready", f"bold {LAUREL}"),
+    EntryStatus.ACT_PENDING: ("act pending", AMBER),
+    EntryStatus.INVALID: ("invalid", f"bold {POMPEIAN}"),
+}
 
 
 class LibraryScreen(Screen[None]):
@@ -28,7 +42,8 @@ class LibraryScreen(Screen[None]):
         with Vertical(classes="console-body"):
             yield Static(starred("Blueprint Library"), classes="console-title")
             yield Static(
-                "Select a valid Blueprint and press Enter to open it in Runs.",
+                "Enter opens a Blueprint in Runs. 'ready' runs now; 'act pending' is well-formed "
+                "but its Act has no driver yet; 'invalid' fails the schema or its Act's actions.",
                 classes="console-subtitle",
             )
             yield DataTable(id="library-table", cursor_type="row")
@@ -50,15 +65,23 @@ class LibraryScreen(Screen[None]):
         table.clear(columns=True)
         table.add_columns("Name", "Act", "Status", "Path")
         for entry in self._entries:
-            if entry.error:
-                act_cell: str | Text = "-"
-                status_cell: str | Text = Text(f"invalid: {entry.error}", style=f"bold {POMPEIAN}")
+            status = entry_status(entry)
+            label_text, style = _STATUS_STYLE[status]
+            # Surface the concrete error inline; keep the muted note for a pending Act.
+            if status is EntryStatus.INVALID and entry.error:
+                label_text = f"invalid: {entry.error}"
+            elif status is EntryStatus.ACT_PENDING:
+                label_text = "act pending — no driver yet"
+            status_cell = Text(label_text, style=style)
+
+            if entry.act is None:
+                act_cell: str | Text = Text("-", style=STONE)
             else:
-                assert entry.blueprint is not None and entry.act is not None
-                label = ACT_LABELS.get(entry.act, entry.act)
-                color = PER_ACT_COLOR.get(entry.act, "white")
-                act_cell = Text(label, style=color)
-                status_cell = Text("valid", style=f"bold {LAUREL}")
+                act_label = ACT_LABELS.get(entry.act, entry.act)
+                act_cell = Text(
+                    act_label, style=act_color(entry.act, entry.act in IMPLEMENTED_ACTS)
+                )
+
             name = entry.blueprint.name if entry.blueprint else entry.path.stem
             table.add_row(name, act_cell, status_cell, str(entry.path), key=str(entry.path))
 

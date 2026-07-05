@@ -21,6 +21,7 @@ keywords = ["automation", "scraping", "browser", "playwright", "bot", "stealth",
 dependencies = [
   "pydantic>=2.6",
   "pydantic-settings>=2.2",
+  "python-dotenv>=1.0",
   "pyyaml>=6.0",
   "jsonschema>=4.21",
   "jinja2>=3.1",

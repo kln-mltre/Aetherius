@@ -67,7 +67,9 @@ class RunsScreen(Screen[None]):
                 yield Footer()
                 return
 
-            form = BlueprintInputForm(bp.inputs, bp.secrets)
+            from ...config.secrets import available_from_env
+
+            form = BlueprintInputForm(bp.inputs, bp.secrets, available_from_env(bp.secrets))
             form.border_title = "✦ Inputs ✦"
             yield form
             with Horizontal(classes="run-actions"):

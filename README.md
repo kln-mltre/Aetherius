@@ -251,7 +251,7 @@ aetherius            # ouvre la Console
 > **État actuel** : la Console est navigable de bout en bout. Library, Runs et Catalog sont
 > pleinement fonctionnels pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ; le
 > Blueprint Studio, le Recorder et Sessions/Settings (daemon) affichent honnêtement leur jalon en
-> attente tant que builder/recorder/stealth/daemon ne sont pas implémentés. Détails :
+> attente tant que builder/recorder/daemon ne sont pas implémentés. Détails :
 > [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
@@ -460,8 +460,16 @@ Conventions de contribution (discipline de test, invariants, structure des tests
   persistantes (profils réutilisés) et mode debug (fenêtre visible + slow-mo). Actions utilitaires
   partagées avec Vector via un mixin (zéro duplication). Extra `[browser]` chargé à la demande ;
   `import aetherius` reste léger. Tests unitaires (page factice, CI de base) + intégration vrai
-  Chromium (job CI dédié). Discrétion : couture prête, implémentation dans un jalon distinct.
-- [ ] Système de discrétion (humanizer + gestures + fingerprint + session).
+  Chromium (job CI dédié). Discrétion : **branchée** (voir ci-dessous).
+- [x] **Système de discrétion** : couche transverse activée par `options.stealth`, branchée dans
+  Continuum. `StealthPolicy` (off / preset / config fine). Fingerprint (masques `navigator.webdriver`/
+  `chrome.runtime`/`permissions`/`plugins` + profil cohérent UA/viewport/timezone/WebGL,
+  `chrome-desktop`). Souris humaine par rejeu géométrique de gestes (scale+rotation, timing préservé,
+  clic off-center), bibliothèque **source-agnostique** amorcée par un seed synthétique (min-jerk),
+  ouverte au recorder et au ML. Frappe humaine (typos+correction, délais), scroll ease-out, timing
+  avec distraction, warmup de profil. Cœur **stdlib pur** (tests en CI de base) ; intégration Chromium
+  réelle. Exemple : `examples/continuum/quotes-stealth.blueprint.json`. Détails :
+  [docs/stealth.md](docs/stealth.md).
 - [ ] Recorder (blueprint + gestes).
 - [ ] Builder headless (Blueprint Studio).
 - [ ] Daemon + SDK TypeScript.

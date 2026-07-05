@@ -2,8 +2,8 @@
 
 **Statut : implémenté et opérationnel.** Le moteur suit le Blueprint à la lettre contre un vrai
 navigateur Playwright : navigation, remplissage, clics, attentes, extraction DOM, JS injecté. Pour
-les scénarios exigeant un navigateur (login, session, contenu rendu par JS). Discrétion optionnelle
-(couture prête, couche stealth branchée dans un jalon ultérieur).
+les scénarios exigeant un navigateur (login, session, contenu rendu par JS). Discrétion optionnelle,
+désormais **branchée** (voir [Discrétion](#discrétion)).
 
 Cas fondateur : la WebView cachée de UKit (`WebBrowserScreen.tsx`, `CredentialsContext.tsx`) qui
 scrape la scolarité après login CAS. Les sélecteurs, autrefois codés en dur dans du JS injecté,
@@ -129,14 +129,22 @@ fichier `.env` local — jamais écrits dans le Blueprint. Mécanisme complet : 
 Exemple réel et exécutable : [`bordeaux-cas-login`](../../examples/continuum/bordeaux-cas-login.blueprint.json)
 (login CAS de l'Université de Bordeaux, identifiants dans `.env`).
 
+## Discrétion
+
+`options.stealth` active la couche de discrétion transverse, orthogonale à l'Act. `BrowserSession`
+reçoit la `StealthPolicy` assemblée : elle applique un profil de fingerprint (options de contexte +
+patches injectés) et, si des entrées sont humanisées, expose un `HumanInput`. Le driver route alors
+`click`/`hover`/`fill`/`type`/`scroll` vers cette couche quand la policy le demande ; sinon les
+actions Playwright brutes restent utilisées (aucune régression quand `stealth` est `"off"`, le
+défaut). Détails, composants et limites : [docs/stealth.md](../stealth.md). Exemple exécutable :
+[`quotes-stealth`](../../examples/continuum/quotes-stealth.blueprint.json).
+
 ## Limites connues
 
 - **Login à froid uniquement.** Un profil persistant déjà authentifié n'affiche plus le formulaire,
   ce qui casserait les steps `fill`/`click`. Tant que le flux conditionnel (`if`) n'est pas
   implémenté, un Blueprint de login fait un **login à froid** (contexte éphémère) : fiable à chaque
   run. Réutiliser une session déjà authentifiée attend l'action `if`.
-- **Discrétion no-op.** `options.stealth` est accepté mais sans effet ; la couture
-  (`BrowserSession(stealth=...)`) est prête, l'implémentation est un jalon distinct.
 
 ## Notes de conception
 

@@ -105,6 +105,25 @@ def test_dispatch_screenshot_writes_and_emits_artifact(
     assert any(e.type is EventType.ARTIFACT for e in sink.events)
 
 
+def test_dispatch_routes_to_human_when_policy_humanizes() -> None:
+    driver, page = _driver_with_page()
+    driver._humanized = frozenset({"click"})
+    human = driver._session.human  # MagicMock facade stands in for HumanInput
+    human.page = page
+    bp = _bp([{"action": "click", "selector": "#b"}])
+    driver.run_step(bp.steps[0], _ctx(bp), _null_bus(), lambda v: v)
+    human.click.assert_called_once()
+
+
+def test_dispatch_stays_plain_when_no_human_facade() -> None:
+    driver, page = _driver_with_page()
+    driver._session.human = None  # e.g. fingerprint-only or stealth off
+    driver._humanized = frozenset({"click"})
+    bp = _bp([{"action": "click", "selector": "#b"}])
+    driver.run_step(bp.steps[0], _ctx(bp), _null_bus(), lambda v: v)
+    page.locator.assert_called_once_with("#b")
+
+
 def test_dispatch_unsupported_action_raises() -> None:
     driver, _ = _driver_with_page()
     bp = _bp([{"action": "http.request", "url": "x"}])

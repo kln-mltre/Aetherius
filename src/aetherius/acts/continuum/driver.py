@@ -15,10 +15,12 @@ from ...core.errors import ActionError
 from ...core.events.bus import EventBus
 from ...core.events.models import EventType, RunEvent
 from ...core.runtime.context import RunContext
+from ...stealth.policy import StealthPolicy, build_policy
 from ...stealth.session.store import resolve_profile_dir, run_dir
 from .actions import PAGE_ACTIONS, _locator
 from .bridge import evaluate, extract, wait_for
 from .browser import BrowserSession
+from .human_actions import HUMAN_ACTIONS, humanized_actions
 
 
 class ContinuumDriver(SharedActionsMixin):
@@ -26,6 +28,8 @@ class ContinuumDriver(SharedActionsMixin):
 
     def __init__(self) -> None:
         self._session: BrowserSession | None = None
+        self._policy: StealthPolicy | None = None
+        self._humanized: frozenset[str] = frozenset()
 
     def setup(self, ctx: RunContext) -> None:
         opts = ctx.blueprint.options
@@ -33,11 +37,13 @@ class ContinuumDriver(SharedActionsMixin):
         profile_dir = None
         if session_opts is not None and session_opts.persist:
             profile_dir = resolve_profile_dir(session_opts.profile)
+        self._policy = build_policy(opts.stealth)
+        self._humanized = humanized_actions(self._policy)
         self._session = BrowserSession(
             debug=opts.debug,
             timeout_ms=opts.timeout_ms or 30_000,
             profile_dir=profile_dir,
-            stealth=opts.stealth,
+            stealth=self._policy,
         )
         self._session.start()
 
@@ -57,6 +63,10 @@ class ContinuumDriver(SharedActionsMixin):
             raise ActionError("ContinuumDriver.run_step called before setup().")
         page = self._session.page
         params = step.extra_fields
+
+        human = self._session.human
+        if human is not None and step.action in self._humanized:
+            return HUMAN_ACTIONS[step.action](human, params, renderer)
 
         page_action = PAGE_ACTIONS.get(step.action)
         if page_action is not None:

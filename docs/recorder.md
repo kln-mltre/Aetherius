@@ -14,3 +14,9 @@ Trois voies de création (voir aussi le [README](../README.md)) :
 
 [`recorder/gesture_recorder.py`](../src/aetherius/recorder/gesture_recorder.py) capture des traces
 de souris humaines réelles pour enrichir `stealth/gestures/data/human_library.json`.
+
+Cette bibliothèque est **source-agnostique** ([docs/stealth.md](stealth.md)) : elle est aujourd'hui
+amorcée par un **seed synthétique** (généré par [`stealth/gestures/seed.py`](../src/aetherius/stealth/gestures/seed.py),
+`meta.source: "synthetic-seed"`) pour que la souris humaine fonctionne dès l'installation. Le gesture
+recorder écrit exactement le même format ; ses traces réelles se substituent au seed sans changement
+de code côté humanizer.

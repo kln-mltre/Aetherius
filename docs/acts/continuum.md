@@ -98,26 +98,68 @@ Le step `extract` mappe des noms vers des lectures typées du DOM :
 `attr` (requiert `attr`), `count` (nombre de correspondances). Les valeurs se relisent ensuite via
 `{{ steps.dossier.firstName }}` dans `outputs`.
 
-## Sessions et debug
+## Debug
+
+`options.debug: true` transforme le run en démonstration observable :
+
+- **fenêtre visible** (Chromium non-headless) ;
+- **ralenti** : un délai (`slow_mo`, 500 ms) avant chaque action, pour suivre le fil ;
+- **curseur + point rouge** : un overlay injecté
+  ([`debug_overlay.py`](../../src/aetherius/acts/continuum/debug_overlay.py)) affiche un curseur qui
+  suit la souris et une **onde rouge à chaque clic**, réinstallé à chaque navigation ;
+- **fenêtre maintenue** quelques secondes en fin de run (et sur échec), pour lire l'état final au
+  lieu de la voir se refermer aussitôt.
+
+Hors debug, le run est headless et silencieux. L'overlay est un pur outil de debug, sans rapport avec
+la couche de discrétion (qui, elle, cherche l'inverse : masquer l'automatisation).
+
+## Sessions
 
 - `options.session.persist: true` → contexte **persistant** Playwright sur un profil résolu par
   [`stealth/session/store.py`](../../src/aetherius/stealth/session/store.py)
   (`data_dir/profiles/<profile>`), réutilisant cookies, cache et historique entre runs. Sinon
   contexte éphémère.
-- `options.debug: true` → fenêtre **visible** + ralenti (slow-mo) pour suivre chaque step.
 - `data_dir` est configurable via `AETHERIUS_DATA_DIR`
   ([`config/settings.py`](../../src/aetherius/config/settings.py)).
 
-La couche de discrétion (`options.stealth`) est acceptée mais **no-op** pour l'instant : la couture
-est en place (`BrowserSession(stealth=...)`), l'implémentation est un jalon distinct.
+## Secrets (logins)
+
+Un login lit ses identifiants via `{{ secrets.x }}`, résolus au runtime depuis l'environnement ou un
+fichier `.env` local — jamais écrits dans le Blueprint. Mécanisme complet : [docs/secrets.md](../secrets.md).
+Exemple réel et exécutable : [`bordeaux-cas-login`](../../examples/continuum/bordeaux-cas-login.blueprint.json)
+(login CAS de l'Université de Bordeaux, identifiants dans `.env`).
+
+## Limites connues
+
+- **Login à froid uniquement.** Un profil persistant déjà authentifié n'affiche plus le formulaire,
+  ce qui casserait les steps `fill`/`click`. Tant que le flux conditionnel (`if`) n'est pas
+  implémenté, un Blueprint de login fait un **login à froid** (contexte éphémère) : fiable à chaque
+  run. Réutiliser une session déjà authentifiée attend l'action `if`.
+- **Discrétion no-op.** `options.stealth` est accepté mais sans effet ; la couture
+  (`BrowserSession(stealth=...)`) est prête, l'implémentation est un jalon distinct.
+
+## Notes de conception
+
+- **`wait_for` attend le premier match (`.first`).** Attendre concerne la *présence* : un sélecteur
+  qui matche plusieurs éléments est normal et ne doit pas déclencher le strict-mode de Playwright. À
+  l'inverse, les actions (`click`, `fill`, …) **gardent** le strict-mode : agir sur une cible
+  ambiguë est une erreur à signaler, pas à masquer silencieusement.
+- **Actions utilitaires partagées.** `emit`/`wait`/`set`/`assert` viennent du `SharedActionsMixin`
+  commun à Vector et Continuum — une seule implémentation, pas de duplication.
 
 ## Tester Act II
 
-```bash
-# 1. Installer l'extra navigateur + Chromium
-pip install -e ".[browser,dev]" && playwright install chromium
+Exemples réels, exécutables depuis le terminal (fenêtre visible car `debug: true`) :
 
-# 2. Tests navigateur (vrai Chromium headless, page servie via data: URL, aucun hôte externe)
+```bash
+aetherius run examples/continuum/quotes-scrape.blueprint.json        # scrape simple, zéro config
+aetherius run examples/continuum/bordeaux-cas-login.blueprint.json   # login réel, secrets via .env
+```
+
+… ou depuis la Console (`aetherius` → Library → Run). Suite automatisée :
+
+```bash
+pip install -e ".[browser,dev]" && playwright install chromium
 make test-browser
 ```
 

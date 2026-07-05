@@ -25,6 +25,13 @@ lorsque l'extra `[browser]` est installé. Sans lui, le run échoue proprement s
 `DependencyError` (message + commande d'installation) affichée en notification, l'écran restant
 navigable.
 
+Library reflète cet état réel via [`library_scan.py::entry_status`](../src/aetherius/console/screens/library_scan.py) :
+**ready** (schéma valide et Act runnable), **act pending** (bien formé mais Act sans driver, ex.
+Oracle) ou **invalid** (erreur de schéma ou d'action). Les badges d'Act suivent la même logique
+(`theme.act_color`) : un Act runnable porte sa couleur, un Act en attente reste gris — dérivé de
+`IMPLEMENTED_ACTS`, donc jamais à re-maintenir à la main. Côté Runs, un secret déjà présent dans
+`.env` s'affiche « loaded from .env » et peut être laissé vide (voir [docs/secrets.md](secrets.md)).
+
 Les écrans en attente (`console/screens/sessions.py`, `settings.py`, `recorder.py`,
 `screens/builder/screen.py`) partagent une base commune,
 [`console/screens/_pending.py`](../src/aetherius/console/screens/_pending.py) : ils affichent ce

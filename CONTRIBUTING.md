@@ -32,6 +32,19 @@ make help                 # liste des cibles
 
 Ouvre une branche par changement, garde `make check` vert, et découpe en commits lisibles.
 
+## Définition de « terminé »
+
+Une capacité utilisateur (un Act, une action, une option) n'est terminée que lorsque **tout** ceci
+est vrai. On ne saute pas une étape en attendant qu'on la réclame :
+
+1. **Tests miroir** écrits avec le code — voir [Tests](#tests).
+2. **Exemple exécutable** ajouté dans `examples/<act>/`, lançable depuis `aetherius run` et la
+   Console — voir [Exemples exécutables](#exemples-exécutables).
+3. **Doc à jour** dans le même changement — voir [Documentation](#documentation).
+4. **`make check` vert.**
+5. **Flux vérifié à la main** au moins une fois : le vrai `run`, pas seulement les tests (chaque
+   doc d'Act a une section « Tester … » pour ça).
+
 ## Principes de code
 
 - Un fichier de logique reste sous ~300 lignes ; au-delà, on découpe en sous-modules.
@@ -52,6 +65,40 @@ Ouvre une branche par changement, garde `make check` vert, et découpe en commit
   `[agent]` se skippe proprement via `pytest.importorskip(...)` et porte le marker correspondant.
 - Les contrats sont gardés par `tests/contracts/` : les garder verts quand un contrat évolue.
 - Structure, markers, fixtures et couverture sont détaillés dans [docs/testing.md](docs/testing.md).
+
+## Exemples exécutables
+
+Une capacité utilisateur arrive avec **au moins un Blueprint d'exemple réellement exécutable**,
+rangé dans `examples/<act>/` et lançable tel quel depuis `aetherius run` comme depuis la Console. Un
+exemple n'est pas un extrait décoratif : il doit tourner.
+
+- Privilégier un endpoint **public et autorisé** pour un exemple **zéro configuration** (ex.
+  `quotes.toscrape.com`, `books.toscrape.com`) : l'utilisateur ouvre la Console, clique Run, ça
+  marche.
+- Si des identifiants sont nécessaires, les passer par `.env` (`AETHERIUS_SECRET_*`, voir
+  [docs/secrets.md](docs/secrets.md)) et le signaler ; ne jamais coder un secret en dur, ni dans un
+  exemple, un test ou une fixture.
+- Un gabarit non exécutable (URLs placeholder, service privé) est marqué comme tel dans sa
+  `description` et ne compte pas comme l'exemple exécutable requis.
+- Les exemples sont validés contre le schéma par la CI (`tests/contracts/`), à n'importe quelle
+  profondeur sous `examples/`.
+
+## Documentation
+
+La doc évolue **avec** le code, dans le même changement — jamais « plus tard ». Un autre
+contributeur doit pouvoir reprendre à partir de la seule doc, sans contexte oral. À chaque
+contribution, mettre à jour :
+
+- la **doc de la partie concernée** (ex. [`docs/acts/<act>.md`](docs/acts/)) : décrire le *comment*
+  et les **limites connues**, pas seulement le *quoi* ; noter les décisions de conception
+  non-évidentes, pour qu'on ne les « corrige » pas par erreur plus tard ;
+- le **statut** dans le [README](README.md), section « État d'avancement » : la source de vérité du
+  jalon atteint et du prochain ;
+- tout **doc transverse** réellement touché (par ex. [docs/console.md](docs/console.md),
+  [docs/secrets.md](docs/secrets.md), [docs/testing.md](docs/testing.md)) ; ne pas dupliquer, mais
+  laisser un pointeur là où c'est utile.
+
+Style : sobre, orienté « pourquoi », sans emoji — comme le code.
 
 ## Intégration continue
 

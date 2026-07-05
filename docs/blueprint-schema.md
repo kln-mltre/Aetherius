@@ -23,6 +23,9 @@ Exemples exécutables : [`examples/`](../examples/).
 La syntaxe `{{ ... }}` résout, au runtime, `inputs.*`, `secrets.*`, `vars.*`, `env.*` et les sorties
 des steps précédents (`steps.<id>.<champ>`). Des filtres sûrs sont disponibles (ex. `add_days`).
 
+Les `secrets` ne portent qu'un **nom** dans le Blueprint ; leur valeur est résolue au runtime depuis
+l'environnement ou un `.env` local (jamais stockée dans le fichier). Voir [docs/secrets.md](secrets.md).
+
 ## Validation
 
 Deux niveaux : (1) schéma JSON (structure), (2) validation sémantique (`core/blueprint/validator.py`)

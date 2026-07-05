@@ -108,7 +108,8 @@ Un Blueprint est un fichier JSON déclaratif et versionné. Enveloppe :
 ```
 
 - **inputs** : paramètres typés (le Blueprint est réutilisable, pas figé sur une valeur).
-- **secrets** : identifiants/token fournis au runtime, **jamais** écrits dans le fichier.
+- **secrets** : identifiants/token fournis au runtime, **jamais** écrits dans le fichier (résolus
+  depuis l'environnement / un `.env` local — voir [docs/secrets.md](docs/secrets.md)).
 - **vars** : constantes locales (domaines, chemins).
 - **options** : `debug`, `stealth`, `session`, `timeout_ms`, `retries`.
 - **steps** : le *dictionnaire d'actions* (navigate, click, fill, type, http.request, extract,

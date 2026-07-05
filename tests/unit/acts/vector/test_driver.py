@@ -158,7 +158,8 @@ def test_set_stores_value() -> None:
 
 def test_wait_executes_without_sleeping(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[float] = []
-    monkeypatch.setattr("aetherius.acts.vector.driver.time.sleep", lambda s: calls.append(s))
+    # `wait` is provided by the shared mixin; patch sleep where it is actually called.
+    monkeypatch.setattr("aetherius.acts._shared.time.sleep", lambda s: calls.append(s))
     bp = Blueprint.model_validate(
         {"aetherius": "1.0", "name": "t", "act": "vector", "steps": [{"action": "wait", "ms": 100}]}
     )

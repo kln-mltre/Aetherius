@@ -19,7 +19,11 @@ Home ─┬─ Library   (parcourt et valide les Blueprints — examples/ + ./bl
 ```
 
 `core/runtime/engine.py::IMPLEMENTED_ACTS` est la seule source de vérité pour « quel Act est
-exécutable » — Home, Catalog et Runs la lisent tous ; ne jamais dupliquer cette liste.
+exécutable » — Home, Catalog et Runs la lisent tous ; ne jamais dupliquer cette liste. Vector
+(Act I) et Continuum (Act II) y figurent : Runs exécute donc aussi les Blueprints `continuum`
+lorsque l'extra `[browser]` est installé. Sans lui, le run échoue proprement sur une
+`DependencyError` (message + commande d'installation) affichée en notification, l'écran restant
+navigable.
 
 Les écrans en attente (`console/screens/sessions.py`, `settings.py`, `recorder.py`,
 `screens/builder/screen.py`) partagent une base commune,

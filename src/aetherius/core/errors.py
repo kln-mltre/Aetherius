@@ -89,6 +89,25 @@ class ActionError(AetheriusError):
     """Unknown action name or missing required action parameter."""
 
 
+class StepTimeoutError(AetheriusError):
+    """A step waited past its budget (e.g. wait_for). Carries the Blueprint's failure code."""
+
+    def __init__(self, message: str, *, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+
+
+class DependencyError(AetheriusError):
+    """A required optional dependency (an Act extra) is not installed."""
+
+    def __init__(self, message: str, *, extra: str | None = None) -> None:
+        super().__init__(message)
+        self.extra = extra
+
+
 # ── Runtime ───────────────────────────────────────────────────────────────────
 
 

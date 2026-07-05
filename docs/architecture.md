@@ -10,7 +10,11 @@ les parties au fil de l'implémentation.
 2. **Cœur** (`src/aetherius/core/`) — indépendant du moteur : modèle de Blueprint, dictionnaire
    d'actions, runtime, extraction, bus d'événements, erreurs typées, protocole `ActDriver`.
 3. **Acts** (`src/aetherius/acts/`) — quatre drivers interchangeables (Vector, Continuum, Oracle,
-   Phantom) derrière l'interface commune, avec un modèle de *capabilities*.
+   Phantom) derrière l'interface commune, avec un modèle de *capabilities*. Les drivers sont
+   **synchrones** (comme le moteur) et importent leur dépendance lourde **paresseusement** dans
+   `setup()` : Act II charge Playwright (API synchrone) à ce moment-là, jamais à l'import. Les
+   actions Act-agnostiques (`emit`/`wait`/`set`/`assert`) vivent dans `acts/_shared.py`
+   (`SharedActionsMixin`), partagées par tous les drivers.
 4. **Discrétion** (`src/aetherius/stealth/`) — couche transverse injectée dans les Acts navigateur.
 5. **Outils** — `recorder/` (génération de Blueprints/gestes), `builder/` (construction headless),
    `console/` (TUI Textual), `models/` (assets ML runtime).

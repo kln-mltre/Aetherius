@@ -80,7 +80,7 @@ strict = true
 files = ["src/aetherius"]
 
 [[tool.mypy.overrides]]
-module = ["jsonpath_ng.*", "jsonschema.*", "yaml.*", "parsel.*", "tenacity.*"]
+module = ["jsonpath_ng.*", "jsonschema.*", "yaml.*", "parsel.*", "tenacity.*", "playwright.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

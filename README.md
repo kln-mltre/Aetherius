@@ -248,9 +248,10 @@ aetherius            # ouvre la Console
 ```
 
 > **État actuel** : la Console est navigable de bout en bout. Library, Runs et Catalog sont
-> pleinement fonctionnels pour Act I (Vector) ; le Blueprint Studio, le Recorder et Sessions/
-> Settings (daemon) affichent honnêtement leur jalon en attente tant que builder/recorder/
-> stealth/daemon ne sont pas implémentés. Détails : [docs/console.md](docs/console.md).
+> pleinement fonctionnels pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ; le
+> Blueprint Studio, le Recorder et Sessions/Settings (daemon) affichent honnêtement leur jalon en
+> attente tant que builder/recorder/stealth/daemon ne sont pas implémentés. Détails :
+> [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
@@ -451,7 +452,14 @@ Conventions de contribution (discipline de test, invariants, structure des tests
   d'inputs/secrets et flux d'événements en direct, catalogue des 4 Acts). CLI scriptable
   (`aetherius run|validate`). Sessions, Settings et Recorder affichent honnêtement leur jalon en
   attente ; voir [docs/console.md](docs/console.md).
-- [ ] Act II — Continuum.
+- [x] **Act II — Continuum** : automatisation d'un vrai navigateur (Playwright, API synchrone).
+  Actions navigateur (navigate/back/forward/reload, click/fill/type/press/select/hover/scroll/
+  upload/drag), `wait_for` avec échec nommé (`on_timeout: "fail:CODE"`), extraction DOM typée
+  (text/number/html/attr/count), `evaluate` (JS injecté), `screenshot` (artefact), sessions
+  persistantes (profils réutilisés) et mode debug (fenêtre visible + slow-mo). Actions utilitaires
+  partagées avec Vector via un mixin (zéro duplication). Extra `[browser]` chargé à la demande ;
+  `import aetherius` reste léger. Tests unitaires (page factice, CI de base) + intégration vrai
+  Chromium (job CI dédié). Discrétion : couture prête, implémentation dans un jalon distinct.
 - [ ] Système de discrétion (humanizer + gestures + fingerprint + session).
 - [ ] Recorder (blueprint + gestes).
 - [ ] Builder headless (Blueprint Studio).

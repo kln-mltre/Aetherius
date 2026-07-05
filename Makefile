@@ -6,7 +6,7 @@
 PY := python3
 TS_DIR := sdks/typescript
 
-.PHONY: help install-dev lint format format-check typecheck test test-fast test-ts check check-all
+.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts check check-all
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -32,6 +32,9 @@ test: ## Run the full Python test suite with coverage
 
 test-fast: ## Run only the fast tests (skip heavy extras and slow tests)
 	pytest -m "not browser and not vision and not agent and not slow"
+
+test-browser: ## Run the browser tests (Act II) against a real Chromium; needs the [browser] extra
+	pytest -m browser
 
 test-ts: ## Typecheck and build the TypeScript SDK
 	npm --prefix $(TS_DIR) install

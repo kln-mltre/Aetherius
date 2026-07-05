@@ -14,7 +14,12 @@ Modules : [`src/aetherius/acts/continuum/`](../../src/aetherius/acts/continuum/)
 `driver.py` (dispatch + screenshot), `browser.py` (cycle de vie Playwright), `actions.py` (mapping
 action → opération page), `bridge.py` (extraction DOM, `wait_for`, `evaluate`).
 
-Exemple : [`examples/ukit-scolarite-login.blueprint.json`](../../examples/ukit-scolarite-login.blueprint.json).
+Exemples : [`examples/continuum/`](../../examples/continuum/) — dont
+[`quotes-scrape`](../../examples/continuum/quotes-scrape.blueprint.json) (le plus simple),
+[`quotes-login`](../../examples/continuum/quotes-login.blueprint.json) (login + session),
+[`quotes-js-render`](../../examples/continuum/quotes-js-render.blueprint.json) (contenu JS),
+[`books-catalog`](../../examples/continuum/books-catalog.blueprint.json) (extraction + screenshot),
+et le cas fondateur [`ukit-scolarite-login`](../../examples/continuum/ukit-scolarite-login.blueprint.json).
 
 ## Installation
 

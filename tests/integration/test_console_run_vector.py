@@ -49,7 +49,7 @@ async def _wait_until(condition, pilot, attempts: int = 60) -> None:
 
 @pytest.mark.asyncio
 async def test_console_runs_vector_blueprint_end_to_end(examples_dir: Path) -> None:
-    blueprint_path = examples_dir / "ukit-planning-week.blueprint.json"
+    blueprint_path = examples_dir / "vector" / "ukit-planning-week.blueprint.json"
     app = AetheriusConsoleApp()
 
     async with app.run_test(size=(120, 50)) as pilot:

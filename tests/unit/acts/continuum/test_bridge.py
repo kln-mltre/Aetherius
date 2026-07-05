@@ -75,17 +75,20 @@ def test_extract_missing_selector_raises() -> None:
         bridge.extract(MagicMock(), {"outputs": {"x": {"as": "text"}}}, _id)
 
 
-def test_wait_for_success() -> None:
+def test_wait_for_success_waits_on_first_match() -> None:
+    # `.first` avoids Playwright strict-mode errors when the selector matches several elements.
     page = MagicMock()
     out = bridge.wait_for(page, {"selector": ".ok", "timeout_ms": 5000}, _id)
     assert out == {}
     page.locator.assert_called_once_with(".ok")
-    page.locator.return_value.wait_for.assert_called_once_with(state="visible", timeout=5000.0)
+    page.locator.return_value.first.wait_for.assert_called_once_with(
+        state="visible", timeout=5000.0
+    )
 
 
 def test_wait_for_timeout_raises_with_failure_code() -> None:
     page = MagicMock()
-    page.locator.return_value.wait_for.side_effect = TimeoutError("boom")
+    page.locator.return_value.first.wait_for.side_effect = TimeoutError("boom")
     with pytest.raises(StepTimeoutError) as excinfo:
         bridge.wait_for(page, {"selector": ".x", "on_timeout": "fail:LOGIN_FAILED"}, _id)
     assert excinfo.value.code == "LOGIN_FAILED"
@@ -93,7 +96,7 @@ def test_wait_for_timeout_raises_with_failure_code() -> None:
 
 def test_wait_for_non_timeout_error_propagates() -> None:
     page = MagicMock()
-    page.locator.return_value.wait_for.side_effect = ValueError("other")
+    page.locator.return_value.first.wait_for.side_effect = ValueError("other")
     with pytest.raises(ValueError):
         bridge.wait_for(page, {"selector": ".x"}, _id)
 

@@ -67,7 +67,7 @@ async def test_selecting_an_invalid_entry_notifies_instead_of_navigating(
 
 @pytest.mark.asyncio
 async def test_selecting_a_valid_entry_opens_runs_screen(examples_dir: Path) -> None:
-    path = examples_dir / "ukit-planning-week.blueprint.json"
+    path = examples_dir / "vector" / "ukit-planning-week.blueprint.json"
     good_entry = BlueprintEntry(path=path, blueprint=load_blueprint(path), act="vector", error=None)
     app = _Harness()
 

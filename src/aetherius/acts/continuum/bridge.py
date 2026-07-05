@@ -91,7 +91,9 @@ def wait_for(page: Any, params: Mapping[str, Any], render: Renderer) -> dict[str
     if params.get("timeout_ms") is not None:
         kwargs["timeout"] = float(render(params.get("timeout_ms")))
     try:
-        page.locator(selector).wait_for(**kwargs)
+        # `.first`: waiting is about presence, so a selector matching several elements is normal
+        # and must not trip Playwright's strict-mode (which is reserved for acting on one element).
+        page.locator(selector).first.wait_for(**kwargs)
     except Exception as exc:
         if _is_timeout(exc):
             code = _failure_code(render(params.get("on_timeout")))

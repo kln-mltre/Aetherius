@@ -120,7 +120,7 @@ Le format est défini une fois pour toutes dans [`contracts/blueprint.schema.jso
 Des exemples exécutables (dérivés de vrais projets) sont dans [`examples/`](examples/).
 
 ### Exemple — Act I (Vector) : emploi du temps par API
-Voir [`examples/ukit-planning-week.blueprint.json`](examples/ukit-planning-week.blueprint.json).
+Voir [`examples/vector/ukit-planning-week.blueprint.json`](examples/vector/ukit-planning-week.blueprint.json).
 
 ```json
 {
@@ -171,7 +171,7 @@ Les constantes autrefois codées en dur (`resType`, `colourScheme`) sont explici
 `Vacances` et le parsing sont déclaratifs, et le groupe/la date sont des `inputs` réutilisables.
 
 ### Exemple — Act II (Continuum) : login CAS + scraping
-Voir [`examples/ukit-scolarite-login.blueprint.json`](examples/ukit-scolarite-login.blueprint.json).
+Voir [`examples/continuum/ukit-scolarite-login.blueprint.json`](examples/continuum/ukit-scolarite-login.blueprint.json).
 
 ```json
 {
@@ -204,7 +204,7 @@ Les sélecteurs sont désormais des **données** (plus du JS injecté codé en d
 déclaratif, et les événements (`LOGIN_SUCCESS`, …) restent disponibles pour suivre la progression.
 
 ### Exemple — Act III (Oracle) : upload avec discrétion
-Voir [`examples/tiktok-upload.blueprint.json`](examples/tiktok-upload.blueprint.json).
+Voir [`examples/oracle/tiktok-upload.blueprint.json`](examples/oracle/tiktok-upload.blueprint.json).
 
 ```json
 {

@@ -52,14 +52,17 @@ def _find_repo_examples(start: Path) -> Path | None:
 
 
 def scan_blueprints(dirs: list[Path]) -> list[BlueprintEntry]:
-    """Load and validate every Blueprint file found in *dirs*, newest-name-first is not
-    guaranteed; invalid files are kept in the result with their error instead of raising."""
+    """Load and validate every Blueprint file found in *dirs*, recursively.
+
+    The scan recurses so examples can be organised into per-Act subdirectories (examples/vector,
+    examples/continuum, ...) and user libraries into any tree. Invalid files are kept in the result
+    with their error instead of raising."""
     entries: list[BlueprintEntry] = []
     seen: set[Path] = set()
 
     for directory in dirs:
         for pattern in _BLUEPRINT_GLOBS:
-            for path in sorted(directory.glob(pattern)):
+            for path in sorted(directory.rglob(pattern)):
                 if path in seen:
                     continue
                 seen.add(path)

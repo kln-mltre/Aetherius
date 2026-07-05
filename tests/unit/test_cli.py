@@ -36,7 +36,7 @@ def _mock_transport() -> httpx.MockTransport:
 
 def test_validate_accepts_a_well_formed_vector_blueprint(examples_dir: Path) -> None:
     result = runner.invoke(
-        app, ["validate", str(examples_dir / "ukit-planning-week.blueprint.json")]
+        app, ["validate", str(examples_dir / "vector" / "ukit-planning-week.blueprint.json")]
     )
 
     assert result.exit_code == 0
@@ -45,7 +45,9 @@ def test_validate_accepts_a_well_formed_vector_blueprint(examples_dir: Path) -> 
 
 def test_validate_accepts_a_well_formed_oracle_blueprint(examples_dir: Path) -> None:
     # act=oracle is structurally valid even though it is not runnable yet.
-    result = runner.invoke(app, ["validate", str(examples_dir / "tiktok-upload.blueprint.json")])
+    result = runner.invoke(
+        app, ["validate", str(examples_dir / "oracle" / "tiktok-upload.blueprint.json")]
+    )
 
     assert result.exit_code == 0
 
@@ -57,7 +59,7 @@ def test_validate_rejects_a_nonexistent_file() -> None:
 
 
 def test_run_executes_a_vector_blueprint_with_mocked_transport(examples_dir: Path) -> None:
-    blueprint = examples_dir / "ukit-planning-week.blueprint.json"
+    blueprint = examples_dir / "vector" / "ukit-planning-week.blueprint.json"
 
     with patch("httpx.Client", return_value=httpx.Client(transport=_mock_transport())):
         result = runner.invoke(
@@ -77,7 +79,7 @@ def test_run_executes_a_vector_blueprint_with_mocked_transport(examples_dir: Pat
 
 
 def test_run_rejects_malformed_input_pair(examples_dir: Path) -> None:
-    blueprint = examples_dir / "ukit-planning-week.blueprint.json"
+    blueprint = examples_dir / "vector" / "ukit-planning-week.blueprint.json"
 
     result = runner.invoke(app, ["run", str(blueprint), "--input", "no-equals-sign"])
 
@@ -85,7 +87,8 @@ def test_run_rejects_malformed_input_pair(examples_dir: Path) -> None:
 
 
 def test_run_reports_unimplemented_act_cleanly(examples_dir: Path) -> None:
-    blueprint = examples_dir / "ukit-scolarite-login.blueprint.json"  # act=continuum
+    # act=oracle has no driver yet: the engine must reject it cleanly (Continuum, act=II, now runs).
+    blueprint = examples_dir / "oracle" / "tiktok-upload.blueprint.json"
 
     result = runner.invoke(app, ["run", str(blueprint)])
 

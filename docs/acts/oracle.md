@@ -10,4 +10,4 @@ Modules : [`src/aetherius/acts/oracle/`](../../src/aetherius/acts/oracle/) —
 `driver.py`, `perception.py`, `locator.py`, `model.py`.
 Entraînement des modèles : [`training/`](../../training/).
 
-Exemple : [`examples/tiktok-upload.blueprint.json`](../../examples/tiktok-upload.blueprint.json).
+Exemple : [`examples/oracle/tiktok-upload.blueprint.json`](../../examples/oracle/tiktok-upload.blueprint.json).

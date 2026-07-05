@@ -26,7 +26,8 @@ _LOGIN_HTML = """<!doctype html>
     var d = document.createElement('div');
     d.className = 'dashboard';
     d.innerHTML = 'Welcome <span class=\\'firstname\\'>Bob</span>' +
-                  '<span class=\\'unread\\'>3 unread</span>';
+                  '<span class=\\'unread\\'>3 unread</span>' +
+                  '<ul><li class=\\'item\\'>a</li><li class=\\'item\\'>b</li></ul>';
     document.body.appendChild(d);">Login</button>
 </body></html>"""
 
@@ -48,6 +49,8 @@ def _blueprint() -> Blueprint:
                 {"action": "fill", "selector": "#password", "value": "secret"},
                 {"action": "click", "selector": "#submit"},
                 {"action": "wait_for", "selector": ".dashboard", "timeout_ms": 5000},
+                # Non-unique selector: exercises the `.first` guard against strict-mode errors.
+                {"action": "wait_for", "selector": ".item", "timeout_ms": 5000},
                 {
                     "id": "profile",
                     "action": "extract",

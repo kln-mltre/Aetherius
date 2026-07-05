@@ -55,7 +55,7 @@ def _make_transport(payload: list[Any]) -> httpx.MockTransport:
 
 @pytest.fixture
 def ukit_blueprint(examples_dir: Path) -> Path:
-    return examples_dir / "ukit-planning-week.blueprint.json"
+    return examples_dir / "vector" / "ukit-planning-week.blueprint.json"
 
 
 def test_ukit_run_success(ukit_blueprint: Path) -> None:

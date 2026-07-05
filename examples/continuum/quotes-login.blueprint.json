@@ -1,0 +1,32 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.login",
+  "description": "Act II (Continuum) : se connecter a un site de demo (n'importe quel identifiant/mot de passe fonctionne) puis confirmer l'etat authentifie. Montre fill/click, wait_for avec code d'echec nomme, et un profil de session persistant. Fournir des identifiants quelconques dans les secrets.",
+  "act": "continuum",
+  "secrets": ["quotes_user", "quotes_pass"],
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": {
+    "debug": true,
+    "timeout_ms": 15000,
+    "session": { "profile": "quotes-demo", "persist": true }
+  },
+  "steps": [
+    { "action": "navigate", "url": "{{ vars.domain }}/login" },
+    { "action": "fill", "selector": "#username", "value": "{{ secrets.quotes_user }}" },
+    { "action": "fill", "selector": "#password", "value": "{{ secrets.quotes_pass }}" },
+    { "action": "click", "selector": "input[type=submit]" },
+    {
+      "action": "wait_for",
+      "selector": "a[href='/logout']",
+      "timeout_ms": 10000,
+      "on_timeout": "fail:LOGIN_FAILED"
+    },
+    { "action": "emit", "event": "LOGIN_SUCCESS" },
+    {
+      "id": "session",
+      "action": "extract",
+      "outputs": { "connecte": { "selector": "a[href='/logout']", "as": "count" } }
+    }
+  ],
+  "outputs": { "connecte": "{{ steps.session.connecte }}" }
+}

@@ -1,0 +1,25 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.scrape",
+  "description": "Act II (Continuum) : ouvrir une page dans un vrai navigateur et extraire des donnees du DOM. Le 'hello world' du scraping navigateur, sans login, executable tel quel depuis la Console.",
+  "act": "continuum",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": { "debug": true, "timeout_ms": 15000 },
+  "steps": [
+    { "id": "home", "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "id": "page",
+      "action": "extract",
+      "outputs": {
+        "premiere_citation": { "selector": ".quote .text", "as": "text" },
+        "premier_auteur": { "selector": ".quote .author", "as": "text" },
+        "citations_sur_la_page": { "selector": ".quote", "as": "count" }
+      }
+    }
+  ],
+  "outputs": {
+    "premiere_citation": "{{ steps.page.premiere_citation }}",
+    "premier_auteur": "{{ steps.page.premier_auteur }}",
+    "citations_sur_la_page": "{{ steps.page.citations_sur_la_page }}"
+  }
+}

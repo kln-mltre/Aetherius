@@ -11,7 +11,7 @@ from jsonschema.validators import validator_for
 
 pytestmark = pytest.mark.contracts
 
-_EXAMPLES = sorted((Path(__file__).resolve().parents[2] / "examples").glob("*.blueprint.json"))
+_EXAMPLES = sorted((Path(__file__).resolve().parents[2] / "examples").rglob("*.blueprint.json"))
 
 
 def _load(path: Path) -> object:

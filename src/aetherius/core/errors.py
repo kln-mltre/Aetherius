@@ -108,6 +108,13 @@ class DependencyError(AetheriusError):
         self.extra = extra
 
 
+# ── Recorder ──────────────────────────────────────────────────────────────────
+
+
+class RecorderError(AetheriusError):
+    """No recorder backend for the requested Act (unknown, or a pending milestone)."""
+
+
 # ── Runtime ───────────────────────────────────────────────────────────────────
 
 

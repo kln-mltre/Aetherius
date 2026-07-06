@@ -29,9 +29,13 @@ def import_playwright() -> Any:
     return sync_playwright
 
 
-def pump(context: Any, stop_event: threading.Event | None, disconnected: threading.Event) -> None:
-    """Keep the sync API alive so callbacks fire, until the window closes or *stop_event* is set."""
-    while not _is_set(stop_event) and not disconnected.is_set():
+def pump(context: Any, disconnected: threading.Event, *stop_events: threading.Event | None) -> None:
+    """Keep the sync API alive so callbacks fire, until the window closes or a stop event is set.
+
+    Several stop events are accepted (e.g. the caller's Stop and the overlay's Finish); any one ends
+    the loop. ``None`` entries are ignored so callers can pass optional events directly.
+    """
+    while not disconnected.is_set() and not any(_is_set(e) for e in stop_events):
         pages = context.pages
         if not pages:
             break

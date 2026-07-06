@@ -18,6 +18,7 @@ examples/
 |---------|-----------------|
 | [`vector/ukit-planning-week.blueprint.json`](vector/ukit-planning-week.blueprint.json) | `http.request` POST form + extraction JSONPath avec filtre `where`. Requiert l'API réelle (ou un mock). |
 | [`vector/ukit-inf601a5-test.blueprint.json`](vector/ukit-inf601a5-test.blueprint.json) | Variante de test du même flux. |
+| [`vector/jsonplaceholder-users-recorded.blueprint.json`](vector/jsonplaceholder-users-recorded.blueprint.json) | **Sortie réelle du Vector recorder** (`--act vector`) : `http.request` GET + extraction de records JSONPath (`$[*]` + `fields`). Zéro config. Voir [docs/recorder.md](../docs/recorder.md). |
 
 ## Act II — Continuum
 
@@ -30,6 +31,7 @@ le run depuis la Console.
 | [`continuum/quotes-scrape.blueprint.json`](continuum/quotes-scrape.blueprint.json) | `navigate` + `extract` (text/count). Le plus simple. | Aucun |
 | [`continuum/quotes-login.blueprint.json`](continuum/quotes-login.blueprint.json) | `fill`/`click`, `wait_for` avec échec nommé (`on_timeout: "fail:LOGIN_FAILED"`), session persistante. | Secrets `quotes_user`/`quotes_pass` : **n'importe quelle valeur** convient (site de démo). |
 | [`continuum/quotes-recorded-login.blueprint.json`](continuum/quotes-recorded-login.blueprint.json) | **Sortie réelle du recorder** (`aetherius record`) pour le login de démo : `navigate`/`fill`/`fill`/`click`, credentials en secrets. Voir [docs/recorder.md](../docs/recorder.md). | Secrets `username`/`password` : n'importe quelle valeur. |
+| [`continuum/quotes-recorded-scrape.blueprint.json`](continuum/quotes-recorded-scrape.blueprint.json) | **Sortie réelle du recorder** (menu flottant) : `wait_for` + extraction de records `{text, author}` (`each`/`fields`) + liste de tags (`as: list`), avec bloc `outputs`. | Aucun |
 | [`continuum/quotes-js-render.blueprint.json`](continuum/quotes-js-render.blueprint.json) | Page rendue en JavaScript (hors de portée de l'Act I) : attente du rendu, extraction DOM + `evaluate` (JS injecté). | Aucun |
 | [`continuum/books-catalog.blueprint.json`](continuum/books-catalog.blueprint.json) | Extraction `attr`/`text`/`count` + `screenshot` (artefact écrit dans `~/.aetherius/runs/<run_id>/`). | Aucun |
 | [`continuum/bordeaux-cas-login.blueprint.json`](continuum/bordeaux-cas-login.blueprint.json) | Login CAS **réel** (Université de Bordeaux) + confirmation de l'état authentifié. Login à froid (fiable à chaque run). | Secrets `bordeaux_user`/`bordeaux_pass` dans `.env` |

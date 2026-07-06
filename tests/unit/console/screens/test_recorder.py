@@ -17,8 +17,6 @@ from aetherius.console.screens import recorder as recorder_screen
 from aetherius.console.screens.recorder import RecorderScreen
 from aetherius.console.widgets.event_log import EventLog
 from aetherius.console.widgets.json_preview import JsonPreview
-from aetherius.recorder.capture import RecordedEvent
-from aetherius.recorder.selector_synth import Candidate, ElementDescriptor
 
 from textual.widgets import Button, Input
 
@@ -55,12 +53,9 @@ async def test_recording_streams_actions_and_shows_the_saved_blueprint(
 ) -> None:
     saved = tmp_path / "demo.blueprint.json"
 
-    def fake_record_blueprint(name, url, *, on_event, stop_event, credentials_as_secrets):
-        descriptor = ElementDescriptor(
-            tag="input", css_path="f", candidates=(Candidate("id", "#user", "css", True),)
-        )
-        on_event(RecordedEvent(kind="navigate", url=url))
-        on_event(RecordedEvent(kind="click", descriptor=descriptor))
+    def fake_record_blueprint(name, url, *, on_event, **kwargs):
+        on_event(f"navigate  {url}")
+        on_event("click  #user")
         blueprint = {
             "aetherius": "1.0",
             "name": name,

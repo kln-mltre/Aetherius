@@ -19,7 +19,7 @@ from dataclasses import dataclass
 # Strategy names, in the order we trust them. First unique candidate wins; css_path is the fallback.
 # data-testid/-test/-cy/-qa are added by developers precisely as stable hooks, so they rank highest;
 # a positional css path is the most fragile and ranks below everything intent-based.
-_PRIORITY: tuple[str, ...] = ("testid", "id", "name", "aria", "role", "text")
+_PRIORITY: tuple[str, ...] = ("testid", "id", "href", "name", "aria", "role", "class", "text")
 
 
 @dataclass(frozen=True, slots=True)

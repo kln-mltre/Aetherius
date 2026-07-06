@@ -6,7 +6,7 @@ browser is imported lazily inside the recording functions, so ``import aetherius
 
 from __future__ import annotations
 
-from .blueprint_recorder import describe_event, record_blueprint
+from .blueprint_recorder import record_blueprint
 from .gesture_recorder import record_gestures
 
-__all__ = ["record_blueprint", "record_gestures", "describe_event"]
+__all__ = ["record_blueprint", "record_gestures"]

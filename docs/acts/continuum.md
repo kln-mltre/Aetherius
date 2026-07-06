@@ -98,6 +98,30 @@ Le step `extract` mappe des noms vers des lectures typées du DOM :
 `attr` (requiert `attr`), `count` (nombre de correspondances). Les valeurs se relisent ensuite via
 `{{ steps.dossier.firstName }}` dans `outputs`.
 
+**Listes et tableaux.** Deux formes lisent *plusieurs* éléments (utilisées par le
+[recorder](../recorder.md#le-menu-flottant--sélectionner-les-données-à-scraper)) :
+
+```json
+{
+  "action": "extract",
+  "outputs": {
+    "tags":   { "selector": ".tag", "as": "list", "item": "text" },
+    "quotes": {
+      "each": ".quote",
+      "fields": {
+        "text":   { "selector": ".text",   "as": "text" },
+        "author": { "selector": ".author", "as": "text" }
+      }
+    }
+  }
+}
+```
+
+- `as: "list"` → la liste des valeurs de **tous** les matches du `selector` ; `item` fixe le type de
+  chaque élément (`text` par défaut, ou `number`/`attr`).
+- **records** (`each` + `fields`) → une **liste d'objets** : pour chaque conteneur répétitif matché
+  par `each`, chaque champ est lu par un sélecteur **relatif au conteneur**. La forme d'un tableau.
+
 ## Debug
 
 `options.debug: true` transforme le run en démonstration observable :

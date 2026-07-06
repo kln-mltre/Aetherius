@@ -18,16 +18,22 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.css.query import NoMatches
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Static, Switch
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Switch
 
 from ...core.errors import AetheriusError
 from ...core.events.models import EventType, RunEvent
-from ...recorder import describe_event, record_blueprint
-from ...recorder.capture import RecordedEvent
+from ...recorder import record_blueprint
+from ...recorder.base import recorder_acts
 from ..run_bridge import TextualRunSink
 from ..theme import starred
 from ..widgets.event_log import EventLog
 from ..widgets.json_preview import JsonPreview
+
+# How each recorder Act reads in the picker. Derived list stays in sync with recorder_acts().
+_ACT_LABELS: dict[str, str] = {
+    "continuum": "Continuum — browser (DOM)",
+    "vector": "Vector — API (network)",
+}
 
 
 class RecorderScreen(Screen[None]):
@@ -74,10 +80,19 @@ class RecorderScreen(Screen[None]):
         with VerticalScroll(classes="console-body"):
             yield Static(starred("Recorder"), classes="console-title")
             yield Static(
-                "Enter a name and a start URL, then Start: a browser opens, you demonstrate the "
-                "task, and closing it (or Stop) saves a clean Continuum Blueprint to ./blueprints.",
+                "Pick an Act, enter a name and a start URL, then Start: a browser opens. Continuum "
+                "records DOM actions and the floating menu picks data; Vector observes API calls. "
+                "Closing the window (or Stop) saves the Blueprint to ./blueprints.",
                 classes="console-subtitle",
             )
+            with Vertical(classes="rec-field"):
+                yield Label("Act")
+                yield Select(
+                    [(_ACT_LABELS.get(a, a), a) for a in sorted(recorder_acts())],
+                    value="continuum",
+                    allow_blank=False,
+                    id="rec-act",
+                )
             with Vertical(classes="rec-field"):
                 yield Label("Blueprint name (e.g. quotes.login)")
                 yield Input(placeholder="domain.task", id="rec-name")
@@ -115,20 +130,22 @@ class RecorderScreen(Screen[None]):
             self.app.notify("A name and a start URL are required.", severity="warning")
             return
 
+        act = str(self.query_one("#rec-act", Select).value)
         credentials = self.query_one("#rec-creds", Switch).value
         self._stop = threading.Event()
         self._sink = TextualRunSink(self.app, self.query_one("#rec-events", EventLog))
         self.query_one("#rec-events", EventLog).clear()
         self.query_one("#rec-result", JsonPreview).display = False
         self._set_recording(True)
-        self._record(name, url, credentials)
+        self._record(name, url, act, credentials)
 
     @work(thread=True, exclusive=True)
-    def _record(self, name: str, url: str, credentials: bool) -> None:
+    def _record(self, name: str, url: str, act: str, credentials: bool) -> None:
         try:
             path = record_blueprint(
                 name,
                 url,
+                act=act,
                 on_event=self._push_event,
                 stop_event=self._stop,
                 credentials_as_secrets=credentials,
@@ -138,8 +155,8 @@ class RecorderScreen(Screen[None]):
             return
         self.app.call_from_thread(self._finish, path)
 
-    def _push_event(self, event: RecordedEvent) -> None:
-        """Forward one captured action into the event log (from the worker thread)."""
+    def _push_event(self, description: str) -> None:
+        """Forward one captured action's description into the event log (from the worker thread)."""
         if self._sink is None:
             return
         self._sink.on_event(
@@ -147,7 +164,7 @@ class RecorderScreen(Screen[None]):
                 run_id="recorder",
                 type=EventType.STEP_FINISHED,
                 level="info",
-                message=describe_event(event),
+                message=description,
             )
         )
 

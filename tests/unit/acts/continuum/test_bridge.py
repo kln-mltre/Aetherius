@@ -75,6 +75,71 @@ def test_extract_missing_selector_raises() -> None:
         bridge.extract(MagicMock(), {"outputs": {"x": {"as": "text"}}}, _id)
 
 
+def _text_locator(value: str) -> MagicMock:
+    locator = MagicMock()
+    locator.inner_text.return_value = value
+    return locator
+
+
+def test_extract_list_reads_every_match() -> None:
+    page = MagicMock()
+    page.locator.return_value.all.return_value = [_text_locator("One"), _text_locator("Two")]
+    out = bridge.extract(page, {"outputs": {"titles": {"selector": ".t", "as": "list"}}}, _id)
+    assert out == {"titles": ["One", "Two"]}
+
+
+def test_extract_list_with_number_items() -> None:
+    page = MagicMock()
+    page.locator.return_value.all.return_value = [_text_locator("$3"), _text_locator("$4,5")]
+    out = bridge.extract(
+        page,
+        {"outputs": {"prices": {"selector": ".p", "as": "list", "item": "number"}}},
+        _id,
+    )
+    assert out == {"prices": [3, 4.5]}
+
+
+def _record_container(mapping: dict[str, str]) -> MagicMock:
+    """A fake container whose .locator(sel).first.inner_text returns per-selector text."""
+    container = MagicMock()
+
+    def locate(selector: str) -> MagicMock:
+        holder = MagicMock()
+        holder.first.inner_text.return_value = mapping[selector]
+        return holder
+
+    container.locator.side_effect = locate
+    return container
+
+
+def test_extract_records_reads_fields_per_container() -> None:
+    page = MagicMock()
+    page.locator.return_value.all.return_value = [
+        _record_container({".title": "A", ".author": "X"}),
+        _record_container({".title": "B", ".author": "Y"}),
+    ]
+    spec = {
+        "outputs": {
+            "quotes": {
+                "each": ".quote",
+                "fields": {
+                    "text": {"selector": ".title", "as": "text"},
+                    "author": {"selector": ".author", "as": "text"},
+                },
+            }
+        }
+    }
+    out = bridge.extract(page, spec, _id)
+    assert out == {"quotes": [{"text": "A", "author": "X"}, {"text": "B", "author": "Y"}]}
+    page.locator.assert_any_call(".quote")
+
+
+def test_extract_records_without_fields_raises() -> None:
+    page = MagicMock()
+    with pytest.raises(ActionError):
+        bridge.extract(page, {"outputs": {"x": {"each": ".row", "fields": {}}}}, _id)
+
+
 def test_wait_for_success_waits_on_first_match() -> None:
     # `.first` avoids Playwright strict-mode errors when the selector matches several elements.
     page = MagicMock()

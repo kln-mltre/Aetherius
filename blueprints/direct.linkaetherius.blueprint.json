@@ -1,0 +1,25 @@
+{
+  "aetherius": "1.0",
+  "name": "direct.linkaetherius",
+  "description": "Genere par le recorder Aetherius (act continuum) a partir d'une demo sur https://github.com/kln-mltre/Aetherius?tab=License-1-ov-file.",
+  "act": "continuum",
+  "steps": [
+    {
+      "action": "navigate",
+      "url": "https://github.com/kln-mltre/Aetherius?tab=License-1-ov-file"
+    },
+    {
+      "action": "extract",
+      "id": "data",
+      "outputs": {
+        "per_nubes_ad_aethera": {
+          "selector": ".tmp-my-3",
+          "as": "text"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "per_nubes_ad_aethera": "{{ steps.data.per_nubes_ad_aethera }}"
+  }
+}

@@ -49,6 +49,22 @@ def test_non_unique_candidate_is_skipped_for_the_next_unique_one() -> None:
     assert choice.strategy == "name"
 
 
+def test_href_is_preferred_over_ambiguous_text_for_links() -> None:
+    # A link whose text ("License") is not unique on the page must fall back to its href, not text.
+    choice = synthesize(
+        ElementDescriptor(
+            tag="a",
+            css_path="div > a",
+            candidates=(
+                Candidate("href", 'a[href="/repo/LICENSE"]', "css", True),
+                Candidate("text", "License", "text", False),  # 5 elements contain "License"
+            ),
+        )
+    )
+    assert choice.selector == 'a[href="/repo/LICENSE"]'
+    assert choice.strategy == "href"
+
+
 def test_text_strategy_carries_its_selector_type() -> None:
     choice = synthesize(_descriptor(Candidate("text", "Sign in", "text", True)))
     assert choice.selector == "Sign in"

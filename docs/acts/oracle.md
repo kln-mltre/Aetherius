@@ -11,3 +11,7 @@ Modules : [`src/aetherius/acts/oracle/`](../../src/aetherius/acts/oracle/) —
 Entraînement des modèles : [`training/`](../../training/).
 
 Exemple : [`examples/oracle/tiktok-upload.blueprint.json`](../../examples/oracle/tiktok-upload.blueprint.json).
+
+Recorder *(à venir)* : **annotation visuelle** — encadrer les cibles sur des captures d'écran pour
+alimenter [`training/`](../../training/), branché comme un backend recorder (cf.
+[docs/recorder.md](../recorder.md#recorder--les-acts)).

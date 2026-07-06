@@ -140,6 +140,9 @@ def serve() -> None:
 def record(
     name: str,
     url: str = typer.Option(..., "--url", help="Start URL for the demonstration."),
+    act: str = typer.Option(
+        "continuum", "--act", help="Recorder backend: 'continuum' (browser) or 'vector' (API)."
+    ),
     out: Path | None = typer.Option(
         None, "--out", help="Directory for the recorded Blueprint (default ./blueprints)."
     ),
@@ -153,19 +156,23 @@ def record(
     from rich.console import Console as RichConsole
 
     from .core.errors import AetheriusError
-    from .recorder import describe_event, record_blueprint
-    from .recorder.capture import RecordedEvent
+    from .recorder import record_blueprint
 
     rich_console = RichConsole()
     rich_console.print(f"[bold]Recording[/bold] {name!r} — a browser opens at {url}.")
     rich_console.print("Demonstrate the task, then close the window to finish.")
 
-    def on_event(event: RecordedEvent) -> None:
-        rich_console.print(f"  [dim]{describe_event(event)}[/dim]")
+    def on_event(description: str) -> None:
+        rich_console.print(f"  [dim]{description}[/dim]")
 
     try:
         path = record_blueprint(
-            name, url, out_dir=out, on_event=on_event, credentials_as_secrets=not no_secrets
+            name,
+            url,
+            act=act,
+            out_dir=out,
+            on_event=on_event,
+            credentials_as_secrets=not no_secrets,
         )
     except AetheriusError as exc:
         rich_console.print(f"[bold red]Error:[/bold red] {exc}")

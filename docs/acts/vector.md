@@ -14,6 +14,10 @@ Modules : [`src/aetherius/acts/vector/`](../../src/aetherius/acts/vector/) —
 
 Exemple : [`examples/vector/ukit-planning-week.blueprint.json`](../../examples/vector/ukit-planning-week.blueprint.json).
 
+**Recorder** : on peut générer un Blueprint Vector **par démonstration** — le recorder observe les
+appels réseau du navigateur et pique les champs JSON à extraire. Voir
+[docs/recorder.md](../recorder.md#vector-recorder-act-i--réseau).
+
 ## Actions supportées
 
 | Action | Description |

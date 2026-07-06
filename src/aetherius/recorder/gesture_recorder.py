@@ -174,7 +174,7 @@ def record_gestures(
         context.add_init_script(GESTURE_RECORDER_JS)
         page = context.new_page()
         page.goto(_instruction_url())
-        pump(context, stop_event, disconnected)
+        pump(context, disconnected, stop_event)
     finally:
         for closer in (context, browser):
             if closer is not None:

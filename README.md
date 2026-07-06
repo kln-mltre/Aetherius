@@ -469,15 +469,20 @@ Conventions de contribution (discipline de test, invariants, structure des tests
   avec distraction, warmup de profil. Cœur **stdlib pur** (tests en CI de base) ; intégration Chromium
   réelle. Exemple : `examples/continuum/quotes-stealth.blueprint.json`. Détails :
   [docs/stealth.md](docs/stealth.md).
-- [x] **Recorder (blueprint + gestes)** : création de Blueprint **par démonstration**. Navigateur
-  visible, capture des actions (événements DOM via binding injecté + `framenavigated`), **synthèse de
-  sélecteurs robustes** (`data-testid`/id/name/aria/texte avant le chemin CSS positionnel, unicité
-  mesurée in-page), transformation pure vers un Blueprint `continuum` minimal, relu par le
-  loader/validator canonique. Credentials → `{{ secrets.x }}` (la valeur d'un password n'est jamais
-  capturée). Console interactive (streaming live des actions, réutilise le pattern Sink) + CLI
-  (`aetherius record`). Gesture recorder (`aetherius record-gestures`) : traces souris réelles
-  segmentées vers la bibliothèque de discrétion **source-agnostique**. Cœur pur en CI de base ;
-  intégration Chromium réelle. Exemple : `examples/continuum/quotes-recorded-login.blueprint.json`.
+- [x] **Recorder (blueprint + gestes)** : création de Blueprint **par démonstration**,
+  **Act-agnostique** — une coquille commune (navigateur, overlay, session) + un **backend par Act**
+  derrière une interface unique (`recorder/base.py`, registre `act → backend`), choix de l'Act à la
+  main (`--act` / sélecteur Console). **Continuum** (Act II) : capture des actions DOM, **synthèse de
+  sélecteurs robustes** (`data-testid`/id/**href**/name/aria/classe avant le chemin CSS positionnel,
+  unicité mesurée in-page façon `get_by_text`), et **menu flottant** (overlay Shadow DOM) pour
+  **sélectionner les données** : champs, listes (`as: list`), tableaux/records (`each`/`fields`),
+  `wait_for`, paramétrage en `input`. **Vector** (Act I) : observe le trafic réseau (fetch/XHR/doc
+  JSON) et pique les champs dans la réponse → `http.request` + extraction JSONPath. Credentials et
+  en-têtes d'auth → `{{ secrets.x }}` (jamais stockés). Blueprint produit relu par le loader/validator
+  canonique, avec ses `outputs`. Console interactive + CLI (`aetherius record`). Gesture recorder
+  (`aetherius record-gestures`) : traces souris réelles vers la bibliothèque de discrétion. Trous
+  documentés pour Oracle/Phantom. Cœur pur en CI de base ; intégration Chromium réelle. Exemples :
+  `examples/continuum/quotes-recorded-{login,scrape}` + `examples/vector/jsonplaceholder-users-recorded`.
   Détails : [docs/recorder.md](docs/recorder.md).
 - [ ] Builder headless (Blueprint Studio).
 - [ ] Daemon + SDK TypeScript.

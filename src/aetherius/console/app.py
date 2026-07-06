@@ -11,8 +11,8 @@ from .theme import AETHERIUS_THEME
 
 
 class AetheriusConsoleApp(App[None]):
-    """The Aetherius Console: navigation shell for Home, Library, Runs, Catalog and the
-    still-pending sections (Sessions, Settings, Recorder, Blueprint Studio)."""
+    """The Aetherius Console: navigation shell for Home, Library, Runs, Catalog, Recorder and the
+    still-pending sections (Sessions, Settings, Blueprint Studio)."""
 
     CSS_PATH = Path(__file__).parent / "console.tcss"
     TITLE = "Aetherius"

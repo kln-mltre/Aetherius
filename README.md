@@ -248,11 +248,10 @@ Aetherius n'est pas qu'une bibliothèque : c'est aussi une **Console interactive
 aetherius            # ouvre la Console
 ```
 
-> **État actuel** : la Console est navigable de bout en bout. Library, Runs et Catalog sont
-> pleinement fonctionnels pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ; le
-> Blueprint Studio, le Recorder et Sessions/Settings (daemon) affichent honnêtement leur jalon en
-> attente tant que builder/recorder/daemon ne sont pas implémentés. Détails :
-> [docs/console.md](docs/console.md).
+> **État actuel** : la Console est navigable de bout en bout. Library, Runs, Catalog et le **Recorder**
+> sont pleinement fonctionnels pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ;
+> le Blueprint Studio et Sessions/Settings (daemon) affichent honnêtement leur jalon en attente tant
+> que builder/daemon ne sont pas implémentés. Détails : [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
@@ -451,8 +450,8 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 - [x] **Console (Textual)** : navigation complète (`aetherius` ou `aetherius console`) — Library,
   Runs et Catalog fonctionnels pour Act I (parcours des Blueprints, exécution avec formulaire
   d'inputs/secrets et flux d'événements en direct, catalogue des 4 Acts). CLI scriptable
-  (`aetherius run|validate`). Sessions, Settings et Recorder affichent honnêtement leur jalon en
-  attente ; voir [docs/console.md](docs/console.md).
+  (`aetherius run|validate|record`). Le Recorder est fonctionnel (voir ci-dessous) ; Sessions et
+  Settings affichent honnêtement leur jalon en attente ; voir [docs/console.md](docs/console.md).
 - [x] **Act II — Continuum** : automatisation d'un vrai navigateur (Playwright, API synchrone).
   Actions navigateur (navigate/back/forward/reload, click/fill/type/press/select/hover/scroll/
   upload/drag), `wait_for` avec échec nommé (`on_timeout: "fail:CODE"`), extraction DOM typée
@@ -470,7 +469,16 @@ Conventions de contribution (discipline de test, invariants, structure des tests
   avec distraction, warmup de profil. Cœur **stdlib pur** (tests en CI de base) ; intégration Chromium
   réelle. Exemple : `examples/continuum/quotes-stealth.blueprint.json`. Détails :
   [docs/stealth.md](docs/stealth.md).
-- [ ] Recorder (blueprint + gestes).
+- [x] **Recorder (blueprint + gestes)** : création de Blueprint **par démonstration**. Navigateur
+  visible, capture des actions (événements DOM via binding injecté + `framenavigated`), **synthèse de
+  sélecteurs robustes** (`data-testid`/id/name/aria/texte avant le chemin CSS positionnel, unicité
+  mesurée in-page), transformation pure vers un Blueprint `continuum` minimal, relu par le
+  loader/validator canonique. Credentials → `{{ secrets.x }}` (la valeur d'un password n'est jamais
+  capturée). Console interactive (streaming live des actions, réutilise le pattern Sink) + CLI
+  (`aetherius record`). Gesture recorder (`aetherius record-gestures`) : traces souris réelles
+  segmentées vers la bibliothèque de discrétion **source-agnostique**. Cœur pur en CI de base ;
+  intégration Chromium réelle. Exemple : `examples/continuum/quotes-recorded-login.blueprint.json`.
+  Détails : [docs/recorder.md](docs/recorder.md).
 - [ ] Builder headless (Blueprint Studio).
 - [ ] Daemon + SDK TypeScript.
 - [ ] Act III — Oracle (vision + entraînement).

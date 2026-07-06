@@ -137,13 +137,64 @@ def serve() -> None:
 
 
 @app.command()
-def record() -> None:
-    """Launch the Blueprint recorder (not implemented yet)."""
-    typer.echo(
-        "The recorder (`aetherius record`) is not implemented yet. "
-        "It is a pending milestone; see README.md 'État d'avancement'."
-    )
-    raise typer.Exit(1)
+def record(
+    name: str,
+    url: str = typer.Option(..., "--url", help="Start URL for the demonstration."),
+    out: Path | None = typer.Option(
+        None, "--out", help="Directory for the recorded Blueprint (default ./blueprints)."
+    ),
+    no_secrets: bool = typer.Option(
+        False,
+        "--no-secrets",
+        help="Keep username-like fields literal (passwords are always secrets).",
+    ),
+) -> None:
+    """Record a Blueprint by demonstrating a task in a visible browser."""
+    from rich.console import Console as RichConsole
+
+    from .core.errors import AetheriusError
+    from .recorder import describe_event, record_blueprint
+    from .recorder.capture import RecordedEvent
+
+    rich_console = RichConsole()
+    rich_console.print(f"[bold]Recording[/bold] {name!r} — a browser opens at {url}.")
+    rich_console.print("Demonstrate the task, then close the window to finish.")
+
+    def on_event(event: RecordedEvent) -> None:
+        rich_console.print(f"  [dim]{describe_event(event)}[/dim]")
+
+    try:
+        path = record_blueprint(
+            name, url, out_dir=out, on_event=on_event, credentials_as_secrets=not no_secrets
+        )
+    except AetheriusError as exc:
+        rich_console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise typer.Exit(1) from exc
+
+    rich_console.print(f"[bold green]Saved[/bold green] {path}")
+
+
+@app.command(name="record-gestures")
+def record_gestures_command(
+    out: Path | None = typer.Option(
+        None, "--out", help="Gesture library file to write (default: bundled human_library.json)."
+    ),
+) -> None:
+    """Capture real mouse gestures to extend the stealth gesture library."""
+    from rich.console import Console as RichConsole
+
+    from .core.errors import AetheriusError
+    from .recorder import record_gestures
+
+    rich_console = RichConsole()
+    rich_console.print("A browser opens. Move and click naturally, then close the window to save.")
+    try:
+        path, count = record_gestures(out_path=out)
+    except AetheriusError as exc:
+        rich_console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise typer.Exit(1) from exc
+
+    rich_console.print(f"[bold green]Added[/bold green] {count} gesture(s) to {path}")
 
 
 def main(argv: list[str] | None = None) -> int:

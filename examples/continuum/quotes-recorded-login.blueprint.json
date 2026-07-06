@@ -1,0 +1,30 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.recorded.login",
+  "description": "Act II (Continuum) : Blueprint genere par le recorder (aetherius record) a partir d'une demonstration de login sur quotes.toscrape.com. N'importe quel identifiant fonctionne ; fournir les secrets username/password au lancement.",
+  "act": "continuum",
+  "secrets": [
+    "username",
+    "password"
+  ],
+  "steps": [
+    {
+      "action": "navigate",
+      "url": "https://quotes.toscrape.com/login"
+    },
+    {
+      "action": "fill",
+      "selector": "#username",
+      "value": "{{ secrets.username }}"
+    },
+    {
+      "action": "fill",
+      "selector": "#password",
+      "value": "{{ secrets.password }}"
+    },
+    {
+      "action": "click",
+      "selector": "div > form > input:nth-of-type(2)"
+    }
+  ]
+}

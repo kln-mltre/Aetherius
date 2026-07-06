@@ -12,9 +12,9 @@ Home ─┬─ Library   (parcourt et valide les Blueprints — examples/ + ./bl
       ├─ Runs      (atteint uniquement depuis Library ; formulaire d'inputs/secrets,
       │             exécution + événements en direct, résultat final)
       ├─ Catalog   (les 4 Acts, statut d'implémentation, capabilities par Act)
+      ├─ Recorder  (capture un Blueprint par démonstration — voir docs/recorder.md)
       ├─ Sessions  (en attente : stealth/session)
       ├─ Settings  (en attente : daemon)
-      ├─ Recorder  (en attente : recorder)
       └─ Builder   (en attente : builder headless — Blueprint Studio)
 ```
 
@@ -32,10 +32,13 @@ Oracle) ou **invalid** (erreur de schéma ou d'action). Les badges d'Act suivent
 `IMPLEMENTED_ACTS`, donc jamais à re-maintenir à la main. Côté Runs, un secret déjà présent dans
 `.env` s'affiche « loaded from .env » et peut être laissé vide (voir [docs/secrets.md](secrets.md)).
 
-Les écrans en attente (`console/screens/sessions.py`, `settings.py`, `recorder.py`,
+Les écrans en attente (`console/screens/sessions.py`, `settings.py`,
 `screens/builder/screen.py`) partagent une base commune,
 [`console/screens/_pending.py`](../src/aetherius/console/screens/_pending.py) : ils affichent ce
-que l'écran fera et le jalon dont il dépend, sans fausse interactivité.
+que l'écran fera et le jalon dont il dépend, sans fausse interactivité. Le **Recorder**
+([`recorder.py`](../src/aetherius/console/screens/recorder.py)) est lui pleinement interactif : il
+pilote le blueprint recorder dans un worker `@work(thread=True)` et streame les actions capturées via
+le pattern Sink ci-dessous ; détails dans [docs/recorder.md](recorder.md).
 
 ## Streamer les événements d'un run : le pattern Sink
 

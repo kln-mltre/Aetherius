@@ -84,8 +84,9 @@ concerne pas.** Trois sources coexistent derrière la même interface, distingu�
 - **seed synthétique** (fourni, `meta.source: "synthetic-seed"`) : traces générées par un modèle
   minimum-jerk + overshoot + tremor ([`seed.py`](../src/aetherius/stealth/gestures/seed.py)), pour
   que `mouse: gestures` fonctionne dès l'installation et soit testable en conditions réelles ;
-- **traces humaines réelles** : capturées par le gesture recorder (jalon suivant), qui écrit le même
-  format dans `stealth/gestures/data/human_library.json` ;
+- **traces humaines réelles** : capturées par le [gesture recorder](recorder.md#gesture-recorder)
+  (`aetherius record-gestures`), qui écrit le même format dans
+  `stealth/gestures/data/human_library.json` ;
 - **traces générées par IA** : upgrade ML de la roadmap.
 
 Régénérer le seed : `python -m aetherius.stealth.gestures.seed`.
@@ -98,9 +99,11 @@ ML (`stealth/ml/`) est un upgrade optionnel, pas un prérequis. Le cœur stealth
 
 ## Limites connues
 
-- **Seed de gestes synthétique.** Tant que le gesture recorder n'a pas alimenté la bibliothèque en
-  traces humaines réelles, `mouse: gestures` rejoue des gestes générés (réalistes mais synthétiques).
-  L'interface est identique ; les traces réelles se substituent sans changement de code.
+- **Seed de gestes synthétique par défaut.** La bibliothèque livrée est le seed généré ; `mouse:
+  gestures` rejoue donc des gestes réalistes mais synthétiques tant que le
+  [gesture recorder](recorder.md#gesture-recorder) (`aetherius record-gestures`) n'a pas ajouté de
+  traces humaines réelles. L'interface est identique ; les traces réelles se substituent au seed sans
+  changement de code côté humanizer.
 - **Profils de fingerprint statiques.** `chrome-desktop` est un preset figé, pas un échantillon d'une
   distribution matérielle réelle ; la version d'UA peut diverger du build Chromium sous-jacent (client
   hints). Le modèle ML de fingerprints est l'upgrade prévu, derrière la même interface.

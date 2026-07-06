@@ -104,11 +104,44 @@ def test_serve_reports_not_implemented() -> None:
     assert "not implemented" in result.stdout
 
 
-def test_record_reports_not_implemented() -> None:
+def test_record_requires_a_name_and_url() -> None:
     result = runner.invoke(app, ["record"])
 
+    assert result.exit_code != 0  # missing required NAME argument / --url option
+
+
+def test_record_saves_and_reports_the_path(tmp_path: Path) -> None:
+    saved = tmp_path / "quotes.login.blueprint.json"
+    with patch("aetherius.recorder.record_blueprint", return_value=saved) as mock:
+        result = runner.invoke(
+            app, ["record", "quotes.login", "--url", "https://quotes.toscrape.com/login"]
+        )
+
+    assert result.exit_code == 0
+    assert "Saved" in result.stdout
+    mock.assert_called_once()
+
+
+def test_record_surfaces_a_missing_browser_extra_cleanly() -> None:
+    from aetherius.core.errors import DependencyError
+
+    with patch(
+        "aetherius.recorder.record_blueprint",
+        side_effect=DependencyError("needs Playwright", extra="browser"),
+    ):
+        result = runner.invoke(app, ["record", "x", "--url", "https://example.test"])
+
     assert result.exit_code == 1
-    assert "not implemented" in result.stdout
+    assert "Error" in result.stdout
+    assert "Traceback" not in result.stdout
+
+
+def test_record_gestures_reports_the_count(tmp_path: Path) -> None:
+    with patch("aetherius.recorder.record_gestures", return_value=(tmp_path / "lib.json", 7)):
+        result = runner.invoke(app, ["record-gestures"])
+
+    assert result.exit_code == 0
+    assert "7 gesture" in result.stdout
 
 
 def test_bare_invocation_opens_the_console() -> None:

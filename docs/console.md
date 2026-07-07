@@ -8,15 +8,21 @@ Le centre de contrôle terminal (voir aussi le [README](../README.md)). `aetheri
 ## Plan des écrans
 
 ```
-Home ─┬─ Library   (parcourt et valide les Blueprints — examples/ + ./blueprints/)
-      ├─ Runs      (atteint uniquement depuis Library ; formulaire d'inputs/secrets,
-      │             exécution + événements en direct, résultat final)
+Home ─┬─ Library ──► Runs   (Library parcourt les Blueprints ; en ouvrir un mène à Runs :
+      │                       formulaire d'inputs/secrets, toggle Debug, exécution +
+      │                       événements en direct, résultat final)
       ├─ Catalog   (les 4 Acts, statut d'implémentation, capabilities par Act)
       ├─ Recorder  (capture un Blueprint par démonstration — voir docs/recorder.md)
       ├─ Sessions  (en attente : stealth/session)
       ├─ Settings  (en attente : daemon)
       └─ Builder   (en attente : builder headless — Blueprint Studio)
 ```
+
+Runs n'est **pas** une entrée du menu Home : c'est la vue de détail d'un Blueprint (pattern
+maître-détail), atteinte en sélectionnant une ligne dans Library. Un **toggle Debug** y permet de
+choisir au moment du run une fenêtre visible + slow-mo (équivalent de `aetherius run --debug`) sans
+modifier le fichier — les options durables (`debug`, `stealth`, `session`, …) se règlent, elles, dans
+le Blueprint Studio.
 
 `core/runtime/engine.py::IMPLEMENTED_ACTS` est la seule source de vérité pour « quel Act est
 exécutable » — Home, Catalog et Runs la lisent tous ; ne jamais dupliquer cette liste. Vector

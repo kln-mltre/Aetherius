@@ -9,7 +9,7 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.css.query import NoMatches
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Static
+from textual.widgets import Button, Footer, Header, Static, Switch
 
 from ...core.blueprint.loader import load_blueprint
 from ...core.blueprint.models import Blueprint
@@ -73,6 +73,9 @@ class RunsScreen(Screen[None]):
             form.border_title = "✦ Inputs ✦"
             yield form
             with Horizontal(classes="run-actions"):
+                yield Switch(value=bp.options.debug, id="run-debug")
+                yield Static("Debug — visible browser + slow-mo", id="run-debug-label")
+            with Horizontal(classes="run-actions"):
                 yield Button("✦ Run ✦", id="run-button", variant="primary")
             event_log = EventLog(id="run-event-log")
             event_log.border_title = "✦ Events ✦"
@@ -92,6 +95,9 @@ class RunsScreen(Screen[None]):
         if errors:
             self.app.notify("\n".join(errors), title="Missing inputs", severity="warning")
             return
+
+        # Debug is a per-run choice here, not baked into the file: toggle it on the loaded model.
+        self._blueprint.options.debug = self.query_one("#run-debug", Switch).value
 
         input_values, secret_values = form.collect()
         event.button.disabled = True

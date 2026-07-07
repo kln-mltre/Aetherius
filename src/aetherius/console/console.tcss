@@ -57,6 +57,11 @@ Screen {
     padding: 1 0;
 }
 
+#run-debug-label {
+    padding: 1 0 0 1;
+    color: $text-muted;
+}
+
 RunsScreen BlueprintInputForm {
     border: double $accent;
 }

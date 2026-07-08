@@ -9,20 +9,23 @@ Le centre de contrôle terminal (voir aussi le [README](../README.md)). `aetheri
 
 ```
 Home ─┬─ Library ──► Runs   (Library parcourt les Blueprints ; en ouvrir un mène à Runs :
-      │                       formulaire d'inputs/secrets, toggle Debug, exécution +
-      │                       événements en direct, résultat final)
+      │         │            formulaire d'inputs/secrets, toggle Debug, exécution +
+      │         └► Studio    événements en direct, résultat final ; la touche `e` ouvre
+      │                       l'entrée surlignée dans le Blueprint Studio en édition)
       ├─ Catalog   (les 4 Acts, statut d'implémentation, capabilities par Act)
       ├─ Recorder  (capture un Blueprint par démonstration — voir docs/recorder.md)
+      ├─ Builder   (Blueprint Studio : créer et éditer un Blueprint, guidé — voir docs/builder.md)
       ├─ Sessions  (en attente : stealth/session)
-      ├─ Settings  (en attente : daemon)
-      └─ Builder   (en attente : builder headless — Blueprint Studio)
+      └─ Settings  (en attente : daemon)
 ```
 
 Runs n'est **pas** une entrée du menu Home : c'est la vue de détail d'un Blueprint (pattern
 maître-détail), atteinte en sélectionnant une ligne dans Library. Un **toggle Debug** y permet de
 choisir au moment du run une fenêtre visible + slow-mo (équivalent de `aetherius run --debug`) sans
 modifier le fichier — les options durables (`debug`, `stealth`, `session`, …) se règlent, elles, dans
-le Blueprint Studio.
+le **Blueprint Studio** ([docs/builder.md](builder.md)). L'écran **Catalog** est désormais une pure
+projection du catalogue partagé du builder (`builder/catalog.py`) : les descriptions d'Act et le
+statut runnable/pending y sont la même source que dans le Studio.
 
 `core/runtime/engine.py::IMPLEMENTED_ACTS` est la seule source de vérité pour « quel Act est
 exécutable » — Home, Catalog et Runs la lisent tous ; ne jamais dupliquer cette liste. Vector
@@ -38,13 +41,16 @@ Oracle) ou **invalid** (erreur de schéma ou d'action). Les badges d'Act suivent
 `IMPLEMENTED_ACTS`, donc jamais à re-maintenir à la main. Côté Runs, un secret déjà présent dans
 `.env` s'affiche « loaded from .env » et peut être laissé vide (voir [docs/secrets.md](secrets.md)).
 
-Les écrans en attente (`console/screens/sessions.py`, `settings.py`,
-`screens/builder/screen.py`) partagent une base commune,
-[`console/screens/_pending.py`](../src/aetherius/console/screens/_pending.py) : ils affichent ce
-que l'écran fera et le jalon dont il dépend, sans fausse interactivité. Le **Recorder**
-([`recorder.py`](../src/aetherius/console/screens/recorder.py)) est lui pleinement interactif : il
-pilote le blueprint recorder dans un worker `@work(thread=True)` et streame les actions capturées via
-le pattern Sink ci-dessous ; détails dans [docs/recorder.md](recorder.md).
+Les écrans en attente restants (`console/screens/sessions.py`, `settings.py`) partagent une base
+commune, [`console/screens/_pending.py`](../src/aetherius/console/screens/_pending.py) : ils
+affichent ce que l'écran fera et le jalon dont il dépend, sans fausse interactivité. Le **Recorder**
+([`recorder.py`](../src/aetherius/console/screens/recorder.py)) et le **Blueprint Studio**
+([`screens/builder/`](../src/aetherius/console/screens/builder/)) sont, eux, pleinement interactifs.
+Le Recorder pilote le blueprint recorder dans un worker `@work(thread=True)` et streame les actions
+capturées via le pattern Sink ci-dessous ; détails dans [docs/recorder.md](recorder.md). Le Studio,
+lui, ne fait que du travail local (assemblage + validation en mémoire) : aucun worker, l'écran
+possède un unique `BlueprintDraft` que ses éditeurs enfants alimentent ; voir
+[docs/builder.md](builder.md).
 
 ## Streamer les événements d'un run : le pattern Sink
 

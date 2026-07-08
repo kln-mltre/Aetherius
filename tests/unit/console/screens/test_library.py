@@ -86,3 +86,48 @@ async def test_selecting_a_valid_entry_opens_runs_screen(examples_dir: Path) -> 
         from aetherius.console.screens.runs import RunsScreen
 
         assert isinstance(app.screen, RunsScreen)
+
+
+@pytest.mark.asyncio
+async def test_edit_binding_opens_the_studio_for_a_valid_entry(examples_dir: Path) -> None:
+    path = examples_dir / "vector" / "ukit-planning-week.blueprint.json"
+    good_entry = BlueprintEntry(path=path, blueprint=load_blueprint(path), act="vector", error=None)
+    app = _Harness()
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, LibraryScreen)
+        screen._entries = [good_entry]
+        screen._render_table()
+        await pilot.pause()
+
+        screen.action_edit()
+        await pilot.pause()
+
+        from aetherius.console.screens.builder.screen import BlueprintStudioScreen
+
+        assert isinstance(app.screen, BlueprintStudioScreen)
+
+
+@pytest.mark.asyncio
+async def test_edit_binding_refuses_an_unparseable_entry(examples_dir: Path) -> None:
+    bad_entry = BlueprintEntry(
+        path=examples_dir / "broken.blueprint.json", blueprint=None, act=None, error="boom"
+    )
+    app = _Harness()
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, LibraryScreen)
+        screen._entries = [bad_entry]
+        screen._render_table()
+        await pilot.pause()
+
+        with patch.object(app, "notify") as mock_notify:
+            screen.action_edit()
+            await pilot.pause()
+
+        mock_notify.assert_called_once()
+        assert app.screen is screen

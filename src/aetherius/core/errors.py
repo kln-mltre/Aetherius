@@ -115,6 +115,13 @@ class RecorderError(AetheriusError):
     """No recorder backend for the requested Act (unknown, or a pending milestone)."""
 
 
+# ── Builder ───────────────────────────────────────────────────────────────────
+
+
+class BuilderError(AetheriusError):
+    """Headless builder failure: unknown Act or template, or a name collision on save."""
+
+
 # ── Runtime ───────────────────────────────────────────────────────────────────
 
 

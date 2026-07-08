@@ -10,47 +10,19 @@ steps is the backend's job (Continuum: DOM; Vector: network).
 from __future__ import annotations
 
 import json
-import re
 import threading
 from pathlib import Path
-from typing import Any
 
+from ..builder.factory import assemble_blueprint, slugify_name
 from ..core.blueprint.loader import load_blueprint
 from ..core.blueprint.validator import validate_for_act
 from ..core.errors import BlueprintValidationError
 from .base import get_recorder
 from .session import NotifyCallback, RecordingSession
 
-
-def _slug(name: str) -> str:
-    """Filesystem-safe stem derived from a Blueprint name (keeps dots, e.g. quotes.login)."""
-    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-.")
-    return slug or "recording"
-
-
-def assemble_blueprint(
-    name: str,
-    steps: list[dict[str, Any]],
-    secrets: list[str],
-    *,
-    act: str = "continuum",
-    inputs: dict[str, Any] | None = None,
-    outputs: dict[str, Any] | None = None,
-    description: str | None = None,
-) -> dict[str, Any]:
-    """Assemble a minimal, ordered Blueprint dict for *act* (schema key order)."""
-    blueprint: dict[str, Any] = {"aetherius": "1.0", "name": name}
-    if description:
-        blueprint["description"] = description
-    blueprint["act"] = act
-    if inputs:
-        blueprint["inputs"] = inputs
-    if secrets:
-        blueprint["secrets"] = secrets
-    blueprint["steps"] = steps
-    if outputs:
-        blueprint["outputs"] = outputs
-    return blueprint
+# assemble_blueprint is re-exported from builder.factory: Blueprint construction is the builder's
+# job, and the recorder is one of its callers. Kept importable here for existing callers and tests.
+__all__ = ["assemble_blueprint", "record_blueprint"]
 
 
 def record_blueprint(
@@ -88,7 +60,7 @@ def record_blueprint(
 
     target_dir = Path(out_dir) if out_dir is not None else Path.cwd() / "blueprints"
     target_dir.mkdir(parents=True, exist_ok=True)
-    path = target_dir / f"{_slug(name)}.blueprint.json"
+    path = target_dir / f"{slugify_name(name)}.blueprint.json"
     path.write_text(json.dumps(blueprint, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     try:

@@ -10,21 +10,15 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
 from ..theme import ACT_LABELS, LAUREL, STONE, act_color, starred
-from ...core.actions.base import ACT_CAPABILITIES
-from ...core.runtime.engine import IMPLEMENTED_ACTS
-
-_ACT_ORDER = ("vector", "continuum", "oracle", "phantom")
-
-_ACT_DESCRIPTIONS: dict[str, str] = {
-    "vector": "HTTP/API requests. Fastest, no browser. The 'axios' case.",
-    "continuum": "Scripted browser (Playwright): login, JS, session, DOM. Stable selectors.",
-    "oracle": "Vision-guided browser with discretion. Locates fragile/obfuscated UI on screen.",
-    "phantom": "Autonomous agent: perceive, reason, act in a loop. Unscripted goals.",
-}
+from ...builder.catalog import act_infos, actions_for_act
 
 
 class CatalogScreen(Screen[None]):
-    """Read-only reference: the 4 Acts, their status, and their supported actions."""
+    """Read-only reference: the 4 Acts, their status, and their supported actions.
+
+    A pure projection of the shared builder catalogue (``builder/catalog.py``), so the Act
+    descriptions and the runnable/pending status never drift from what the Studio offers.
+    """
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -41,19 +35,18 @@ class CatalogScreen(Screen[None]):
     def on_mount(self) -> None:
         table = self.query_one("#catalog-table", DataTable)
         table.add_columns("Act", "Status", "Description", "Actions")
-        for act in _ACT_ORDER:
-            label = ACT_LABELS[act]
-            implemented = act in IMPLEMENTED_ACTS
-            color = act_color(act, implemented)
+        for info in act_infos():
+            color = act_color(info.act, info.implemented)
             status = (
                 Text("implemented", style=f"bold {LAUREL}")
-                if implemented
+                if info.implemented
                 else Text("not runnable yet", style=STONE)
             )
-            capabilities = ", ".join(sorted(cap.value for cap in ACT_CAPABILITIES[act]))
+            # A dagger marks actions declared but not yet dispatched by the Act's driver.
+            names = [a.spec.name + ("" if a.runnable else " †") for a in actions_for_act(info.act)]
             table.add_row(
-                Text(label, style=color),
+                Text(ACT_LABELS[info.act], style=color),
                 status,
-                _ACT_DESCRIPTIONS[act],
-                capabilities,
+                info.summary,
+                ", ".join(names),
             )

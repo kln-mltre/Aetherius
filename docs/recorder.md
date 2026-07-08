@@ -8,8 +8,10 @@ par la CI de base (sans navigateur).
 
 Trois voies de création (voir aussi le [README](../README.md)) :
 
-1. **Blueprint Studio** — création guidée dans la Console (`console/screens/builder/`), sans JSON.
-   S'appuie sur le module headless [`builder/`](../src/aetherius/builder/). *(jalon suivant)*
+1. **Blueprint Studio** — création **et édition** guidées dans la Console (`console/screens/builder/`),
+   sans JSON. S'appuie sur le module headless [`builder/`](../src/aetherius/builder/). Voir
+   [docs/builder.md](builder.md). Complémentaire du recorder : on enregistre une base par
+   démonstration, puis on l'affine dans le Studio (Library → touche `e`).
 2. **Recorder** — par démonstration : navigateur visible, on capture une démo et on émet un Blueprint
    minimal. Ce que l'on capture dépend de l'Act (voir ci-dessous). Décrit ci-dessous.
 3. **JSON à la main** — contrôle total, validé contre le schéma.

@@ -26,7 +26,11 @@ les parties au fil de l'implémentation.
 - Typage strict (pydantic v2) ; les erreurs sont typées et jamais avalées.
 - `import aetherius` reste léger : aucune dépendance lourde importée au niveau module.
 - Le dictionnaire d'actions (`core/actions/registry.py`) est l'unique source ; le catalogue du
-  builder en est une projection (pas de duplication).
+  builder (`builder/catalog.py`) en est une projection (pas de duplication). Concrètement, les specs
+  déclaratives par action vivent dans `core/actions/{navigation,interaction,data,flow}.py` et sont
+  agrégées par le registre ; deux tests anti-drift garantissent la bijection specs ↔ capabilities et
+  le dispatch réel specs ↔ drivers (`PENDING_ACTIONS` documente les actions déclarées mais pas encore
+  exécutées). Voir [builder.md](builder.md).
 - Les tests co-évoluent avec le code : chaque module de logique a son test miroir dans `tests/`,
   les contrats sont gardés par des tests, et la suite passe sans dépendances lourdes (skips
   propres). Voir [testing.md](testing.md).

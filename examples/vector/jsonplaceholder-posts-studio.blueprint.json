@@ -1,0 +1,30 @@
+{
+  "aetherius": "1.0",
+  "name": "jsonplaceholder.posts",
+  "description": "Genere par le Blueprint Studio (template vector.api-fetch). GET des posts publics et extraction de champs. Zero configuration.",
+  "act": "vector",
+  "steps": [
+    {
+      "id": "fetch",
+      "action": "http.request",
+      "method": "GET",
+      "url": "https://jsonplaceholder.typicode.com/posts",
+      "expect": {
+        "status": 200
+      },
+      "extract": {
+        "posts": {
+          "from": "json",
+          "path": "$[*]",
+          "fields": {
+            "id": "$.id",
+            "title": "$.title"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "posts": "{{ steps.fetch.posts }}"
+  }
+}

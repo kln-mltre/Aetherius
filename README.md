@@ -248,10 +248,10 @@ Aetherius n'est pas qu'une bibliothèque : c'est aussi une **Console interactive
 aetherius            # ouvre la Console
 ```
 
-> **État actuel** : la Console est navigable de bout en bout. Library, Runs, Catalog et le **Recorder**
-> sont pleinement fonctionnels pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ;
-> le Blueprint Studio et Sessions/Settings (daemon) affichent honnêtement leur jalon en attente tant
-> que builder/daemon ne sont pas implémentés. Détails : [docs/console.md](docs/console.md).
+> **État actuel** : la Console est navigable de bout en bout. Library, Runs, Catalog, le **Recorder**
+> et le **Blueprint Studio** sont pleinement fonctionnels pour Act I (Vector) et Act II (Continuum,
+> avec l'extra `[browser]`) ; seuls Sessions et Settings (daemon) affichent honnêtement leur jalon en
+> attente tant que le daemon n'est pas implémenté. Détails : [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
@@ -450,8 +450,9 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 - [x] **Console (Textual)** : navigation complète (`aetherius` ou `aetherius console`) — Library,
   Runs et Catalog fonctionnels pour Act I (parcours des Blueprints, exécution avec formulaire
   d'inputs/secrets et flux d'événements en direct, catalogue des 4 Acts). CLI scriptable
-  (`aetherius run|validate|record`). Le Recorder est fonctionnel (voir ci-dessous) ; Sessions et
-  Settings affichent honnêtement leur jalon en attente ; voir [docs/console.md](docs/console.md).
+  (`aetherius run|validate|record`). Le Recorder et le Blueprint Studio sont fonctionnels (voir
+  ci-dessous) ; seuls Sessions et Settings affichent leur jalon en attente ; voir
+  [docs/console.md](docs/console.md).
 - [x] **Act II — Continuum** : automatisation d'un vrai navigateur (Playwright, API synchrone).
   Actions navigateur (navigate/back/forward/reload, click/fill/type/press/select/hover/scroll/
   upload/drag), `wait_for` avec échec nommé (`on_timeout: "fail:CODE"`), extraction DOM typée
@@ -484,7 +485,17 @@ Conventions de contribution (discipline de test, invariants, structure des tests
   documentés pour Oracle/Phantom. Cœur pur en CI de base ; intégration Chromium réelle. Exemples :
   `examples/continuum/quotes-recorded-{login,scrape}` + `examples/vector/jsonplaceholder-users-recorded`.
   Détails : [docs/recorder.md](docs/recorder.md).
-- [ ] Builder headless (Blueprint Studio).
+- [x] **Builder headless + Blueprint Studio** : construction de Blueprints **sans JSON**, réutilisable
+  (Console, daemon, SDK). Module `builder/` pur : `catalog` (projection du dictionnaire d'actions),
+  `factory` (`BlueprintDraft` lossless, `validate_draft` non-levant pour l'aperçu live,
+  `build`/`save`), `templates` garantis valides. Specs d'actions déclaratives dans `core/actions/`
+  (l'invariant « registre = source, catalogue = projection » est désormais matérialisé), gardées par
+  deux tests anti-drift (bijection specs↔capabilities, dispatch specs↔drivers ; `PENDING_ACTIONS`
+  documente les actions déclarées mais pas encore exécutées). **Blueprint Studio** dans la Console :
+  sélection d'Act expliquée, inputs/secrets typés, steps par formulaires (params imbriqués en JSON +
+  trappe « raw JSON »), options durables, **aperçu JSON validé en direct**, et **édition** d'un
+  Blueprint existant (Library → `e`) — round-trip lossless garanti sur tous les exemples. Sauvegarde
+  dans `./blueprints`. Détails : [docs/builder.md](docs/builder.md).
 - [ ] Daemon + SDK TypeScript.
 - [ ] Act III — Oracle (vision + entraînement).
 - [ ] Act IV — Phantom (agent).

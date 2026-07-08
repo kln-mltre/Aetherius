@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from aetherius.core.errors import BlueprintValidationError
-from aetherius.stealth.policy import OFF, build_policy
+from aetherius.stealth.policy import OFF, build_policy, preset_names
 
 pytestmark = pytest.mark.unit
 
@@ -68,3 +68,10 @@ def test_bad_distraction_rejected(bad: object) -> None:
 def test_non_object_rejected() -> None:
     with pytest.raises(BlueprintValidationError):
         build_policy(42)
+
+
+def test_preset_names_are_sorted_and_include_off_and_human() -> None:
+    names = preset_names()
+    assert names == sorted(names)
+    assert "off" in names
+    assert "human" in names

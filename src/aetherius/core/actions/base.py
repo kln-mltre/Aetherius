@@ -82,3 +82,18 @@ ACT_CAPABILITIES: dict[str, frozenset[Capability]] = {
     "oracle": _CONTINUUM_CAPS,
     "phantom": _CONTINUUM_CAPS,
 }
+
+
+# Actions listed in ACT_CAPABILITIES but not yet dispatched by the Act's driver: declaring them
+# keeps the capability table forward-looking, but the builder must flag them "not runnable yet".
+# ``extract`` (vector) is implemented inside ``http.request`` rather than as a standalone step;
+# ``http.request`` (continuum) is inherited from the vector capability set but the browser driver
+# does not run it yet. Guarded by tests/unit/acts/test_action_dispatch.py, which fails the moment a
+# declared capability is neither dispatched nor listed here; shrink each entry as drivers catch up.
+# Only runnable Acts appear (see IMPLEMENTED_ACTS).
+PENDING_ACTIONS: dict[str, frozenset[Capability]] = {
+    "vector": frozenset({Capability.IF, Capability.FOR_EACH, Capability.EXTRACT}),
+    "continuum": frozenset(
+        {Capability.IF, Capability.FOR_EACH, Capability.REPEAT, Capability.HTTP_REQUEST}
+    ),
+}

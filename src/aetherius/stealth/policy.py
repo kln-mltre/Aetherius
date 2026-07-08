@@ -67,6 +67,13 @@ _PRESETS: dict[str, StealthPolicy] = {
 }
 
 
+def preset_names() -> list[str]:
+    """The stealth preset names usable as ``"stealth": "<name>"``, sorted. A public view of the
+    preset table so the builder offers exactly what ``build_policy`` accepts, without duplicating it.
+    """
+    return sorted(_PRESETS)
+
+
 def _fail(detail: str) -> BlueprintValidationError:
     return BlueprintValidationError(f"Invalid options.stealth: {detail}")
 

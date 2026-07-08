@@ -1,10 +1,13 @@
-"""Tests for the honest "coming soon" placeholders: Sessions, Settings, Builder."""
+"""Tests for the honest "coming soon" placeholders: Sessions, Settings.
+
+The Blueprint Studio used to sit here too; it is now interactive and covered by
+tests/unit/console/screens/builder/.
+"""
 
 from __future__ import annotations
 
 import pytest
 
-from aetherius.console.screens.builder.screen import BlueprintStudioScreen
 from aetherius.console.screens.sessions import SessionsScreen
 from aetherius.console.screens.settings import SettingsScreen
 
@@ -16,7 +19,7 @@ pytestmark = pytest.mark.unit
 
 @pytest.mark.parametrize(
     "screen_cls",
-    [SessionsScreen, SettingsScreen, BlueprintStudioScreen],
+    [SessionsScreen, SettingsScreen],
 )
 @pytest.mark.asyncio
 async def test_pending_screen_states_its_milestone(screen_cls: type) -> None:

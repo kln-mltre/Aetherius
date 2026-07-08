@@ -18,13 +18,41 @@ from .models import Blueprint
 _schema: dict[str, Any] | None = None
 
 
-def _get_schema() -> dict[str, Any]:
+def blueprint_schema() -> dict[str, Any]:
+    """Return the packaged Blueprint JSON Schema (cached singleton)."""
     global _schema
     if _schema is None:
         pkg = importlib.resources.files("aetherius._contracts")
         schema_text = (pkg / "blueprint.schema.json").read_text(encoding="utf-8")
         _schema = json.loads(schema_text)
     return _schema
+
+
+def _get_schema() -> dict[str, Any]:
+    """Deprecated internal alias for blueprint_schema(); kept for existing callers."""
+    return blueprint_schema()
+
+
+def validate_blueprint_data(data: Any, *, source: str = "<data>") -> Blueprint:
+    """Validate an in-memory Blueprint dict against the schema and model, returning the model.
+
+    The counterpart to :func:`load_blueprint` for data that never touched disk (the builder assembles
+    a Blueprint before there is a file). *source* only labels error messages.
+
+    Raises:
+        BlueprintSchemaError: JSON Schema violation or Pydantic constraint failure.
+    """
+    try:
+        jsonschema.validate(data, blueprint_schema())
+    except jsonschema.ValidationError as exc:
+        raise BlueprintSchemaError(
+            f"Blueprint schema violation in {source}: {exc.message}"
+        ) from exc
+
+    try:
+        return Blueprint.model_validate(data)
+    except ValidationError as exc:
+        raise BlueprintSchemaError(f"Blueprint model validation failed in {source}: {exc}") from exc
 
 
 def load_blueprint(path: str | Path) -> Blueprint:
@@ -51,12 +79,4 @@ def load_blueprint(path: str | Path) -> Blueprint:
     except (json.JSONDecodeError, yaml.YAMLError) as exc:
         raise BlueprintLoadError(f"Cannot parse Blueprint file: {path} — {exc}") from exc
 
-    try:
-        jsonschema.validate(data, _get_schema())
-    except jsonschema.ValidationError as exc:
-        raise BlueprintSchemaError(f"Blueprint schema violation in {path}: {exc.message}") from exc
-
-    try:
-        return Blueprint.model_validate(data)
-    except ValidationError as exc:
-        raise BlueprintSchemaError(f"Blueprint model validation failed in {path}: {exc}") from exc
+    return validate_blueprint_data(data, source=str(path))

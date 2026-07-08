@@ -19,9 +19,9 @@ _MENU: list[tuple[str, str]] = [
     ("library", "✦ Library — browse Blueprints and run one"),
     ("catalog", "✦ Catalog — the 4 Acts and their capabilities"),
     ("recorder", "✦ Recorder — capture a Blueprint by demonstration"),
+    ("builder", "✦ Blueprint Studio — create and edit Blueprints, guided"),
     ("sessions", "· Sessions — profiles and warmup (coming soon)"),
     ("settings", "· Settings — daemon control and configuration (coming soon)"),
-    ("builder", "· Blueprint Studio — guided Blueprint creation (coming soon)"),
 ]
 
 

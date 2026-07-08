@@ -31,7 +31,10 @@ _STATUS_STYLE: dict[EntryStatus, tuple[str, str]] = {
 class LibraryScreen(Screen[None]):
     """Lists every Blueprint found under the discovered directories."""
 
-    BINDINGS = [Binding("r", "rescan", "Rescan")]
+    BINDINGS = [
+        Binding("r", "rescan", "Rescan"),
+        Binding("e", "edit", "Edit in Studio"),
+    ]
 
     def __init__(self) -> None:
         super().__init__()
@@ -54,6 +57,27 @@ class LibraryScreen(Screen[None]):
 
     def action_rescan(self) -> None:
         self._rescan()
+
+    def action_edit(self) -> None:
+        """Open the highlighted Blueprint in the Studio (any file that parsed)."""
+        entry = self._highlighted_entry()
+        if entry is None:
+            return
+        if entry.blueprint is None:
+            self.app.notify(
+                "This file does not parse — edit the JSON by hand.", severity="error", timeout=8
+            )
+            return
+        from .builder.screen import BlueprintStudioScreen
+
+        self.app.push_screen(BlueprintStudioScreen(entry.path))
+
+    def _highlighted_entry(self) -> BlueprintEntry | None:
+        table = self.query_one("#library-table", DataTable)
+        if table.row_count == 0:
+            return None
+        row_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key
+        return next((e for e in self._entries if str(e.path) == str(row_key.value)), None)
 
     def _rescan(self) -> None:
         dirs = discover_blueprint_dirs()

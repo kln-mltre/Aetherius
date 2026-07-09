@@ -213,7 +213,12 @@ class StepList(Vertical):
     """The steps table with add / edit / remove / reorder controls (a pure view of the draft)."""
 
     DEFAULT_CSS = """
-    StepList { height: auto; }
+    StepList {
+        height: auto;
+        border: round $primary;
+        padding: 0 1 1 1;
+        margin: 1 1 0 1;
+    }
     StepList DataTable { height: auto; max-height: 16; }
     StepList .step-list-actions { height: auto; padding: 1 0 0 0; }
     """

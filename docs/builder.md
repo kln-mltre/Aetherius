@@ -105,6 +105,34 @@ Dans la **Library**, la touche **`e`** ouvre le Blueprint surligné dans le Stud
 (garanti par `tests/unit/builder/test_roundtrip_examples.py` sur **tous** les exemples). C'est le
 flux « enregistrer une base au Recorder, puis affiner les détails au Studio ».
 
+## Prise en main (Console)
+
+`aetherius` → **Blueprint Studio**. L'écran assemble le Blueprint par formulaires, avec un **aperçu
+JSON validé en direct** à droite du contenu.
+
+![Le Blueprint Studio, un template chargé : Act, inputs, table des steps](screenshots/studio.svg)
+
+1. **Partir d'un template.** En haut, choisir un starter (ex. *Scrape a page*) et cliquer **Load
+   template** : le nom, l'Act, les steps et les options se remplissent d'un coup.
+2. **Éditer un step.** Dans la table **Steps**, **+ Add** (ou **Edit** sur une ligne) ouvre un
+   formulaire dont les champs sont pilotés par l'action choisie. Les paramètres objet/tableau
+   s'éditent en JSON, et la bascule **« Edit raw JSON params »** donne le contrôle total.
+
+   ![Le formulaire d'édition d'un step, champs pilotés par l'action](screenshots/studio-step-editor.svg)
+
+3. **Suivre la validation en direct.** L'aperçu se met à jour à chaque frappe : erreurs en rouge,
+   avertissements en orange (ex. action *not runnable yet*), ou un **« Valid — ready to save. »** vert
+   quand le Blueprint est prêt. On ne peut pas sauvegarder un Blueprint invalide.
+
+   ![L'aperçu JSON validé en direct et le bouton Save](screenshots/studio-preview.svg)
+
+4. **Sauvegarder.** **✦ Save Blueprint ✦** écrit dans `./blueprints/<nom>.blueprint.json` (que la
+   Library découvre) et notifie le chemin. Depuis la Library, **Entrée** lance le Blueprint (écran
+   Runs), et la touche **`e`** le rouvre dans le Studio pour l'éditer.
+
+> Les captures ci-dessus sont générées automatiquement (`make screenshots`) — voir
+> [console.md](console.md) pour le reste de la Console.
+
 ## Limites connues
 
 - **Flux conditionnel.** `if` / `repeat` / `for_each` sont proposés mais *pending* (aucun driver ne

@@ -43,6 +43,24 @@ Choix de l'Act **à la main** : `aetherius record … --act vector` (défaut `co
 d'Act de la Console. Demander un Act sans backend (Oracle/Phantom) lève une `RecorderError` claire
 (« jalon en attente »), jamais un échec obscur — même logique honnête que les écrans en attente.
 
+## Prise en main (Console)
+
+`aetherius` → **Recorder**. On choisit l'Act, on renseigne un nom et une URL de départ, puis
+**Start** : un navigateur visible s'ouvre.
+
+![L'écran Recorder : choix de l'Act, nom, URL de départ, toggle secrets](screenshots/recorder.svg)
+
+1. **Choisir l'Act** (Continuum pour le DOM, Vector pour l'API) et laisser la bascule *credentials →
+   secrets* active (les champs de login deviennent des `{{ secrets.x }}`, jamais capturés en clair).
+2. **Start** → réaliser la tâche dans le navigateur (Continuum : cliquer/remplir + désigner les
+   données via le menu flottant ; Vector : déclencher les appels réseau à observer).
+3. **Fermer la fenêtre** (ou **Stop**) → le Blueprint est assemblé, relu par le loader canonique, et
+   sauvegardé dans `./blueprints`. Les actions capturées défilent en direct dans le journal, et le
+   Blueprint produit s'affiche à la fin.
+
+Ensuite, on affine dans le **Blueprint Studio** (Library → touche `e`) — voir
+[builder.md](builder.md). Les captures sont générées par `make screenshots`.
+
 ## Continuum recorder (Act II — DOM)
 
 Modules : [`recorder/`](../src/aetherius/recorder/) —

@@ -44,6 +44,10 @@ est vrai. On ne saute pas une étape en attendant qu'on la réclame :
 4. **`make check` vert.**
 5. **Flux vérifié à la main** au moins une fois : le vrai `run`, pas seulement les tests (chaque
    doc d'Act a une section « Tester … » pour ça).
+6. **Prise en main UI** pour une capacité **liée à l'UI et non triviale** (nouvel écran ou
+   interaction non évidente de la Console) : un walkthrough orienté UI dans la doc **et** des captures
+   SVG générées (`make screenshots`) — voir [Documentation](#documentation). Exception : une
+   interaction rudimentaire (ex. sélectionner une ligne pour lancer un run) n'en a pas besoin.
 
 ## Principes de code
 
@@ -99,6 +103,20 @@ contribution, mettre à jour :
   laisser un pointeur là où c'est utile.
 
 Style : sobre, orienté « pourquoi », sans emoji — comme le code.
+
+### Captures d'écran de la Console
+
+Les images de la doc (`docs/screenshots/*.svg`) sont **générées**, jamais prises à la main. La source
+unique est [`console/screenshots.py`](src/aetherius/console/screenshots.py), qui pilote l'app en
+headless et exporte chaque écran en SVG déterministe (identifiant normalisé, chemin local neutralisé).
+Règles :
+
+- après **toute** évolution d'un écran ou d'un layout Console, exécuter `make screenshots` et commiter
+  le résultat ;
+- pour un **nouvel** écran/interaction, ajouter un scénario dans `screenshots.py` (une fonction de
+  pilotage + une entrée dans `_SHOTS`), régénérer, puis l'intégrer dans la doc concernée ;
+- `make screenshots-check` (garde-fou, rejouable en CI) échoue si les captures committées sont
+  périmées, grâce au déterminisme.
 
 ## Intégration continue
 

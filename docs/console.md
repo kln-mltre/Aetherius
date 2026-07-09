@@ -5,6 +5,8 @@ Le centre de contrôle terminal (voir aussi le [README](../README.md)). `aetheri
 `aetherius run|validate` sont les chemins scriptables non-interactifs
 ([`cli.py`](../src/aetherius/cli.py)).
 
+![L'écran d'accueil de la Console Aetherius](screenshots/home.svg)
+
 ## Plan des écrans
 
 ```
@@ -40,6 +42,29 @@ Oracle) ou **invalid** (erreur de schéma ou d'action). Les badges d'Act suivent
 (`theme.act_color`) : un Act runnable porte sa couleur, un Act en attente reste gris — dérivé de
 `IMPLEMENTED_ACTS`, donc jamais à re-maintenir à la main. Côté Runs, un secret déjà présent dans
 `.env` s'affiche « loaded from .env » et peut être laissé vide (voir [docs/secrets.md](secrets.md)).
+
+## Les écrans en images
+
+Toutes les captures ci-dessous sont générées automatiquement par `make screenshots` (voir la fin de
+ce document) — elles restent donc fidèles à l'UI réelle.
+
+**Library** — parcourir les Blueprints découverts, avec leur statut (`ready` / `act pending` /
+`invalid`). `Entrée` ouvre dans Runs, `e` ouvre dans le Blueprint Studio, `r` rescanne.
+
+![L'écran Library : table des Blueprints et statuts](screenshots/library.svg)
+
+**Runs** — la vue de détail d'un Blueprint : formulaire d'inputs/secrets, toggle Debug, bouton Run,
+puis événements en direct et résultat final.
+
+![L'écran Runs : formulaire d'inputs et bouton Run](screenshots/runs.svg)
+
+**Catalog** — la référence des 4 Acts : statut d'implémentation et actions supportées (un `†` marque
+une action déclarée mais pas encore exécutée par le driver de l'Act).
+
+![L'écran Catalog : les 4 Acts et leurs capabilities](screenshots/catalog.svg)
+
+Le **Blueprint Studio** et le **Recorder** ont leur propre prise en main illustrée dans
+[docs/builder.md](builder.md) et [docs/recorder.md](recorder.md).
 
 Les écrans en attente restants (`console/screens/sessions.py`, `settings.py`) partagent une base
 commune, [`console/screens/_pending.py`](../src/aetherius/console/screens/_pending.py) : ils
@@ -95,3 +120,21 @@ Répartition des styles : la mise en page propre à un widget réutilisable vit 
 contient que le layout au niveau écran. Règle d'ergonomie : les conteneurs de contenu utilisent
 `height: auto` + corps d'écran en `VerticalScroll`, pour que rien ne soit compressé ni perdu
 dans un terminal bas (les champs de formulaire gardent leur hauteur, l'écran scrolle).
+
+## Captures d'écran de la doc
+
+Les captures des écrans (`docs/screenshots/*.svg`) sont **générées**, jamais prises à la main :
+[`console/screenshots.py`](../src/aetherius/console/screenshots.py) pilote l'app en headless
+(`run_test`/`Pilot`, comme les tests), exporte chaque écran en SVG et le **normalise** (identifiant
+Rich stabilisé, `@font-face` externe strippé, chemin du dépôt neutralisé) — d'où des fichiers
+déterministes et sans fuite de chemin local.
+
+```bash
+make screenshots         # régénère docs/screenshots/ après toute évolution de l'UI
+make screenshots-check   # échoue si les captures committées sont périmées (garde-fou CI)
+```
+
+C'est la **source unique** des captures : ajouter un écran ou changer un layout ⇒ ajouter/ajuster
+un scénario dans `screenshots.py` puis `make screenshots`. Le test
+[`tests/unit/console/test_screenshots.py`](../tests/unit/console/test_screenshots.py) rejoue la
+génération (donc rend chaque écran) et vérifie SVG valide + déterminisme.

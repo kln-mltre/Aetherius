@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
 
@@ -83,7 +83,7 @@ class BlueprintStudioScreen(Screen[None]):
                         id="studio-template",
                     )
                     yield Button("Load template", id="studio-load-template")
-            with VerticalScroll(classes="studio-field"):
+            with Vertical(classes="studio-field"):
                 yield Label("Name (e.g. domain.task)")
                 yield Input(value=self._draft.name, placeholder="domain.task", id="studio-name")
                 yield Label("Description (optional)")

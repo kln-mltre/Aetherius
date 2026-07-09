@@ -248,6 +248,8 @@ Aetherius n'est pas qu'une bibliothèque : c'est aussi une **Console interactive
 aetherius            # ouvre la Console
 ```
 
+![La Console Aetherius : écran d'accueil](docs/screenshots/home.svg)
+
 > **État actuel** : la Console est navigable de bout en bout. Library, Runs, Catalog, le **Recorder**
 > et le **Blueprint Studio** sont pleinement fonctionnels pour Act I (Vector) et Act II (Continuum,
 > avec l'extra `[browser]`) ; seuls Sessions et Settings (daemon) affichent honnêtement leur jalon en
@@ -272,8 +274,11 @@ Depuis la Console, sans écrire de JSON à la main :
    fragiles). Idéal quand la démonstration directe est plus simple que la description.
 3. **JSON à la main** — pour les power users qui veulent le contrôle total.
 
+![Le Blueprint Studio : construction guidée avec aperçu JSON validé en direct](docs/screenshots/studio.svg)
+
 La logique de construction vit dans un module `builder/` *headless* : la Console n'en est que
 l'habillage, et le daemon peut l'exposer pour construire des Blueprints programmatiquement.
+Prise en main illustrée : [docs/builder.md](docs/builder.md).
 
 ## La discrétion (stealth), en option modulaire
 

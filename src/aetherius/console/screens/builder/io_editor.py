@@ -63,6 +63,8 @@ class InputsEditor(Vertical):
 
     DEFAULT_CSS = """
     InputsEditor { height: auto; padding: 1 1 0 1; }
+    /* Without this the empty rows container grabs 1fr and inflates the whole editor. */
+    InputsEditor #io-input-rows { height: auto; }
     InputsEditor #io-add-input { margin: 0 0 1 0; }
     """
 

@@ -6,7 +6,7 @@
 PY := python3
 TS_DIR := sdks/typescript
 
-.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts check check-all
+.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts check check-all screenshots screenshots-check
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -39,6 +39,19 @@ test-browser: ## Run the browser tests (Act II) against a real Chromium; needs t
 test-ts: ## Typecheck and build the TypeScript SDK
 	npm --prefix $(TS_DIR) install
 	npm --prefix $(TS_DIR) run build
+
+screenshots: ## Regenerate the Console SVG screenshots under docs/screenshots/
+	$(PY) -m aetherius.console.screenshots
+
+screenshots-check: ## Fail if the committed screenshots are stale (deterministic; CI guard)
+	@tmp=$$(mktemp -d); \
+	$(PY) -c "import asyncio; from pathlib import Path; from aetherius.console.screenshots import capture_all; asyncio.run(capture_all(Path('$$tmp')))" >/dev/null; \
+	if diff -rq docs/screenshots "$$tmp" >/dev/null; then \
+		echo "screenshots up to date"; rm -rf "$$tmp"; \
+	else \
+		echo "Screenshots are stale — run 'make screenshots' and commit the result."; \
+		diff -rq docs/screenshots "$$tmp" || true; rm -rf "$$tmp"; exit 1; \
+	fi
 
 check: ## Full Python gate: format check, lint, types, tests
 	@$(MAKE) format-check lint typecheck test

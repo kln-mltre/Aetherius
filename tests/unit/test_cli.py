@@ -97,11 +97,15 @@ def test_run_reports_unimplemented_act_cleanly(examples_dir: Path) -> None:
     assert "Traceback" not in result.stdout
 
 
-def test_serve_reports_not_implemented() -> None:
-    result = runner.invoke(app, ["serve"])
+def test_serve_starts_uvicorn_with_the_resolved_config() -> None:
+    with patch("uvicorn.run") as run_mock:
+        result = runner.invoke(app, ["serve", "--host", "0.0.0.0", "--port", "9001"])
 
-    assert result.exit_code == 1
-    assert "not implemented" in result.stdout
+    assert result.exit_code == 0
+    run_mock.assert_called_once()
+    kwargs = run_mock.call_args.kwargs
+    assert kwargs["host"] == "0.0.0.0"
+    assert kwargs["port"] == 9001
 
 
 def test_record_requires_a_name_and_url() -> None:

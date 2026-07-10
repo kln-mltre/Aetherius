@@ -127,13 +127,32 @@ def validate(blueprint: Path) -> None:
 
 
 @app.command()
-def serve() -> None:
-    """Start the local daemon (not implemented yet)."""
-    typer.echo(
-        "The daemon (`aetherius serve`) is not implemented yet. "
-        "It is a pending milestone; see README.md 'État d'avancement'."
-    )
-    raise typer.Exit(1)
+def serve(
+    host: str | None = typer.Option(None, "--host", help="Bind address (default 127.0.0.1)."),
+    port: int | None = typer.Option(None, "--port", help="Bind port (default 8787)."),
+    token: str | None = typer.Option(
+        None, "--token", help="Require this bearer token on every request."
+    ),
+) -> None:
+    """Start the local daemon exposing the engine over HTTP and WebSocket.
+
+    Options override the environment (`AETHERIUS_DAEMON_HOST/PORT/TOKEN`). The daemon binds to
+    loopback by default: it serves local processes only, never the network.
+    """
+    import uvicorn
+
+    from .server import DaemonConfig, create_app
+
+    # Start from the environment (AETHERIUS_DAEMON_*), then let explicit CLI options win.
+    config = DaemonConfig()
+    if host is not None:
+        config.host = host
+    if port is not None:
+        config.port = port
+    if token is not None:
+        config.token = token
+
+    uvicorn.run(create_app(config), host=config.host, port=config.port, log_level="info")
 
 
 @app.command()

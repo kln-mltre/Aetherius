@@ -62,6 +62,13 @@ async def _recorder(app: AetheriusConsoleApp, pilot: Pilot[None]) -> None:
     await pilot.pause()
 
 
+async def _settings(app: AetheriusConsoleApp, pilot: Pilot[None]) -> None:
+    from .screens.settings import SettingsScreen
+
+    app.push_screen(SettingsScreen())
+    await pilot.pause()
+
+
 async def _open_studio_with_template(
     app: AetheriusConsoleApp, pilot: Pilot[None]
 ) -> BlueprintStudioScreen:
@@ -115,6 +122,7 @@ _SHOTS: list[tuple[str, tuple[int, int], Setup]] = [
     ("runs", (100, 34), _runs),
     ("catalog", (110, 26), _catalog),
     ("recorder", (100, 30), _recorder),
+    ("settings", (100, 26), _settings),
     ("studio", (104, 50), _studio),
     ("studio-preview", (104, 40), _studio_preview),
     ("studio-step-editor", (100, 40), _studio_step_editor),

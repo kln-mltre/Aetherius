@@ -18,7 +18,11 @@ les parties au fil de l'implémentation.
 4. **Discrétion** (`src/aetherius/stealth/`) — couche transverse injectée dans les Acts navigateur.
 5. **Outils** — `recorder/` (génération de Blueprints/gestes), `builder/` (construction headless),
    `console/` (TUI Textual), `models/` (assets ML runtime).
-6. **Gateway** (`src/aetherius/server/`) — daemon FastAPI + SDKs (`sdks/`).
+6. **Gateway** (`src/aetherius/server/`) — daemon FastAPI (HTTP + WebSocket) exposant le moteur à tout
+   langage, et les SDKs (`sdks/`). Les runs (bloquants) tournent sur un thread de worker ; les
+   événements franchissent la frontière thread → boucle asyncio via le pattern Sink partagé avec la
+   Console. Le contrat (`contracts/openapi.yaml` + `events.schema.json`) fait foi. Voir
+   [daemon.md](daemon.md).
 
 ## Invariants
 

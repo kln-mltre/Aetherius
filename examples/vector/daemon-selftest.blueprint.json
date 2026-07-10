@@ -1,0 +1,22 @@
+{
+  "aetherius": "1.0",
+  "name": "daemon.selftest",
+  "description": "Zero-network self-test. Uses only Vector's context actions (set/emit), so it runs with no network, browser or extra. Handy to prove the daemon executes a Blueprint end to end and streams its events.",
+  "act": "vector",
+  "inputs": {
+    "subject": {
+      "type": "string",
+      "required": false,
+      "default": "world",
+      "description": "Name interpolated into the greeting."
+    }
+  },
+  "steps": [
+    { "id": "greeting", "action": "set", "value": "hello, {{ inputs.subject }}" },
+    { "action": "emit", "event": "selftest reached the emit step" }
+  ],
+  "outputs": {
+    "greeting": "{{ steps.greeting.value }}",
+    "engine": "aetherius"
+  }
+}

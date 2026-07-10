@@ -14,11 +14,12 @@ Deux modes, un seul objet `Aetherius` :
   print(result.outputs["events"])
   ```
 
-- **Remote (via le daemon)** — même API, mais les runs sont délégués au daemon local (utile pour
+- **Remote (via le daemon)** — déléguer les runs au daemon local (`aetherius serve`), utile pour
   isoler le process navigateur, partager un daemon entre plusieurs clients, ou uniformiser avec les
-  autres langages).
+  autres langages. Le daemon existe (voir [docs/daemon.md](../../docs/daemon.md)) et est déjà consommé
+  par le **SDK TypeScript** ([`sdks/typescript`](../typescript)). Un **client remote mince Python**
+  (à parité avec le SDK TS, par-dessus `httpx` déjà présent) est un ajout **différé** : le mode
+  in-process ci-dessus couvre le cas Python le plus courant.
 
-Le SDK Python n'a donc pas de paquet séparé à publier : il *est* le paquet `aetherius`. Ce dossier
-documente le contrat client et hébergera le client remote mince quand le daemon sera implémenté.
-La création de Blueprints se fait via la Console (`aetherius`) ; l'exécution, elle, est purement
-pilotée par le code.
+Le SDK Python n'a donc pas de paquet séparé à publier : il *est* le paquet `aetherius`. La création de
+Blueprints se fait via la Console (`aetherius`) ; l'exécution, elle, est purement pilotée par le code.

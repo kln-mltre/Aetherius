@@ -14,7 +14,30 @@ info:
 servers:
   - url: http://127.0.0.1:8787
 
+# Authentication is optional: the daemon binds to loopback. When a token is configured, every
+# request must present it as a bearer credential; otherwise no auth is required. The two entries
+# below (bearer, or none) model exactly that. /health always opts out.
+security:
+  - bearerAuth: []
+  - {}
+
 paths:
+  /health:
+    get:
+      summary: Unauthenticated readiness probe used when spawning the daemon.
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: The daemon is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  version: { type: string }
+
   /v1/runs:
     post:
       summary: Submit a Blueprint for execution.
@@ -80,11 +103,21 @@ paths:
   /v1/recorder/sessions:
     post:
       summary: Start a recorder session that emits a Blueprint from live actions.
+      description: >
+        Recording is a host-local, interactive flow (a visible browser driven by demonstration,
+        producing a Blueprint file). It is intentionally not exposed over the daemon and returns
+        501; use `aetherius record` or the Console Recorder instead. Reserved in the contract as a
+        deferred capability.
       operationId: startRecorder
       responses:
-        "202": { description: Recorder session started. }
+        "501": { description: Not implemented; recording is host-local (see description). }
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Optional token, enforced only when the daemon is started with one.
   schemas:
     RunRequest:
       type: object

@@ -36,9 +36,9 @@ test-fast: ## Run only the fast tests (skip heavy extras and slow tests)
 test-browser: ## Run the browser tests (Act II) against a real Chromium; needs the [browser] extra
 	pytest -m browser
 
-test-ts: ## Typecheck and build the TypeScript SDK
+test-ts: ## Typecheck, build and test the TypeScript SDK (unit + a real spawn E2E)
 	npm --prefix $(TS_DIR) install
-	npm --prefix $(TS_DIR) run build
+	npm --prefix $(TS_DIR) test
 
 screenshots: ## Regenerate the Console SVG screenshots under docs/screenshots/
 	$(PY) -m aetherius.console.screenshots

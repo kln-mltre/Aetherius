@@ -250,10 +250,10 @@ aetherius            # ouvre la Console
 
 ![La Console Aetherius : écran d'accueil](docs/screenshots/home.svg)
 
-> **État actuel** : la Console est navigable de bout en bout. Library, Runs, Catalog, le **Recorder**
-> et le **Blueprint Studio** sont pleinement fonctionnels pour Act I (Vector) et Act II (Continuum,
-> avec l'extra `[browser]`) ; seuls Sessions et Settings (daemon) affichent honnêtement leur jalon en
-> attente tant que le daemon n'est pas implémenté. Détails : [docs/console.md](docs/console.md).
+> **État actuel** : la Console est navigable de bout en bout. Library, Runs, Catalog, le **Recorder**,
+> le **Blueprint Studio** et **Settings** (démarrer/arrêter le daemon) sont pleinement fonctionnels
+> pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ; seul **Sessions** affiche
+> honnêtement son jalon en attente (stealth/session). Détails : [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
@@ -342,15 +342,19 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 └─────────────┘   résultat + flux d'événements     └──────────────────────────┘
 ```
 
-- **Daemon** : `aetherius serve` (local, 127.0.0.1, token optionnel).
+- **Daemon** : `aetherius serve` (local, 127.0.0.1, token optionnel, `GET /health`).
   - `POST /v1/runs` → `run_id` ; `GET /v1/runs/{id}` → statut + résultat.
-  - `WS /v1/runs/{id}/events` → flux d'événements (debug/progression).
-  - `POST /v1/blueprints/validate`, `GET /v1/schema`, `POST /v1/recorder/sessions`.
-- **SDK TypeScript** `@aetherius/client` : peut spawn le daemon, `client.run(blueprint, { inputs,
-  secrets })`, stream d'événements typé.
-- **SDK Python** : idem, plus l'import in-process direct (`import aetherius`, sans daemon).
-- **Contrats** ([`contracts/`](contracts/)) : JSON Schema du Blueprint + OpenAPI du daemon = source
-  de vérité ; les types des SDK en sont générés.
+  - `WS /v1/runs/{id}/events` → flux d'événements (rejeu + live jusqu'à `done`).
+  - `POST /v1/blueprints/validate`, `GET /v1/schema`. `POST /v1/recorder/sessions` : `501`,
+    l'enregistrement reste host-local (CLI/Console).
+- **SDK TypeScript** `@aetherius/client` (Node 20+) : spawn le daemon (ou cible un `baseUrl`),
+  `client.run(blueprint, { inputs, secrets, onEvent })`, stream d'événements typé.
+- **SDK Python** : l'import in-process direct (`import aetherius`, sans daemon) ; le client remote
+  mince est différé.
+- **Contrats** ([`contracts/`](contracts/)) : JSON Schema du Blueprint + OpenAPI du daemon + schéma
+  d'événements = source de vérité ; les types des SDK s'y conforment (gardés par des tests).
+
+Détails, sécurité et « Tester le daemon » : [docs/daemon.md](docs/daemon.md).
 
 ### Exécuter un Blueprint depuis le code applicatif
 
@@ -449,6 +453,13 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 
 ## État d'avancement
 
+Le projet avance en deux grandes phases. La **Phase 1** — le socle, utilisable comme **bibliothèque**
+(in-process Python) et comme **service** (daemon + SDK) — est **terminée avec ce jalon** : un premier
+point de contrôle, à éprouver en conditions réelles avant d'attaquer la **Phase 2** (les deux Acts les
+plus lourds).
+
+### Phase 1 — le socle réutilisable (terminée)
+
 - [x] Vision, concept des 4 Acts, format Blueprint, architecture.
 - [x] Squelette : arborescence + stubs + contrats + exemples.
 - [x] **Act I — Vector** : moteur HTTP/API complet. `Aetherius().run(blueprint, inputs=...)` fonctionnel. Couverture : http.request (form/JSON/params/headers), extraction JSONPath avec `where` et mapping de champs, extraction HTML CSS/XPath, authentification (NoAuth/Bearer/Basic/Cookie/CAS form-login), retries/backoff (tenacity), moteur de templates Jinja2 (`{{ inputs.x | add_days(7) }}`), bus d'événements, hiérarchie d'erreurs typées. 69 tests, mypy strict, lint propre.
@@ -501,7 +512,20 @@ Conventions de contribution (discipline de test, invariants, structure des tests
   trappe « raw JSON »), options durables, **aperçu JSON validé en direct**, et **édition** d'un
   Blueprint existant (Library → `e`) — round-trip lossless garanti sur tous les exemples. Sauvegarde
   dans `./blueprints`. Détails : [docs/builder.md](docs/builder.md).
-- [ ] Daemon + SDK TypeScript.
+- [x] **Daemon local + SDK TypeScript** : daemon FastAPI (HTTP + WebSocket) exposant le moteur à tout
+  langage — `POST /v1/runs` (202 + `run_id`), `GET /v1/runs/{id}`, flux d'événements WebSocket (rejeu
+  bufferisé + live jusqu'à `done`), `POST /v1/blueprints/validate`, `GET /v1/schema`, `GET /health` ;
+  token bearer optionnel, bind loopback. Runs exécutés sur un thread de worker, événements relayés via
+  le pattern Sink (thread → asyncio). SDK TypeScript `@aetherius/client` (Node 20+) : spawn du daemon
+  (ou `baseUrl`), `client.run(blueprint, { inputs, secrets, onEvent })`, stream d'événements typé, avec
+  un E2E réel en CI. Console : l'écran **Settings** démarre/arrête le daemon. Enregistrement
+  volontairement host-local (`/v1/recorder/sessions` → 501). Détails : [docs/daemon.md](docs/daemon.md).
+
+**Phase 1 terminée.** Aetherius est utilisable comme bibliothèque et comme service ; c'est le point de
+contrôle prévu pour l'éprouver en conditions réelles et corriger avant la suite.
+
+### Phase 2 — les Acts autonomes (à venir)
+
 - [ ] Act III — Oracle (vision + entraînement).
 - [ ] Act IV — Phantom (agent).
 

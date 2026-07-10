@@ -83,5 +83,7 @@ et à mesure que les Acts et le runtime sont implémentés.
 ## Contrats
 
 Les contrats (`contracts/`) sont la source de vérité. `tests/contracts/` vérifie que le schéma de
-Blueprint est un JSON Schema valide, que **chaque** exemple de `examples/` s'y conforme, et que le
-contrat OpenAPI du daemon est bien formé. Toute évolution d'un contrat doit garder ces tests verts.
+Blueprint est un JSON Schema valide, que **chaque** exemple de `examples/` s'y conforme, que le
+contrat OpenAPI du daemon est bien formé (et déclare les routes implémentées), et que les événements
+d'un run **sérialisés** se conforment à `events.schema.json`. Toute évolution d'un contrat doit garder
+ces tests verts.

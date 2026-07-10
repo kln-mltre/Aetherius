@@ -43,10 +43,13 @@ class RunEngine:
         secrets: Mapping[str, str] | None = None,
         *,
         sinks: list[Sink] | None = None,
+        run_id: str | None = None,
     ) -> Result:
         validate_for_act(blueprint)
 
-        run_id = uuid.uuid4().hex
+        # The daemon assigns the id it returned to the caller (HTTP 202) before the run starts, so
+        # the streamed events carry a run_id the client already holds. In-process callers omit it.
+        run_id = run_id or uuid.uuid4().hex
         started_at = datetime.now(timezone.utc)
 
         from ...config.secrets import resolve_secrets

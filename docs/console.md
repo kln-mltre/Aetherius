@@ -17,8 +17,8 @@ Home ─┬─ Library ──► Runs   (Library parcourt les Blueprints ; en ou
       ├─ Catalog   (les 4 Acts, statut d'implémentation, capabilities par Act)
       ├─ Recorder  (capture un Blueprint par démonstration — voir docs/recorder.md)
       ├─ Builder   (Blueprint Studio : créer et éditer un Blueprint, guidé — voir docs/builder.md)
-      ├─ Sessions  (en attente : stealth/session)
-      └─ Settings  (en attente : daemon)
+      ├─ Settings  (démarrer/arrêter le daemon local, voir son statut et sa config)
+      └─ Sessions  (en attente : stealth/session)
 ```
 
 Runs n'est **pas** une entrée du menu Home : c'est la vue de détail d'un Blueprint (pattern
@@ -63,12 +63,22 @@ une action déclarée mais pas encore exécutée par le driver de l'Act).
 
 ![L'écran Catalog : les 4 Acts et leurs capabilities](screenshots/catalog.svg)
 
+**Settings** — démarre et arrête le daemon local (`aetherius serve`) sans quitter le terminal, et
+affiche son statut (arrêté / en marche + `healthy`), son adresse de bind et son état d'auth. Le daemon
+est **lié à la session** : il survit à la navigation mais s'arrête à la fermeture de la Console (pour
+un daemon persistant, lancer `aetherius serve` dans un terminal). Le contrôle du sous-process vit dans
+[`console/daemon_control.py`](../src/aetherius/console/daemon_control.py) (un `DaemonController`
+possédé par l'App, une instance par session, avec garde `atexit` contre les orphelins) ; la sonde de
+santé tourne dans un worker `@work(thread=True)`. Détails du daemon : [docs/daemon.md](daemon.md).
+
+![L'écran Settings : contrôle du daemon local](screenshots/settings.svg)
+
 Le **Blueprint Studio** et le **Recorder** ont leur propre prise en main illustrée dans
 [docs/builder.md](builder.md) et [docs/recorder.md](recorder.md).
 
-Les écrans en attente restants (`console/screens/sessions.py`, `settings.py`) partagent une base
-commune, [`console/screens/_pending.py`](../src/aetherius/console/screens/_pending.py) : ils
-affichent ce que l'écran fera et le jalon dont il dépend, sans fausse interactivité. Le **Recorder**
+Le seul écran encore en attente (`console/screens/sessions.py`) s'appuie sur la base commune
+[`console/screens/_pending.py`](../src/aetherius/console/screens/_pending.py) : il affiche ce que
+l'écran fera et le jalon dont il dépend, sans fausse interactivité. Le **Recorder**
 ([`recorder.py`](../src/aetherius/console/screens/recorder.py)) et le **Blueprint Studio**
 ([`screens/builder/`](../src/aetherius/console/screens/builder/)) sont, eux, pleinement interactifs.
 Le Recorder pilote le blueprint recorder dans un worker `@work(thread=True)` et streame les actions

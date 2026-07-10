@@ -21,7 +21,7 @@ _MENU: list[tuple[str, str]] = [
     ("recorder", "✦ Recorder — capture a Blueprint by demonstration"),
     ("builder", "✦ Blueprint Studio — create and edit Blueprints, guided"),
     ("sessions", "· Sessions — profiles and warmup (coming soon)"),
-    ("settings", "· Settings — daemon control and configuration (coming soon)"),
+    ("settings", "✦ Settings — start/stop the daemon and see its config"),
 ]
 
 

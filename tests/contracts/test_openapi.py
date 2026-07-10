@@ -23,3 +23,19 @@ def test_openapi_is_wellformed(contracts_dir: Path) -> None:
 
     paths = spec.get("paths")
     assert isinstance(paths, dict) and paths, "openapi.paths must be a non-empty mapping"
+
+
+def test_openapi_declares_the_implemented_paths(contracts_dir: Path) -> None:
+    spec = yaml.safe_load((contracts_dir / "openapi.yaml").read_text(encoding="utf-8"))
+    paths = spec["paths"]
+
+    for path in (
+        "/health",
+        "/v1/runs",
+        "/v1/runs/{runId}",
+        "/v1/runs/{runId}/events",
+        "/v1/blueprints/validate",
+        "/v1/schema",
+        "/v1/recorder/sessions",
+    ):
+        assert path in paths, f"{path} missing from the OpenAPI contract"

@@ -59,4 +59,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # The SDK end-to-end test spawns the real daemon, so the package must be importable.
+      - run: python -m pip install -e .
       - run: make test-ts

@@ -1,0 +1,92 @@
+# Automated release. Publishing lives here (as infra), not in a doc to remember.
+#
+# To cut a release:
+#   1. Bump the version in BOTH src/aetherius/version.py and sdks/typescript/package.json (same X.Y.Z).
+#   2. Add a "## [X.Y.Z] - <date>" section at the top of CHANGELOG.md (becomes the release notes).
+#   3. Commit, then: git tag vX.Y.Z && git push && git push --tags
+#
+# Pushing the tag triggers this workflow, which — after checking the tag matches the versions —
+# publishes to PyPI and npm and creates the GitHub Release. Nothing else to run by hand.
+#
+# One-time setup (see the pinned note): a PyPI "trusted publisher" for this repo (no token), and an
+# NPM_TOKEN repository secret (npm automation token).
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  check-version:
+    name: Tag matches package versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify tag == version.py == package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          py=$(python3 -c "import re,pathlib; print(re.search(r'__version__\s*=\s*\"([^\"]+)\"', pathlib.Path('src/aetherius/version.py').read_text()).group(1))")
+          ts=$(node -p "require('./sdks/typescript/package.json').version")
+          echo "tag=$tag  python=$py  npm=$ts"
+          test "$tag" = "$py" || { echo "::error::Tag $tag != Python version $py (bump src/aetherius/version.py)"; exit 1; }
+          test "$tag" = "$ts" || { echo "::error::Tag $tag != npm version $ts (bump sdks/typescript/package.json)"; exit 1; }
+
+  pypi:
+    name: Publish to PyPI
+    needs: check-version
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for PyPI trusted publishing (no token stored)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install build
+      - run: python3 -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  npm:
+    name: Publish to npm
+    needs: check-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install --no-audit --no-fund
+        working-directory: sdks/typescript
+      - run: npm run build
+        working-directory: sdks/typescript
+      - run: npm publish --access public
+        working-directory: sdks/typescript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github-release:
+    name: GitHub Release
+    needs: [pypi, npm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract the CHANGELOG section for this version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v ver="$version" '
+            $0 ~ "^## \\[" ver "\\]" { f=1; next }
+            /^## \[/ { if (f) exit }
+            f { print }
+          ' CHANGELOG.md > release-notes.md
+          [ -s release-notes.md ] || echo "Release ${GITHUB_REF_NAME}." > release-notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md

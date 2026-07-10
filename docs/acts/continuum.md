@@ -178,6 +178,10 @@ défaut). Détails, composants et limites : [docs/stealth.md](../stealth.md). Ex
   ambiguë est une erreur à signaler, pas à masquer silencieusement.
 - **Actions utilitaires partagées.** `emit`/`wait`/`set`/`assert` viennent du `SharedActionsMixin`
   commun à Vector et Continuum — une seule implémentation, pas de duplication.
+- **Suivi des nouveaux onglets.** Un clic ouvrant un onglet (`target="_blank"`, `window.open`) fait
+  de la nouvelle page la page active : les steps suivants s'y appliquent au lieu de rester bloqués sur
+  l'onglet d'origine. Si l'onglet actif se referme (popup transitoire), la session retombe sur la
+  dernière page encore ouverte. Le humanizer est repointé sur la nouvelle page au passage.
 
 ## Tester Act II
 

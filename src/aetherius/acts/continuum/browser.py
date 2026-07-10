@@ -93,6 +93,10 @@ class BrowserSession:
         self._context.set_default_timeout(self._timeout_ms)
         self._apply_stealth()
 
+        # Attach only after the initial page is set, so the listener reacts to genuine new
+        # tabs/popups (a target="_blank" click, window.open) rather than the page we just opened.
+        self._context.on("page", self._on_new_page)
+
         if self._debug:
             # Visible cursor + red click ripple, re-installed on every navigation.
             self._context.add_init_script(DEBUG_OVERLAY_JS)
@@ -108,6 +112,46 @@ class BrowserSession:
         if self._debug and not humanized_actions(self._stealth):
             return _DEBUG_SLOW_MO_MS
         return 0
+
+    def pace_raw_action(self) -> None:
+        """Slow a raw (non-humanized) action in debug when slow_mo is off, so it stays watchable.
+
+        Counterpart to :meth:`_slow_mo_ms`: when inputs are humanized, slow_mo is 0 and the humanizer
+        paces the gestures it owns — but raw ops it never touches (select, upload, navigate, …) would
+        then flash by. Give them the same delay slow_mo would have, so nothing is invisible in debug.
+        """
+        if self._debug and humanized_actions(self._stealth):
+            time.sleep(_DEBUG_SLOW_MO_MS / 1000)
+
+    def _on_new_page(self, page: Any) -> None:
+        """Follow a newly opened tab/popup: make it the active page for the steps that follow.
+
+        A target="_blank" click (or window.open) spawns a fresh Playwright page; without this the
+        session would keep operating on the old tab and every later step would miss its target. The
+        previous tab stays open. HumanInput/HumanMouse cache the page reference, so rebuild the facade
+        (a pure, browser-free constructor) to point the humanizer at the new tab.
+        """
+        self._page = page
+        self._rebuild_human()
+        page.on("close", self._on_page_close)
+
+    def _on_page_close(self, page: Any) -> None:
+        """When the active tab closes, fall back to the most recent surviving page.
+
+        A transient popup (a download stub, a tracking pixel) can open then close; without a fallback
+        the session would be stranded on a dead page. Ignore closes of non-active tabs.
+        """
+        if page is not self._page:
+            return
+        survivors = [p for p in self._context.pages if p is not page] if self._context else []
+        if survivors:
+            self._page = survivors[-1]
+            self._rebuild_human()
+
+    def _rebuild_human(self) -> None:
+        """Repoint the humanizer facade at the current page (no-op when inputs are not humanized)."""
+        if self._human is not None:
+            self._human = HumanInput(self._page, self._stealth)
 
     def _context_options(self) -> dict[str, Any]:
         """Playwright context options for the active fingerprint profile (empty when none)."""

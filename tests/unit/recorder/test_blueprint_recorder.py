@@ -217,6 +217,24 @@ def test_parameterize_rewrites_the_matching_fill_into_an_input() -> None:
     assert inputs == {"groupe": {"type": "string", "required": True}}
 
 
+def test_parameterize_infers_type_and_format_from_html_type() -> None:
+    events = [
+        RecordedEvent(kind="fill", value="2026-02-02", descriptor=_field("#d", field_type="date")),
+        RecordedEvent(
+            kind="parameterize", descriptor=_field("#d", field_type="date"), config={"name": "day"}
+        ),
+        RecordedEvent(kind="fill", value="3", descriptor=_field("#n", field_type="number")),
+        RecordedEvent(
+            kind="parameterize",
+            descriptor=_field("#n", field_type="number"),
+            config={"name": "qty"},
+        ),
+    ]
+    _, _, inputs, _ = events_to_steps(events)
+    assert inputs["day"] == {"type": "string", "format": "date", "required": True}
+    assert inputs["qty"] == {"type": "number", "required": True}
+
+
 def test_parameterize_leaves_a_secret_alone() -> None:
     events = [
         RecordedEvent(kind="fill", redacted=True, descriptor=_field("#pw", name="password")),

@@ -50,7 +50,7 @@ Le champ `extract` d'un step `http.request` accepte un dict de specs :
 
 - `from: "json"` → JSONPath via `jsonpath-ng`
 - `from: "html"` → CSS/XPath via `parsel`
-- `where` : expression de comparaison évaluée par AST-walk (seules les comparaisons et la logique booléenne sont autorisées ; tout le reste est rejeté)
+- `where` : expression de comparaison évaluée par AST-walk (seules les comparaisons, la logique booléenne et l'accès aux attributs de `item` sont autorisés ; appels, indexation et **attributs magiques** (`__class__`, `__globals__`, … tout nom en `__`) sont rejetés, fermant l'évasion de sandbox)
 - `fields` : mapping nom → JSONPath relatif à chaque item matché
 
 ## Authentification

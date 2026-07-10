@@ -17,6 +17,18 @@ from .selector_synth import ElementDescriptor, SelectorChoice, synthesize
 
 _CREDENTIAL_TOKENS = ("username", "user", "login", "email", "mail", "pass", "identifiant", "pseudo")
 _CREDENTIAL_AUTOCOMPLETE = {"username", "email", "current-password", "new-password"}
+# HTML input ``type`` -> Blueprint input spec. Dates stay ``string`` + ``format`` to match the
+# convention in the shipped examples; a numeric field becomes a real ``number``. Anything else
+# (text, tel, search, unknown) is a plain string.
+_FIELD_TYPE_SPECS: dict[str, dict[str, Any]] = {
+    "number": {"type": "number"},
+    "range": {"type": "number"},
+    "date": {"type": "string", "format": "date"},
+    "datetime-local": {"type": "string", "format": "date-time"},
+    "time": {"type": "string", "format": "time"},
+    "email": {"type": "string", "format": "email"},
+    "url": {"type": "string", "format": "uri"},
+}
 # A navigation right after one of these was triggered by it, not typed by hand.
 _NAV_TRIGGERS = frozenset({"click", "press"})
 _ELEMENT_KINDS = frozenset({"click", "fill", "select", "press"})
@@ -45,6 +57,14 @@ def _is_credential(descriptor: ElementDescriptor | None) -> bool:
 
 def _choice(descriptor: ElementDescriptor | None) -> SelectorChoice:
     return synthesize(descriptor) if descriptor is not None else SelectorChoice("")
+
+
+def _input_spec(descriptor: ElementDescriptor | None) -> dict[str, Any]:
+    """Build an input spec from the picked field's HTML ``type``, defaulting to a required string."""
+    field_type = (descriptor.field_type or "") if descriptor is not None else ""
+    spec = dict(_FIELD_TYPE_SPECS.get(field_type, {"type": "string"}))
+    spec["required"] = True
+    return spec
 
 
 class _Recording:
@@ -150,7 +170,7 @@ class _Recording:
                     _ident((event.config or {}).get("name"), fallback="value"), set(self.inputs)
                 )
                 step["value"] = f"{{{{ inputs.{name} }}}}"
-                self.inputs[name] = {"type": "string", "required": True}
+                self.inputs[name] = _input_spec(event.descriptor)
                 return
 
     # ── extraction ───────────────────────────────────────────────────────────

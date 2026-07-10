@@ -64,6 +64,18 @@ def _eval_predicate(expr: str, item: Any) -> bool:
                 f"Disallowed construct {type(node).__name__!r} in where expression {expr!r}. "
                 "Only comparisons and boolean logic are permitted."
             )
+        # Dunder access is the doorway to the Python object graph (``item.__class__.__globals__`` …).
+        # The node allowlist blocks the classic call/subscript RCE gadget, but bare attribute
+        # traversal plus a comparison is already a boolean oracle over live objects. Deny any
+        # dunder name outright so the guard does not hinge on Call/Subscript staying disallowed.
+        if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
+            raise ExtractionError(
+                f"Disallowed dunder attribute {node.attr!r} in where expression {expr!r}."
+            )
+        if isinstance(node, ast.Name) and node.id.startswith("__"):
+            raise ExtractionError(
+                f"Disallowed dunder name {node.id!r} in where expression {expr!r}."
+            )
 
     ns: Any
     if isinstance(item, dict):

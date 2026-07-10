@@ -5,6 +5,33 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures (durcissement de la Phase 1 en conditions réelles).
 
+## [Non publié]
+
+Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la documentation).
+
+### Sécurité
+- **Évaluateur `where` (Act I — Vector)** : rejet explicite des attributs magiques (`__class__`,
+  `__globals__`, tout nom en `__`) dans l'AST-walk. L'allowlist de nœuds bloquait déjà l'exécution de
+  code, mais la traversée d'attributs dunder combinée à une comparaison restait un oracle booléen sur
+  le graphe d'objets Python — la garde ferme cette évasion de sandbox sans dépendre de l'absence
+  d'appels/indexation.
+
+### Corrigé
+- **`precise_sleep` (stealth/humanizer)** : le busy-wait pur sous 20 ms saturait un cœur CPU à 100 %
+  (chaque point de geste souris), risque de privation de ressources sur le daemon en multi-run.
+  Désormais `time.sleep` cède le CPU pour le gros du délai et le busy-wait ne couvre que la queue
+  (~1,5 ms) — précision de timing inchangée, CPU au repos (~9 %).
+- **Debug (Act II — Continuum)** : quand les entrées sont humanisées, `slow_mo` est à 0 et les actions
+  brutes (`select`, `upload`, `navigate`, …) défilaient instantanément, illisibles en debug. Elles
+  reçoivent maintenant un délai manuel équivalent.
+
+### Ajouté
+- **Suivi des nouveaux onglets (Act II — Continuum)** : un clic ouvrant un onglet (`target="_blank"`,
+  `window.open`) rend la nouvelle page active pour les steps suivants, avec retombée sur une page
+  survivante si l'onglet actif se referme. Auparavant les steps restaient bloqués sur l'onglet initial.
+- **Recorder « Make input »** : le `type`/`format` de l'input produit est inféré du type HTML du champ
+  (`number`, `date`+`format`, `email`/`url`, …) au lieu d'un `string` générique.
+
 ## [0.2.0] - 2026-07-10
 
 Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, utilisable comme
@@ -36,4 +63,5 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.2.0

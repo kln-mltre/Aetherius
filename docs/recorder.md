@@ -114,8 +114,9 @@ capture d'actions se met en retrait (`window.__aeRecorderPicking`) : on désigne
   liste rendue en JS). Comme c'est une vérification de présence, un sélecteur de groupe (classe) est
   préféré à un chemin positionnel.
 - **Make input** — clic sur un champ déjà rempli → il devient `{{ inputs.<nom> }}` (et est ajouté aux
-  `inputs`), rendant le Blueprint réutilisable au lieu d'être figé sur une valeur. Sans effet sur un
-  secret.
+  `inputs`), rendant le Blueprint réutilisable au lieu d'être figé sur une valeur. Le `type`/`format`
+  de l'input est **inféré du type HTML** du champ (`number` → `number`, `date` → `string`+`format: date`,
+  `email`/`url` → `format` correspondant, sinon `string`). Sans effet sur un secret.
 - **Finish** — clôt la session (sans devoir fermer la fenêtre).
 
 Les picks consécutifs se **coalescent** dans un seul step `extract` (`id: "data"`) ; une action entre

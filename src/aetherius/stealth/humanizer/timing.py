@@ -1,8 +1,9 @@
 """Human timing primitives: precise sleep and random, occasionally distracted pauses.
 
 ``time.sleep`` has coarse OS granularity (~10-15 ms), too blunt for the sub-millisecond intervals a
-replayed gesture needs, so :func:`precise_sleep` busy-waits below a 20 ms threshold and defers to
-``time.sleep`` above it. :func:`human_pause` is the "think time" between actions: a random dwell
+replayed gesture needs, so :func:`precise_sleep` sleeps the bulk of the delay (yielding the CPU) and
+busy-waits only the last ~1.5 ms where ``time.sleep`` is too coarse. :func:`human_pause` is the
+"think time" between actions: a random dwell
 that, now and then, stretches into a longer distraction — the kind of irregular rhythm a real user
 produces and a fixed delay never does.
 
@@ -15,21 +16,27 @@ import time
 from random import Random
 from typing import Callable
 
-# Below this, OS sleep granularity dominates, so busy-wait for accuracy; above it, yield the CPU.
-_BUSY_WAIT_THRESHOLD_S = 0.02
+# Busy-wait only this final tail, where OS sleep granularity is too coarse to hit the deadline; the
+# bulk is a real ``time.sleep`` so a core is never pinned. Keeps the daemon responsive under multi-run.
+_SPIN_TAIL_S = 0.0015
 
 Sleeper = Callable[[float], None]
 _DEFAULT_RNG = Random()
 
 
 def precise_sleep(duration: float) -> None:
-    """Sleep *duration* seconds accurately, busy-waiting under 20 ms where ``time.sleep`` is too coarse."""
+    """Sleep *duration* seconds accurately: coarse ``time.sleep`` for the bulk, then spin the tail.
+
+    A pure busy-wait would pin a CPU core for the whole delay — untenable when the daemon replays
+    several sessions at once and every gesture point calls this. So we yield the CPU for all but the
+    last ``_SPIN_TAIL_S`` and only spin that short remainder, where sleep's granularity is too coarse.
+    """
     if duration <= 0:
         return
-    if duration > _BUSY_WAIT_THRESHOLD_S:
-        time.sleep(duration)
-        return
     end = time.perf_counter() + duration
+    coarse = duration - _SPIN_TAIL_S
+    if coarse > 0:
+        time.sleep(coarse)
     while time.perf_counter() < end:
         pass
 

@@ -83,6 +83,35 @@ def test_disallowed_where_node_raises() -> None:
         extract_json(_BODY, spec)
 
 
+def test_where_dunder_attribute_is_blocked() -> None:
+    # ast.Attribute is allowlisted, so dunder traversal (the doorway to __globals__/__subclasses__)
+    # must be rejected explicitly, even without a call.
+    spec = {"x": ExtractSpec(from_="json", path="$[*]", where="item.__class__ != 0")}
+    with pytest.raises(ExtractionError, match="Disallowed"):
+        extract_json(_BODY, spec)
+
+
+def test_where_dunder_oracle_is_blocked() -> None:
+    # A comparison alone (no Call/Subscript) is enough to probe live objects; it must not evaluate.
+    spec = {
+        "x": ExtractSpec(
+            from_="json",
+            path="$[*]",
+            where="'os' in item.__class__.__init__.__globals__",
+        )
+    }
+    with pytest.raises(ExtractionError, match="Disallowed"):
+        extract_json(_BODY, spec)
+
+
+def test_where_single_underscore_field_is_allowed() -> None:
+    # Only dunders are dangerous; a legitimate JSON key with a single leading underscore stays usable.
+    body = json.dumps([{"_private": 1}, {"_private": 2}]).encode()
+    spec = {"rows": ExtractSpec(from_="json", path="$[*]", where="item._private > 1")}
+    result = extract_json(body, spec)
+    assert result["rows"] == [{"_private": 2}]
+
+
 def test_where_with_boolean_logic() -> None:
     spec = {
         "events": ExtractSpec(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from random import Random
 
 import pytest
@@ -14,6 +15,22 @@ pytestmark = pytest.mark.unit
 def test_precise_sleep_non_positive_is_noop() -> None:
     precise_sleep(0)
     precise_sleep(-1)  # must not raise or hang
+
+
+def test_precise_sleep_reaches_the_deadline() -> None:
+    # A short interval that used to be a pure spin: it must still land at (or past) the deadline,
+    # never short, so replayed gesture timing stays accurate after the sleep+spin split.
+    target = 0.015
+    start = time.perf_counter()
+    precise_sleep(target)
+    assert time.perf_counter() - start >= target
+
+
+def test_precise_sleep_sub_tail_duration_does_not_hang() -> None:
+    # Below the spin tail there is no coarse sleep; it must complete promptly, not hang.
+    start = time.perf_counter()
+    precise_sleep(0.0005)
+    assert time.perf_counter() - start < 0.05
 
 
 def test_human_pause_within_range_without_distraction() -> None:

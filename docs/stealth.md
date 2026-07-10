@@ -55,8 +55,9 @@ Le driver route alors les actions interactives (`click`/`hover`/`fill`/`type`/`s
   (`off`, `human`). L'unique point de décodage de `options.stealth`.
 - **[`humanizer/`](../src/aetherius/stealth/humanizer/)** — entrées humanisées, calcul pur séparé de
   l'application au navigateur (donc unit-testable sans Chromium) :
-  - `timing.py` : `precise_sleep` (busy-wait sub-20 ms) et `human_pause` (délai aléatoire,
-    distraction occasionnelle) ;
+  - `timing.py` : `precise_sleep` (coarse `time.sleep` pour le gros du délai, busy-wait uniquement
+    sur la queue ~1,5 ms, pour rester précis sans saturer un cœur) et `human_pause` (délai
+    aléatoire, distraction occasionnelle) ;
   - `scroll.py` : `ease_out_deltas` (courbe cubic ease-out, pure) et `human_scroll` ;
   - `keyboard.py` : `plan_typing` (frappe, typo+correction, délais espaces/spéciaux, pure) et
     `human_type` ;
@@ -118,7 +119,9 @@ ML (`stealth/ml/`) est un upgrade optionnel, pas un prérequis. Le cœur stealth
 Exemple réel, exécutable tel quel (fenêtre visible car `debug: true` — on **voit** la souris humaine
 glisser vers le titre, dériver vers le bas pendant l'attente, puis cliquer la pagination). En debug,
 le `slow_mo` de Playwright est automatiquement neutralisé quand les entrées sont humanisées : le
-humanizer fournit déjà son propre timing, et empiler `slow_mo` par-dessus hacherait chaque geste :
+humanizer fournit déjà son propre timing, et empiler `slow_mo` par-dessus hacherait chaque geste. Les
+actions **brutes** que le humanizer ne touche pas (`select`, `upload`, `navigate`, …) reçoivent alors
+un délai manuel équivalent, pour rester lisibles en debug plutôt que de défiler instantanément :
 
 ```bash
 aetherius run examples/continuum/quotes-stealth.blueprint.json

@@ -70,6 +70,7 @@ class ContinuumDriver(SharedActionsMixin):
 
         page_action = PAGE_ACTIONS.get(step.action)
         if page_action is not None:
+            self._session.pace_raw_action()  # keep raw ops watchable in debug (slow_mo off here)
             return page_action(page, params, renderer)
 
         match step.action:

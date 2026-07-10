@@ -57,7 +57,7 @@ dev = [
 aetherius = "aetherius.cli:main"
 
 [project.urls]
-Repository = "https://github.com/kln/Aetherius"
+Repository = "https://github.com/kln-mltre/Aetherius"
 
 [tool.hatch.version]
 path = "src/aetherius/version.py"

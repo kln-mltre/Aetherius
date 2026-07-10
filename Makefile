@@ -6,7 +6,7 @@
 PY := python3
 TS_DIR := sdks/typescript
 
-.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts check check-all screenshots screenshots-check
+.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts check check-all screenshots screenshots-check dist release-check
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -58,3 +58,11 @@ check: ## Full Python gate: format check, lint, types, tests
 
 check-all: ## Full repository gate: Python + TypeScript SDK
 	@$(MAKE) check test-ts
+
+dist: ## Build the Python distribution (wheel + sdist) into dist/
+	rm -rf dist
+	$(PY) -m build
+
+release-check: ## Build and validate the distribution metadata before uploading (see RELEASING.md)
+	@$(MAKE) dist
+	$(PY) -m twine check dist/*

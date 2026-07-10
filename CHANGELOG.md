@@ -36,4 +36,4 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[0.2.0]: https://github.com/kln/Aetherius/releases/tag/v0.2.0
+[0.2.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.2.0

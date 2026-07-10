@@ -7,12 +7,14 @@ reusable (e.g. by a future `aetherius list` CLI command) without pulling in the 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from ...core.blueprint.loader import load_blueprint
 from ...core.blueprint.models import Blueprint
 from ...core.blueprint.validator import validate_for_act
 from ...core.errors import BlueprintError
+from ...core.runtime.engine import IMPLEMENTED_ACTS
 
 _BLUEPRINT_GLOBS = ("*.blueprint.json", "*.blueprint.yaml", "*.blueprint.yml")
 
@@ -23,6 +25,23 @@ class BlueprintEntry:
     blueprint: Blueprint | None
     act: str | None
     error: str | None
+
+
+class EntryStatus(str, Enum):
+    """A Blueprint's real state in the Library: well-formed and runnable, or why not."""
+
+    INVALID = "invalid"  # schema or capability error: unusable as-is
+    READY = "ready"  # valid and its Act has a driver: runnable now
+    ACT_PENDING = "act pending"  # valid but its Act is not implemented yet
+
+
+def entry_status(entry: BlueprintEntry) -> EntryStatus:
+    """Classify *entry* by validity and Act runnability (the single source is IMPLEMENTED_ACTS)."""
+    if entry.error is not None or entry.act is None:
+        return EntryStatus.INVALID
+    if entry.act in IMPLEMENTED_ACTS:
+        return EntryStatus.READY
+    return EntryStatus.ACT_PENDING
 
 
 def discover_blueprint_dirs(start: Path | None = None) -> list[Path]:
@@ -52,14 +71,17 @@ def _find_repo_examples(start: Path) -> Path | None:
 
 
 def scan_blueprints(dirs: list[Path]) -> list[BlueprintEntry]:
-    """Load and validate every Blueprint file found in *dirs*, newest-name-first is not
-    guaranteed; invalid files are kept in the result with their error instead of raising."""
+    """Load and validate every Blueprint file found in *dirs*, recursively.
+
+    The scan recurses so examples can be organised into per-Act subdirectories (examples/vector,
+    examples/continuum, ...) and user libraries into any tree. Invalid files are kept in the result
+    with their error instead of raising."""
     entries: list[BlueprintEntry] = []
     seen: set[Path] = set()
 
     for directory in dirs:
         for pattern in _BLUEPRINT_GLOBS:
-            for path in sorted(directory.glob(pattern)):
+            for path in sorted(directory.rglob(pattern)):
                 if path in seen:
                     continue
                 seen.add(path)

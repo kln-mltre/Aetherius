@@ -1,0 +1,42 @@
+"""Tests for builder/catalog.py — the Act/action projection of the registry."""
+
+from __future__ import annotations
+
+import pytest
+
+from aetherius.builder.catalog import act_infos, actions_for_act, get_act_info
+from aetherius.core.actions.base import ACT_CAPABILITIES
+from aetherius.core.errors import BuilderError
+from aetherius.core.runtime.engine import IMPLEMENTED_ACTS
+
+pytestmark = pytest.mark.unit
+
+
+def test_act_infos_lists_four_acts_in_order_with_status() -> None:
+    infos = act_infos()
+    assert [i.act for i in infos] == ["vector", "continuum", "oracle", "phantom"]
+    for info in infos:
+        assert info.implemented == (info.act in IMPLEMENTED_ACTS)
+
+
+def test_actions_for_vector_cover_its_capabilities() -> None:
+    infos = actions_for_act("vector")
+    names = {i.spec.name for i in infos}
+    assert names == {cap.value for cap in ACT_CAPABILITIES["vector"]}
+
+    runnable = {i.spec.name: i.runnable for i in infos}
+    assert runnable["http.request"] is True
+    # Declared but not dispatched by the vector driver.
+    assert runnable["extract"] is False
+    assert runnable["for_each"] is False
+
+
+def test_actions_for_a_pending_act_are_all_unrunnable() -> None:
+    assert all(not i.runnable for i in actions_for_act("oracle"))
+
+
+def test_unknown_act_raises() -> None:
+    with pytest.raises(BuilderError):
+        get_act_info("nope")
+    with pytest.raises(BuilderError):
+        actions_for_act("nope")

@@ -108,7 +108,8 @@ Un Blueprint est un fichier JSON déclaratif et versionné. Enveloppe :
 ```
 
 - **inputs** : paramètres typés (le Blueprint est réutilisable, pas figé sur une valeur).
-- **secrets** : identifiants/token fournis au runtime, **jamais** écrits dans le fichier.
+- **secrets** : identifiants/token fournis au runtime, **jamais** écrits dans le fichier (résolus
+  depuis l'environnement / un `.env` local — voir [docs/secrets.md](docs/secrets.md)).
 - **vars** : constantes locales (domaines, chemins).
 - **options** : `debug`, `stealth`, `session`, `timeout_ms`, `retries`.
 - **steps** : le *dictionnaire d'actions* (navigate, click, fill, type, http.request, extract,
@@ -120,7 +121,7 @@ Le format est défini une fois pour toutes dans [`contracts/blueprint.schema.jso
 Des exemples exécutables (dérivés de vrais projets) sont dans [`examples/`](examples/).
 
 ### Exemple — Act I (Vector) : emploi du temps par API
-Voir [`examples/ukit-planning-week.blueprint.json`](examples/ukit-planning-week.blueprint.json).
+Voir [`examples/vector/ukit-planning-week.blueprint.json`](examples/vector/ukit-planning-week.blueprint.json).
 
 ```json
 {
@@ -171,7 +172,7 @@ Les constantes autrefois codées en dur (`resType`, `colourScheme`) sont explici
 `Vacances` et le parsing sont déclaratifs, et le groupe/la date sont des `inputs` réutilisables.
 
 ### Exemple — Act II (Continuum) : login CAS + scraping
-Voir [`examples/ukit-scolarite-login.blueprint.json`](examples/ukit-scolarite-login.blueprint.json).
+Voir [`examples/continuum/ukit-scolarite-login.blueprint.json`](examples/continuum/ukit-scolarite-login.blueprint.json).
 
 ```json
 {
@@ -204,7 +205,7 @@ Les sélecteurs sont désormais des **données** (plus du JS injecté codé en d
 déclaratif, et les événements (`LOGIN_SUCCESS`, …) restent disponibles pour suivre la progression.
 
 ### Exemple — Act III (Oracle) : upload avec discrétion
-Voir [`examples/tiktok-upload.blueprint.json`](examples/tiktok-upload.blueprint.json).
+Voir [`examples/oracle/tiktok-upload.blueprint.json`](examples/oracle/tiktok-upload.blueprint.json).
 
 ```json
 {
@@ -247,10 +248,12 @@ Aetherius n'est pas qu'une bibliothèque : c'est aussi une **Console interactive
 aetherius            # ouvre la Console
 ```
 
-> **État actuel** : la Console est navigable de bout en bout. Library, Runs et Catalog sont
-> pleinement fonctionnels pour Act I (Vector) ; le Blueprint Studio, le Recorder et Sessions/
-> Settings (daemon) affichent honnêtement leur jalon en attente tant que builder/recorder/
-> stealth/daemon ne sont pas implémentés. Détails : [docs/console.md](docs/console.md).
+![La Console Aetherius : écran d'accueil](docs/screenshots/home.svg)
+
+> **État actuel** : la Console est navigable de bout en bout. Library, Runs, Catalog, le **Recorder**,
+> le **Blueprint Studio** et **Settings** (démarrer/arrêter le daemon) sont pleinement fonctionnels
+> pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ; seul **Sessions** affiche
+> honnêtement son jalon en attente (stealth/session). Détails : [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
@@ -271,8 +274,11 @@ Depuis la Console, sans écrire de JSON à la main :
    fragiles). Idéal quand la démonstration directe est plus simple que la description.
 3. **JSON à la main** — pour les power users qui veulent le contrôle total.
 
+![Le Blueprint Studio : construction guidée avec aperçu JSON validé en direct](docs/screenshots/studio.svg)
+
 La logique de construction vit dans un module `builder/` *headless* : la Console n'en est que
 l'habillage, et le daemon peut l'exposer pour construire des Blueprints programmatiquement.
+Prise en main illustrée : [docs/builder.md](docs/builder.md).
 
 ## La discrétion (stealth), en option modulaire
 
@@ -336,15 +342,19 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 └─────────────┘   résultat + flux d'événements     └──────────────────────────┘
 ```
 
-- **Daemon** : `aetherius serve` (local, 127.0.0.1, token optionnel).
+- **Daemon** : `aetherius serve` (local, 127.0.0.1, token optionnel, `GET /health`).
   - `POST /v1/runs` → `run_id` ; `GET /v1/runs/{id}` → statut + résultat.
-  - `WS /v1/runs/{id}/events` → flux d'événements (debug/progression).
-  - `POST /v1/blueprints/validate`, `GET /v1/schema`, `POST /v1/recorder/sessions`.
-- **SDK TypeScript** `@aetherius/client` : peut spawn le daemon, `client.run(blueprint, { inputs,
-  secrets })`, stream d'événements typé.
-- **SDK Python** : idem, plus l'import in-process direct (`import aetherius`, sans daemon).
-- **Contrats** ([`contracts/`](contracts/)) : JSON Schema du Blueprint + OpenAPI du daemon = source
-  de vérité ; les types des SDK en sont générés.
+  - `WS /v1/runs/{id}/events` → flux d'événements (rejeu + live jusqu'à `done`).
+  - `POST /v1/blueprints/validate`, `GET /v1/schema`. `POST /v1/recorder/sessions` : `501`,
+    l'enregistrement reste host-local (CLI/Console).
+- **SDK TypeScript** `@aetherius/client` (Node 20+) : spawn le daemon (ou cible un `baseUrl`),
+  `client.run(blueprint, { inputs, secrets, onEvent })`, stream d'événements typé.
+- **SDK Python** : l'import in-process direct (`import aetherius`, sans daemon) ; le client remote
+  mince est différé.
+- **Contrats** ([`contracts/`](contracts/)) : JSON Schema du Blueprint + OpenAPI du daemon + schéma
+  d'événements = source de vérité ; les types des SDK s'y conforment (gardés par des tests).
+
+Détails, sécurité et « Tester le daemon » : [docs/daemon.md](docs/daemon.md).
 
 ### Exécuter un Blueprint depuis le code applicatif
 
@@ -443,19 +453,79 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 
 ## État d'avancement
 
+Le projet avance en deux grandes phases. La **Phase 1** — le socle, utilisable comme **bibliothèque**
+(in-process Python) et comme **service** (daemon + SDK) — est **terminée avec ce jalon** : un premier
+point de contrôle, à éprouver en conditions réelles avant d'attaquer la **Phase 2** (les deux Acts les
+plus lourds).
+
+### Phase 1 — le socle réutilisable (terminée)
+
 - [x] Vision, concept des 4 Acts, format Blueprint, architecture.
 - [x] Squelette : arborescence + stubs + contrats + exemples.
 - [x] **Act I — Vector** : moteur HTTP/API complet. `Aetherius().run(blueprint, inputs=...)` fonctionnel. Couverture : http.request (form/JSON/params/headers), extraction JSONPath avec `where` et mapping de champs, extraction HTML CSS/XPath, authentification (NoAuth/Bearer/Basic/Cookie/CAS form-login), retries/backoff (tenacity), moteur de templates Jinja2 (`{{ inputs.x | add_days(7) }}`), bus d'événements, hiérarchie d'erreurs typées. 69 tests, mypy strict, lint propre.
 - [x] **Console (Textual)** : navigation complète (`aetherius` ou `aetherius console`) — Library,
   Runs et Catalog fonctionnels pour Act I (parcours des Blueprints, exécution avec formulaire
   d'inputs/secrets et flux d'événements en direct, catalogue des 4 Acts). CLI scriptable
-  (`aetherius run|validate`). Sessions, Settings et Recorder affichent honnêtement leur jalon en
-  attente ; voir [docs/console.md](docs/console.md).
-- [ ] Act II — Continuum.
-- [ ] Système de discrétion (humanizer + gestures + fingerprint + session).
-- [ ] Recorder (blueprint + gestes).
-- [ ] Builder headless (Blueprint Studio).
-- [ ] Daemon + SDK TypeScript.
+  (`aetherius run|validate|record`). Le Recorder et le Blueprint Studio sont fonctionnels (voir
+  ci-dessous) ; seuls Sessions et Settings affichent leur jalon en attente ; voir
+  [docs/console.md](docs/console.md).
+- [x] **Act II — Continuum** : automatisation d'un vrai navigateur (Playwright, API synchrone).
+  Actions navigateur (navigate/back/forward/reload, click/fill/type/press/select/hover/scroll/
+  upload/drag), `wait_for` avec échec nommé (`on_timeout: "fail:CODE"`), extraction DOM typée
+  (text/number/html/attr/count), `evaluate` (JS injecté), `screenshot` (artefact), sessions
+  persistantes (profils réutilisés) et mode debug (fenêtre visible + slow-mo). Actions utilitaires
+  partagées avec Vector via un mixin (zéro duplication). Extra `[browser]` chargé à la demande ;
+  `import aetherius` reste léger. Tests unitaires (page factice, CI de base) + intégration vrai
+  Chromium (job CI dédié). Discrétion : **branchée** (voir ci-dessous).
+- [x] **Système de discrétion** : couche transverse activée par `options.stealth`, branchée dans
+  Continuum. `StealthPolicy` (off / preset / config fine). Fingerprint (masques `navigator.webdriver`/
+  `chrome.runtime`/`permissions`/`plugins` + profil cohérent UA/viewport/timezone/WebGL,
+  `chrome-desktop`). Souris humaine par rejeu géométrique de gestes (scale+rotation, timing préservé,
+  clic off-center), bibliothèque **source-agnostique** amorcée par un seed synthétique (min-jerk),
+  ouverte au recorder et au ML. Frappe humaine (typos+correction, délais), scroll ease-out, timing
+  avec distraction, warmup de profil. Cœur **stdlib pur** (tests en CI de base) ; intégration Chromium
+  réelle. Exemple : `examples/continuum/quotes-stealth.blueprint.json`. Détails :
+  [docs/stealth.md](docs/stealth.md).
+- [x] **Recorder (blueprint + gestes)** : création de Blueprint **par démonstration**,
+  **Act-agnostique** — une coquille commune (navigateur, overlay, session) + un **backend par Act**
+  derrière une interface unique (`recorder/base.py`, registre `act → backend`), choix de l'Act à la
+  main (`--act` / sélecteur Console). **Continuum** (Act II) : capture des actions DOM, **synthèse de
+  sélecteurs robustes** (`data-testid`/id/**href**/name/aria/classe avant le chemin CSS positionnel,
+  unicité mesurée in-page façon `get_by_text`), et **menu flottant** (overlay Shadow DOM) pour
+  **sélectionner les données** : champs, listes (`as: list`), tableaux/records (`each`/`fields`),
+  `wait_for`, paramétrage en `input`. **Vector** (Act I) : observe le trafic réseau (fetch/XHR/doc
+  JSON) et pique les champs dans la réponse → `http.request` + extraction JSONPath. Credentials et
+  en-têtes d'auth → `{{ secrets.x }}` (jamais stockés). Blueprint produit relu par le loader/validator
+  canonique, avec ses `outputs`. Console interactive + CLI (`aetherius record`). Gesture recorder
+  (`aetherius record-gestures`) : traces souris réelles vers la bibliothèque de discrétion. Trous
+  documentés pour Oracle/Phantom. Cœur pur en CI de base ; intégration Chromium réelle. Exemples :
+  `examples/continuum/quotes-recorded-{login,scrape}` + `examples/vector/jsonplaceholder-users-recorded`.
+  Détails : [docs/recorder.md](docs/recorder.md).
+- [x] **Builder headless + Blueprint Studio** : construction de Blueprints **sans JSON**, réutilisable
+  (Console, daemon, SDK). Module `builder/` pur : `catalog` (projection du dictionnaire d'actions),
+  `factory` (`BlueprintDraft` lossless, `validate_draft` non-levant pour l'aperçu live,
+  `build`/`save`), `templates` garantis valides. Specs d'actions déclaratives dans `core/actions/`
+  (l'invariant « registre = source, catalogue = projection » est désormais matérialisé), gardées par
+  deux tests anti-drift (bijection specs↔capabilities, dispatch specs↔drivers ; `PENDING_ACTIONS`
+  documente les actions déclarées mais pas encore exécutées). **Blueprint Studio** dans la Console :
+  sélection d'Act expliquée, inputs/secrets typés, steps par formulaires (params imbriqués en JSON +
+  trappe « raw JSON »), options durables, **aperçu JSON validé en direct**, et **édition** d'un
+  Blueprint existant (Library → `e`) — round-trip lossless garanti sur tous les exemples. Sauvegarde
+  dans `./blueprints`. Détails : [docs/builder.md](docs/builder.md).
+- [x] **Daemon local + SDK TypeScript** : daemon FastAPI (HTTP + WebSocket) exposant le moteur à tout
+  langage — `POST /v1/runs` (202 + `run_id`), `GET /v1/runs/{id}`, flux d'événements WebSocket (rejeu
+  bufferisé + live jusqu'à `done`), `POST /v1/blueprints/validate`, `GET /v1/schema`, `GET /health` ;
+  token bearer optionnel, bind loopback. Runs exécutés sur un thread de worker, événements relayés via
+  le pattern Sink (thread → asyncio). SDK TypeScript `@aetherius/client` (Node 20+) : spawn du daemon
+  (ou `baseUrl`), `client.run(blueprint, { inputs, secrets, onEvent })`, stream d'événements typé, avec
+  un E2E réel en CI. Console : l'écran **Settings** démarre/arrête le daemon. Enregistrement
+  volontairement host-local (`/v1/recorder/sessions` → 501). Détails : [docs/daemon.md](docs/daemon.md).
+
+**Phase 1 terminée.** Aetherius est utilisable comme bibliothèque et comme service ; c'est le point de
+contrôle prévu pour l'éprouver en conditions réelles et corriger avant la suite.
+
+### Phase 2 — les Acts autonomes (à venir)
+
 - [ ] Act III — Oracle (vision + entraînement).
 - [ ] Act IV — Phantom (agent).
 

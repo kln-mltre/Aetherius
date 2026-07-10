@@ -18,17 +18,21 @@ from ..runtime.context import RunContext, resolve_inputs
 from ..runtime.result import Result, RunStatus, StepResult
 
 
-IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector"})
+IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector", "continuum"})
 
 
 def _make_driver(act: str) -> Any:
-    if act not in IMPLEMENTED_ACTS:
-        raise ActionError(
-            f"Act {act!r} is not implemented yet. Only 'vector' is available in Act I."
-        )
-    from ...acts.vector.driver import VectorDriver
+    # Drivers are imported lazily so `import aetherius` never pulls in an Act's heavy
+    # dependencies (Playwright, ONNX, ...). Each driver defers its own extra to runtime.
+    if act == "vector":
+        from ...acts.vector.driver import VectorDriver
 
-    return VectorDriver()
+        return VectorDriver()
+    if act == "continuum":
+        from ...acts.continuum.driver import ContinuumDriver
+
+        return ContinuumDriver()
+    raise ActionError(f"Act {act!r} is not implemented yet. Available: {sorted(IMPLEMENTED_ACTS)}.")
 
 
 class RunEngine:
@@ -39,18 +43,24 @@ class RunEngine:
         secrets: Mapping[str, str] | None = None,
         *,
         sinks: list[Sink] | None = None,
+        run_id: str | None = None,
     ) -> Result:
         validate_for_act(blueprint)
 
-        run_id = uuid.uuid4().hex
+        # The daemon assigns the id it returned to the caller (HTTP 202) before the run starts, so
+        # the streamed events carry a run_id the client already holds. In-process callers omit it.
+        run_id = run_id or uuid.uuid4().hex
         started_at = datetime.now(timezone.utc)
 
+        from ...config.secrets import resolve_secrets
+
         resolved_inputs = resolve_inputs(blueprint, inputs)
+        resolved_secrets = resolve_secrets(blueprint.secrets, secrets)
         ctx = RunContext(
             run_id=run_id,
             blueprint=blueprint,
             inputs=resolved_inputs,
-            secrets=dict(secrets or {}),
+            secrets=resolved_secrets,
             started_at=started_at,
         )
 

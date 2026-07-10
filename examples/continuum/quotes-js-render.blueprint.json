@@ -1,0 +1,35 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.js",
+  "description": "Act II (Continuum) : scraper une page dont le contenu est rendu par JavaScript, impossible pour l'Act I (Vector). Attend le rendu cote client, lit le DOM, puis recoupe avec du JS injecte (evaluate).",
+  "act": "continuum",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": { "debug": true, "timeout_ms": 15000 },
+  "steps": [
+    { "action": "navigate", "url": "{{ vars.domain }}/js" },
+    {
+      "action": "wait_for",
+      "selector": ".quote",
+      "timeout_ms": 10000,
+      "on_timeout": "fail:RENDER_TIMEOUT"
+    },
+    {
+      "id": "dom",
+      "action": "extract",
+      "outputs": {
+        "citations_rendues": { "selector": ".quote", "as": "count" },
+        "premiere_citation": { "selector": ".quote .text", "as": "text" }
+      }
+    },
+    {
+      "id": "js",
+      "action": "evaluate",
+      "script": "() => document.querySelectorAll('.quote .author').length"
+    }
+  ],
+  "outputs": {
+    "citations_rendues": "{{ steps.dom.citations_rendues }}",
+    "auteurs_comptes_par_js": "{{ steps.js.result }}",
+    "premiere_citation": "{{ steps.dom.premiere_citation }}"
+  }
+}

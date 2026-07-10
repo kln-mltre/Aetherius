@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-import time
 from typing import Any, Callable
 
+from .._shared import SharedActionsMixin
 from ...core.blueprint.models import StepModel
-from ...core.errors import ActionError, StatusAssertionError
+from ...core.errors import ActionError
 from ...core.events.bus import EventBus
-from ...core.events.models import EventType, RunEvent
 from ...core.extraction.html_extractor import HtmlExtractSpec, extract_html
 from ...core.extraction.json_extractor import ExtractSpec, extract_json
 from ...core.runtime.context import RunContext
 from .client import VectorClient
 
 
-class VectorDriver:
+class VectorDriver(SharedActionsMixin):
     act = "vector"
 
     def setup(self, ctx: RunContext) -> None:
@@ -127,48 +126,3 @@ class VectorDriver:
         if html_specs:
             result.update(extract_html(body, html_specs))
         return result
-
-    def _set(self, step: StepModel, renderer: Callable[[Any], Any]) -> dict[str, Any]:
-        p = step.extra_fields
-        value = renderer(p.get("value"))
-        return {"value": value}
-
-    def _assert(self, step: StepModel, renderer: Callable[[Any], Any]) -> dict[str, Any]:
-        p = step.extra_fields
-        condition: str = renderer(p.get("condition", ""))
-        if condition.strip().lower() not in {"true", "1", "yes"}:
-            message = renderer(p.get("message", f"Assertion failed: {p.get('condition')}"))
-            raise StatusAssertionError(
-                expected=1,
-                actual=0,
-                url="<assert>",
-                body_preview=message,
-            )
-        return {}
-
-    def _emit(
-        self,
-        step: StepModel,
-        ctx: RunContext,
-        bus: EventBus,
-        renderer: Callable[[Any], Any],
-    ) -> dict[str, Any]:
-        p = step.extra_fields
-        message: str = renderer(p.get("event", p.get("message", "")))
-        bus.emit(
-            RunEvent(
-                run_id=ctx.run_id,
-                type=EventType.PROGRESS,
-                step_id=step.id,
-                message=message,
-                level="info",
-            )
-        )
-        return {}
-
-    def _wait(self, step: StepModel, renderer: Callable[[Any], Any]) -> dict[str, Any]:
-        p = step.extra_fields
-        ms: float = float(renderer(p.get("ms", 0)))
-        if ms > 0:
-            time.sleep(ms / 1000)
-        return {}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from aetherius.console.theme import ACT_LABELS, AETHERIUS_THEME, PER_ACT_COLOR, WORDMARK
+from aetherius.console.theme import ACT_ACCENT, ACT_LABELS, AETHERIUS_THEME, WORDMARK, act_color
 from aetherius.core.blueprint.models import Blueprint
 
 pytestmark = pytest.mark.unit
@@ -28,5 +28,11 @@ def test_wordmark_rows_are_aligned() -> None:
 
 @pytest.mark.parametrize("act", _ALL_ACTS)
 def test_every_act_has_a_color_and_label(act: str) -> None:
-    assert act in PER_ACT_COLOR
+    assert act in ACT_ACCENT
     assert act in ACT_LABELS
+
+
+def test_act_color_mutes_pending_acts() -> None:
+    # A runnable Act wears its own accent; a pending one is muted, whatever its accent.
+    assert act_color("continuum", implemented=True) == ACT_ACCENT["continuum"]
+    assert act_color("oracle", implemented=False) != ACT_ACCENT["oracle"]

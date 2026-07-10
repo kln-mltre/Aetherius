@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from textual.app import App
 from textual.binding import Binding
 
 from .theme import AETHERIUS_THEME
 
+if TYPE_CHECKING:
+    from .daemon_control import DaemonController
+
 
 class AetheriusConsoleApp(App[None]):
-    """The Aetherius Console: navigation shell for Home, Library, Runs, Catalog and the
-    still-pending sections (Sessions, Settings, Recorder, Blueprint Studio)."""
+    """The Aetherius Console: navigation shell for Home, Library, Runs, Catalog, Recorder, the
+    Blueprint Studio and the daemon Settings (Sessions is still pending)."""
 
     CSS_PATH = Path(__file__).parent / "console.tcss"
     TITLE = "Aetherius"
@@ -23,6 +27,21 @@ class AetheriusConsoleApp(App[None]):
         Binding("escape", "pop_screen", "Back"),
         Binding("h", "go_home", "Home"),
     ]
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Created lazily the first time Settings is opened; a single session-scoped daemon so its
+        # running state survives navigation. Its own atexit guard stops it when the process exits.
+        self._daemon: DaemonController | None = None
+
+    @property
+    def daemon(self) -> DaemonController:
+        """The session's local daemon controller (lazily created)."""
+        if self._daemon is None:
+            from .daemon_control import DaemonController
+
+            self._daemon = DaemonController()
+        return self._daemon
 
     def on_mount(self) -> None:
         self.register_theme(AETHERIUS_THEME)

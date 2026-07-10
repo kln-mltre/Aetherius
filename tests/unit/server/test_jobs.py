@@ -1,0 +1,87 @@
+"""Tests for server/jobs.py — the async RunManager and its thread-safe event sink.
+
+Driven directly under a real asyncio loop (not the TestClient), which is where the manager's
+create_task + to_thread lifecycle is exercised faithfully.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+
+import pytest
+
+from aetherius.core.blueprint.loader import load_blueprint
+from aetherius.core.blueprint.models import Blueprint
+from aetherius.core.events.models import EventType, RunEvent
+from aetherius.server.jobs import QueueSink, RunManager
+
+pytestmark = pytest.mark.unit
+
+
+@pytest.fixture
+def selftest(examples_dir: Path) -> Blueprint:
+    return load_blueprint(str(examples_dir / "vector" / "daemon-selftest.blueprint.json"))
+
+
+async def _run_to_completion(manager: RunManager, blueprint: Blueprint, **kwargs: object) -> str:
+    run_id = await manager.submit(blueprint, kwargs.get("inputs"), kwargs.get("secrets"))  # type: ignore[arg-type]
+    job = manager.get(run_id)
+    assert job is not None
+    await asyncio.wait_for(job.finished.wait(), timeout=5)
+    return run_id
+
+
+async def test_submit_runs_to_completion(selftest: Blueprint) -> None:
+    manager = RunManager()
+    run_id = await manager.submit(selftest, {"subject": "jobs"}, {})
+    job = manager.get(run_id)
+    assert job is not None
+
+    await asyncio.wait_for(job.finished.wait(), timeout=5)
+
+    assert job.status == "succeeded"
+    assert job.result is not None
+    assert job.result.outputs["greeting"] == "hello, jobs"
+    assert job.error is None
+
+
+async def test_history_ends_with_done(selftest: Blueprint) -> None:
+    manager = RunManager()
+    run_id = await _run_to_completion(manager, selftest)
+    job = manager.get(run_id)
+    assert job is not None
+
+    types = [event.type.value for event in job.history]
+    assert types[0] == "progress"
+    assert types[-1] == "done"
+
+
+async def test_subscribe_replays_a_finished_run(selftest: Blueprint) -> None:
+    manager = RunManager()
+    run_id = await _run_to_completion(manager, selftest)
+
+    queue = manager.subscribe(run_id)
+    assert queue is not None
+
+    received: list[RunEvent] = []
+    while True:
+        event = await queue.get()
+        if event is None:  # sentinel closes the replay
+            break
+        received.append(event)
+
+    assert [event.type.value for event in received][-1] == "done"
+
+
+async def test_subscribe_unknown_run_returns_none() -> None:
+    assert RunManager().subscribe("does-not-exist") is None
+
+
+def test_queue_sink_never_raises_on_a_closed_loop() -> None:
+    loop = asyncio.new_event_loop()
+    loop.close()
+    sink = QueueSink(loop, lambda event: None)
+
+    # A closed loop makes call_soon_threadsafe raise; the sink must swallow it (never abort a run).
+    sink.on_event(RunEvent(run_id="x", type=EventType.PROGRESS))

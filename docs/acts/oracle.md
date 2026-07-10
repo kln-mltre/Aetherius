@@ -10,4 +10,8 @@ Modules : [`src/aetherius/acts/oracle/`](../../src/aetherius/acts/oracle/) —
 `driver.py`, `perception.py`, `locator.py`, `model.py`.
 Entraînement des modèles : [`training/`](../../training/).
 
-Exemple : [`examples/tiktok-upload.blueprint.json`](../../examples/tiktok-upload.blueprint.json).
+Exemple : [`examples/oracle/tiktok-upload.blueprint.json`](../../examples/oracle/tiktok-upload.blueprint.json).
+
+Recorder *(à venir)* : **annotation visuelle** — encadrer les cibles sur des captures d'écran pour
+alimenter [`training/`](../../training/), branché comme un backend recorder (cf.
+[docs/recorder.md](../recorder.md#recorder--les-acts)).

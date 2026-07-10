@@ -12,7 +12,11 @@ Cas fondateur : les services `axios` de UKit (`PlanningApiService.ts`). Les cons
 Modules : [`src/aetherius/acts/vector/`](../../src/aetherius/acts/vector/) —
 `driver.py`, `client.py`, `auth.py`.
 
-Exemple : [`examples/ukit-planning-week.blueprint.json`](../../examples/ukit-planning-week.blueprint.json).
+Exemple : [`examples/vector/ukit-planning-week.blueprint.json`](../../examples/vector/ukit-planning-week.blueprint.json).
+
+**Recorder** : on peut générer un Blueprint Vector **par démonstration** — le recorder observe les
+appels réseau du navigateur et pique les champs JSON à extraire. Voir
+[docs/recorder.md](../recorder.md#vector-recorder-act-i--réseau).
 
 ## Actions supportées
 
@@ -85,7 +89,7 @@ make test
 python3 - <<'EOF'
 from aetherius import Aetherius
 result = Aetherius().run(
-    "examples/ukit-planning-week.blueprint.json",
+    "examples/vector/ukit-planning-week.blueprint.json",
     inputs={"group": "MON_GROUPE", "monday": "2026-09-07"},
 )
 print(result.status)

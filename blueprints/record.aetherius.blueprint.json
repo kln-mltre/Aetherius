@@ -1,0 +1,17 @@
+{
+  "aetherius": "1.0",
+  "name": "record.aetherius",
+  "description": "Act II (Continuum) : genere par le recorder depuis une demo sur https://github.com/kln-mltre/Aetherius.",
+  "act": "continuum",
+  "steps": [
+    {
+      "action": "navigate",
+      "url": "https://github.com/kln-mltre/Aetherius"
+    },
+    {
+      "action": "click",
+      "selector": "License",
+      "selector_type": "text"
+    }
+  ]
+}

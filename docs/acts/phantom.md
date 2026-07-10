@@ -11,3 +11,6 @@ Modules : [`src/aetherius/acts/phantom/`](../../src/aetherius/acts/phantom/) —
 `driver.py`, `loop.py`, `planner.py`, `perception.py`, `memory.py`.
 
 Usage : automatisation autorisée de ses propres comptes/données.
+
+Recorder *(à venir)* : plutôt qu'un script, une **démonstration → `goal`** (on montre l'objectif, pas
+chaque step), branchée comme un backend recorder (cf. [docs/recorder.md](../recorder.md#recorder--les-acts)).

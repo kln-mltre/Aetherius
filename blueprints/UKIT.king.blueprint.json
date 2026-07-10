@@ -1,0 +1,51 @@
+{
+  "aetherius": "1.0",
+  "name": "UKIT.king",
+  "description": "Genere par le recorder Aetherius (act continuum) a partir d'une demo sur https://intranet.u-bordeaux.fr/.",
+  "act": "continuum",
+  "secrets": [
+    "username",
+    "password"
+  ],
+  "steps": [
+    {
+      "action": "navigate",
+      "url": "https://cas.u-bordeaux.fr/cas/login?service=https%3A%2F%2Fintranet.u-bordeaux.fr%2Flogin"
+    },
+    {
+      "action": "fill",
+      "selector": "#username",
+      "value": "{{ secrets.username }}"
+    },
+    {
+      "action": "fill",
+      "selector": "#password",
+      "value": "{{ secrets.password }}"
+    },
+    {
+      "action": "click",
+      "selector": ".btn-submit"
+    },
+    {
+      "action": "navigate",
+      "url": "https://apps-ent.u-bordeaux.fr/crous/index-intranet-c5.php"
+    },
+    {
+      "action": "navigate",
+      "url": "https://apps-ent.u-bordeaux.fr/crous/index-intranet-c5.php?id=415"
+    },
+    {
+      "action": "extract",
+      "id": "data",
+      "outputs": {
+        "menu": {
+          "selector": "div[role=\"listbox\"]",
+          "as": "text"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "menu": "{{ steps.data.menu }}"
+  }
+}

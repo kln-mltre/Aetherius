@@ -1,0 +1,43 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.recorded.scrape",
+  "description": "Act II (Continuum) : Blueprint de scraping genere par le recorder (menu flottant) sur quotes.toscrape.com. Attend la liste, extrait les citations en records {text, author} et la liste des tags. Zero configuration.",
+  "act": "continuum",
+  "steps": [
+    {
+      "action": "navigate",
+      "url": "https://quotes.toscrape.com/"
+    },
+    {
+      "action": "wait_for",
+      "selector": ".quote"
+    },
+    {
+      "action": "extract",
+      "id": "data",
+      "outputs": {
+        "quotes": {
+          "each": ".quote",
+          "fields": {
+            "text": {
+              "selector": ".text",
+              "as": "text"
+            },
+            "author": {
+              "selector": ".author",
+              "as": "text"
+            }
+          }
+        },
+        "tags": {
+          "selector": ".tag",
+          "as": "list"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "quotes": "{{ steps.data.quotes }}",
+    "tags": "{{ steps.data.tags }}"
+  }
+}

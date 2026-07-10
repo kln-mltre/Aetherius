@@ -1,0 +1,27 @@
+{
+  "aetherius": "1.0",
+  "name": "books.catalog",
+  "description": "Act II (Continuum) : extraire des donnees produit d'un catalogue (attribut + texte + comptage) et capturer une capture d'ecran (artefact) dans le repertoire du run.",
+  "act": "continuum",
+  "vars": { "domain": "https://books.toscrape.com" },
+  "options": { "debug": true, "timeout_ms": 15000 },
+  "steps": [
+    { "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "id": "catalog",
+      "action": "extract",
+      "outputs": {
+        "premier_titre": { "selector": ".product_pod h3 a", "as": "attr", "attr": "title" },
+        "premier_prix": { "selector": ".product_pod .price_color", "as": "text" },
+        "livres_sur_la_page": { "selector": ".product_pod", "as": "count" }
+      }
+    },
+    { "id": "shot", "action": "screenshot", "name": "books-home.png", "full_page": true }
+  ],
+  "outputs": {
+    "premier_titre": "{{ steps.catalog.premier_titre }}",
+    "premier_prix": "{{ steps.catalog.premier_prix }}",
+    "livres_sur_la_page": "{{ steps.catalog.livres_sur_la_page }}",
+    "capture": "{{ steps.shot.path }}"
+  }
+}

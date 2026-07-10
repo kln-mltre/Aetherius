@@ -7,7 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from aetherius.console.screens.library_scan import discover_blueprint_dirs, scan_blueprints
+from aetherius.console.screens.library_scan import (
+    BlueprintEntry,
+    EntryStatus,
+    discover_blueprint_dirs,
+    entry_status,
+    scan_blueprints,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -70,6 +76,25 @@ def test_scan_blueprints_schema_error_is_captured(tmp_path: Path) -> None:
 
     assert len(entries) == 1
     assert entries[0].error is not None
+
+
+def _entry(act: str | None, error: str | None) -> BlueprintEntry:
+    return BlueprintEntry(path=Path("x.blueprint.json"), blueprint=None, act=act, error=error)
+
+
+def test_entry_status_ready_for_implemented_act() -> None:
+    # vector and continuum have drivers today.
+    assert entry_status(_entry("vector", None)) is EntryStatus.READY
+    assert entry_status(_entry("continuum", None)) is EntryStatus.READY
+
+
+def test_entry_status_pending_for_unimplemented_act() -> None:
+    assert entry_status(_entry("oracle", None)) is EntryStatus.ACT_PENDING
+
+
+def test_entry_status_invalid_when_error_present() -> None:
+    assert entry_status(_entry("vector", "boom")) is EntryStatus.INVALID
+    assert entry_status(_entry(None, None)) is EntryStatus.INVALID
 
 
 def test_scan_blueprints_capability_validation_error_is_captured(tmp_path: Path) -> None:

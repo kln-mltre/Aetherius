@@ -45,14 +45,21 @@ AETHERIUS_THEME = Theme(
     dark=True,
 )
 
-# Accent color per Act, used for badges across screens. Vector is the only implemented Act
-# today (core.runtime.engine.IMPLEMENTED_ACTS); the other three share the muted stone tone.
-PER_ACT_COLOR: dict[str, str] = {
+# Each Act's own accent colour. It is only shown once the Act is runnable; a pending Act stays
+# muted stone (see `act_color`), so a badge's colour always reflects real availability rather than
+# a hand-maintained list that drifts as Acts land.
+ACT_ACCENT: dict[str, str] = {
     "vector": LAUREL,
-    "continuum": STONE,
-    "oracle": STONE,
-    "phantom": STONE,
+    "continuum": VIOLET,
+    "oracle": TYRIAN,
+    "phantom": AMBER,
 }
+
+
+def act_color(act: str, implemented: bool) -> str:
+    """Badge colour for *act*: its own accent when runnable, muted stone while pending."""
+    return ACT_ACCENT.get(act, STONE) if implemented else STONE
+
 
 ACT_LABELS: dict[str, str] = {
     "vector": "I - Vector",

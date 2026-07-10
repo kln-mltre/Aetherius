@@ -36,7 +36,6 @@ async def test_home_menu_lists_all_sections() -> None:
 
         assert ids == {
             "library",
-            "runs",
             "catalog",
             "sessions",
             "settings",
@@ -66,7 +65,7 @@ async def test_selecting_catalog_navigates_there() -> None:
     async with app.run_test() as pilot:
         await pilot.pause()
         option_list = app.screen.query_one(OptionList)
-        option_list.highlighted = 2  # "catalog" is the third entry
+        option_list.highlighted = 1  # "catalog" is the second entry (Runs removed from Home)
         await pilot.press("enter")
         await pilot.pause()
 

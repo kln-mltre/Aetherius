@@ -127,23 +127,100 @@ def validate(blueprint: Path) -> None:
 
 
 @app.command()
-def serve() -> None:
-    """Start the local daemon (not implemented yet)."""
-    typer.echo(
-        "The daemon (`aetherius serve`) is not implemented yet. "
-        "It is a pending milestone; see README.md 'État d'avancement'."
-    )
-    raise typer.Exit(1)
+def serve(
+    host: str | None = typer.Option(None, "--host", help="Bind address (default 127.0.0.1)."),
+    port: int | None = typer.Option(None, "--port", help="Bind port (default 8787)."),
+    token: str | None = typer.Option(
+        None, "--token", help="Require this bearer token on every request."
+    ),
+) -> None:
+    """Start the local daemon exposing the engine over HTTP and WebSocket.
+
+    Options override the environment (`AETHERIUS_DAEMON_HOST/PORT/TOKEN`). The daemon binds to
+    loopback by default: it serves local processes only, never the network.
+    """
+    import uvicorn
+
+    from .server import DaemonConfig, create_app
+
+    # Start from the environment (AETHERIUS_DAEMON_*), then let explicit CLI options win.
+    config = DaemonConfig()
+    if host is not None:
+        config.host = host
+    if port is not None:
+        config.port = port
+    if token is not None:
+        config.token = token
+
+    uvicorn.run(create_app(config), host=config.host, port=config.port, log_level="info")
 
 
 @app.command()
-def record() -> None:
-    """Launch the Blueprint recorder (not implemented yet)."""
-    typer.echo(
-        "The recorder (`aetherius record`) is not implemented yet. "
-        "It is a pending milestone; see README.md 'État d'avancement'."
-    )
-    raise typer.Exit(1)
+def record(
+    name: str,
+    url: str = typer.Option(..., "--url", help="Start URL for the demonstration."),
+    act: str = typer.Option(
+        "continuum", "--act", help="Recorder backend: 'continuum' (browser) or 'vector' (API)."
+    ),
+    out: Path | None = typer.Option(
+        None, "--out", help="Directory for the recorded Blueprint (default ./blueprints)."
+    ),
+    no_secrets: bool = typer.Option(
+        False,
+        "--no-secrets",
+        help="Keep username-like fields literal (passwords are always secrets).",
+    ),
+) -> None:
+    """Record a Blueprint by demonstrating a task in a visible browser."""
+    from rich.console import Console as RichConsole
+
+    from .core.errors import AetheriusError
+    from .recorder import record_blueprint
+
+    rich_console = RichConsole()
+    rich_console.print(f"[bold]Recording[/bold] {name!r} — a browser opens at {url}.")
+    rich_console.print("Demonstrate the task, then close the window to finish.")
+
+    def on_event(description: str) -> None:
+        rich_console.print(f"  [dim]{description}[/dim]")
+
+    try:
+        path = record_blueprint(
+            name,
+            url,
+            act=act,
+            out_dir=out,
+            on_event=on_event,
+            credentials_as_secrets=not no_secrets,
+        )
+    except AetheriusError as exc:
+        rich_console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise typer.Exit(1) from exc
+
+    rich_console.print(f"[bold green]Saved[/bold green] {path}")
+
+
+@app.command(name="record-gestures")
+def record_gestures_command(
+    out: Path | None = typer.Option(
+        None, "--out", help="Gesture library file to write (default: bundled human_library.json)."
+    ),
+) -> None:
+    """Capture real mouse gestures to extend the stealth gesture library."""
+    from rich.console import Console as RichConsole
+
+    from .core.errors import AetheriusError
+    from .recorder import record_gestures
+
+    rich_console = RichConsole()
+    rich_console.print("A browser opens. Move and click naturally, then close the window to save.")
+    try:
+        path, count = record_gestures(out_path=out)
+    except AetheriusError as exc:
+        rich_console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise typer.Exit(1) from exc
+
+    rich_console.print(f"[bold green]Added[/bold green] {count} gesture(s) to {path}")
 
 
 def main(argv: list[str] | None = None) -> int:

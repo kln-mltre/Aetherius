@@ -16,7 +16,7 @@ from aetherius.console.screens.library import LibraryScreen
 from aetherius.console.screens.runs import RunsScreen
 from aetherius.console.widgets.event_log import EventLog
 
-from textual.widgets import Button, DataTable, Input
+from textual.widgets import Button, DataTable, Input, Switch
 
 pytestmark = pytest.mark.integration
 
@@ -49,7 +49,7 @@ async def _wait_until(condition, pilot, attempts: int = 60) -> None:
 
 @pytest.mark.asyncio
 async def test_console_runs_vector_blueprint_end_to_end(examples_dir: Path) -> None:
-    blueprint_path = examples_dir / "ukit-planning-week.blueprint.json"
+    blueprint_path = examples_dir / "vector" / "ukit-planning-week.blueprint.json"
     app = AetheriusConsoleApp()
 
     async with app.run_test(size=(120, 50)) as pilot:
@@ -80,3 +80,26 @@ async def test_console_runs_vector_blueprint_end_to_end(examples_dir: Path) -> N
 
         summary_steps = app.screen.query_one("#run-summary-steps", DataTable)
         assert summary_steps.row_count == 1
+
+
+@pytest.mark.asyncio
+async def test_runs_debug_toggle_applies_to_the_run(examples_dir: Path) -> None:
+    blueprint_path = examples_dir / "vector" / "ukit-planning-week.blueprint.json"
+    app = AetheriusConsoleApp()
+
+    async with app.run_test(size=(120, 50)) as pilot:
+        await pilot.pause()
+        app.push_screen(RunsScreen(blueprint_path))
+        await pilot.pause()
+
+        app.screen.query_one("#run-debug", Switch).value = True  # opt into debug for this run
+        app.screen.query_one("#bp-input-group", Input).value = "TP-A1"
+        app.screen.query_one("#bp-input-monday", Input).value = "2026-09-07"
+
+        with patch("httpx.Client", return_value=httpx.Client(transport=_mock_transport())):
+            await pilot.click("#run-button")
+            await _wait_until(
+                lambda: not app.screen.query_one("#run-button", Button).disabled, pilot
+            )
+
+        assert app.screen._blueprint.options.debug is True

@@ -1,0 +1,56 @@
+{
+  "aetherius": "1.0",
+  "name": "github.zeb",
+  "description": "Genere par le recorder Aetherius (act continuum) a partir d'une demo sur https://intranet.u-bordeaux.fr/.",
+  "act": "continuum",
+  "secrets": [
+    "username",
+    "password"
+  ],
+  "steps": [
+    {
+      "action": "navigate",
+      "url": "https://cas.u-bordeaux.fr/cas/login?service=https%3A%2F%2Fintranet.u-bordeaux.fr%2Flogin"
+    },
+    {
+      "action": "fill",
+      "selector": "#username",
+      "value": "{{ secrets.username }}"
+    },
+    {
+      "action": "press",
+      "key": "Enter",
+      "selector": "#password"
+    },
+    {
+      "action": "fill",
+      "selector": "#password",
+      "value": "{{ secrets.password }}"
+    },
+    {
+      "action": "click",
+      "selector": ".btn-submit"
+    },
+    {
+      "action": "click",
+      "selector": "#favorite-apps-grid > div:nth-of-type(4) > li > a"
+    },
+    {
+      "action": "click",
+      "selector": "a[href=\"?id=415\"]"
+    },
+    {
+      "action": "extract",
+      "id": "data",
+      "outputs": {
+        "div": {
+          "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(4) > div:nth-of-type(3)",
+          "as": "text"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "div": "{{ steps.data.div }}"
+  }
+}

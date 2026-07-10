@@ -1,0 +1,34 @@
+{
+  "aetherius": "1.0",
+  "name": "bordeaux.cas.login",
+  "description": "Act II (Continuum) : connexion au CAS de l'Universite de Bordeaux puis confirmation de l'etat authentifie. Identifiants lus depuis .env (secrets bordeaux_user / bordeaux_pass), jamais ecrits dans le fichier. Login 'a froid' (contexte ephemere) : fiable a chaque run tant que le flux conditionnel (if) n'est pas disponible.",
+  "act": "continuum",
+  "secrets": ["bordeaux_user", "bordeaux_pass"],
+  "vars": { "cas": "https://cas.u-bordeaux.fr/cas/login" },
+  "options": { "debug": true, "timeout_ms": 20000 },
+  "steps": [
+    { "action": "navigate", "url": "{{ vars.cas }}" },
+    { "action": "fill", "selector": "#username", "value": "{{ secrets.bordeaux_user }}" },
+    { "action": "fill", "selector": "#password", "value": "{{ secrets.bordeaux_pass }}" },
+    { "action": "click", "selector": "input[type=submit]" },
+    {
+      "action": "wait_for",
+      "selector": ".success",
+      "timeout_ms": 15000,
+      "on_timeout": "fail:LOGIN_FAILED"
+    },
+    { "action": "emit", "event": "LOGIN_SUCCESS" },
+    {
+      "id": "auth",
+      "action": "extract",
+      "outputs": {
+        "message": { "selector": ".success", "as": "text" },
+        "peut_se_deconnecter": { "selector": "a[href*=logout]", "as": "count" }
+      }
+    }
+  ],
+  "outputs": {
+    "message": "{{ steps.auth.message }}",
+    "peut_se_deconnecter": "{{ steps.auth.peut_se_deconnecter }}"
+  }
+}

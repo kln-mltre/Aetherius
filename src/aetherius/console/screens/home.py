@@ -16,13 +16,12 @@ from ..theme import GOLD, LAUREL, MOTTO, STARFIELD, TYRIAN, VIOLET, WORDMARK, fr
 
 # A gold star marks the sections that are usable today; a dot marks the pending ones.
 _MENU: list[tuple[str, str]] = [
-    ("library", "✦ Library — browse and validate Blueprints"),
-    ("runs", "✦ Runs — launch a Blueprint (open one from Library)"),
+    ("library", "✦ Library — browse Blueprints and run one"),
     ("catalog", "✦ Catalog — the 4 Acts and their capabilities"),
+    ("recorder", "✦ Recorder — capture a Blueprint by demonstration"),
+    ("builder", "✦ Blueprint Studio — create and edit Blueprints, guided"),
     ("sessions", "· Sessions — profiles and warmup (coming soon)"),
-    ("settings", "· Settings — daemon control and configuration (coming soon)"),
-    ("recorder", "· Recorder — capture a Blueprint by demonstration (coming soon)"),
-    ("builder", "· Blueprint Studio — guided Blueprint creation (coming soon)"),
+    ("settings", "✦ Settings — start/stop the daemon and see its config"),
 ]
 
 
@@ -68,11 +67,6 @@ class HomeScreen(Screen[None]):
         if key == "library":
             from .library import LibraryScreen
 
-            self.app.push_screen(LibraryScreen())
-        elif key == "runs":
-            from .library import LibraryScreen
-
-            self.app.notify("Pick a Blueprint from Library first.", timeout=5)
             self.app.push_screen(LibraryScreen())
         elif key == "catalog":
             from .catalog import CatalogScreen

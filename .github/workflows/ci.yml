@@ -36,6 +36,21 @@ jobs:
       - run: make typecheck
       - run: make test
 
+  browser:
+    name: Browser (Act II)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # Act II needs the [browser] extra and a real Chromium; --with-deps pulls the OS libraries.
+      - run: python -m pip install -e ".[browser,dev]"
+      - run: python -m playwright install --with-deps chromium
+      - run: make test-browser
+
   typescript:
     name: TypeScript SDK
     runs-on: ubuntu-latest
@@ -44,4 +59,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      # The SDK end-to-end test spawns the real daemon, so the package must be importable.
+      - run: python -m pip install -e .
       - run: make test-ts

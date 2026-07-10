@@ -35,10 +35,17 @@ class BlueprintInputForm(Vertical):
     }
     """
 
-    def __init__(self, inputs: dict[str, InputSpec], secrets: list[str]) -> None:
+    def __init__(
+        self,
+        inputs: dict[str, InputSpec],
+        secrets: list[str],
+        available_secrets: set[str] | None = None,
+    ) -> None:
         super().__init__()
         self._inputs = inputs
         self._secrets = secrets
+        # Secrets already resolvable from the environment (.env): shown optional, not required.
+        self._available_secrets = available_secrets or set()
 
     def compose(self) -> ComposeResult:
         for name, spec in self._inputs.items():
@@ -57,9 +64,12 @@ class BlueprintInputForm(Vertical):
                         id=_INPUT_ID_PREFIX + name,
                     )
         for name in self._secrets:
+            from_env = name in self._available_secrets
+            label = f"{name} (secret · loaded from .env)" if from_env else f"{name} (secret)"
+            placeholder = "leave blank to use .env value" if from_env else ""
             with Vertical(classes="form-field"):
-                yield Label(f"{name} (secret)")
-                yield Input(password=True, id=_SECRET_ID_PREFIX + name)
+                yield Label(label)
+                yield Input(password=True, placeholder=placeholder, id=_SECRET_ID_PREFIX + name)
 
     def collect(self) -> tuple[dict[str, Any], dict[str, str]]:
         """Read the current form values into (inputs, secrets) dicts."""

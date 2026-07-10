@@ -1,0 +1,34 @@
+{
+  "aetherius": "1.0",
+  "name": "jsonplaceholder.users",
+  "description": "Act I (Vector) : Blueprint genere par le recorder (mode API) en observant l'appel JSON de jsonplaceholder.typicode.com/users. Extrait la liste des utilisateurs en records. Zero config.",
+  "act": "vector",
+  "steps": [
+    {
+      "id": "req",
+      "action": "http.request",
+      "method": "GET",
+      "url": "https://jsonplaceholder.typicode.com/users",
+      "expect": {
+        "status": 200
+      },
+      "extract": {
+        "users": {
+          "from": "json",
+          "path": "$[*]",
+          "fields": {
+            "id": "$.id",
+            "name": "$.name",
+            "username": "$.username",
+            "email": "$.email",
+            "phone": "$.phone",
+            "website": "$.website"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "users": "{{ steps.req.users }}"
+  }
+}

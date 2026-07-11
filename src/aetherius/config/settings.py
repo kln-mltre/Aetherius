@@ -37,6 +37,15 @@ class AetheriusSettings(BaseSettings):
         """Where per-run artifacts are written (one subdirectory per run id)."""
         return self.data_dir / "runs"
 
+    @property
+    def db_path(self) -> Path:
+        """SQLite file backing durable state (schedules, run history, inter-run state).
+
+        Introduced for the Phase 1.5 store (Jalon A); a single portable file so the daemon survives
+        restarts. See docs/phase-1.5/a-store.md.
+        """
+        return self.data_dir / "aetherius.db"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> AetheriusSettings:

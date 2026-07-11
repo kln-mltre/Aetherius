@@ -456,7 +456,8 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 Le projet avance en deux grandes phases. La **Phase 1** — le socle, utilisable comme **bibliothèque**
 (in-process Python) et comme **service** (daemon + SDK) — est **terminée avec ce jalon** : un premier
 point de contrôle, à éprouver en conditions réelles avant d'attaquer la **Phase 2** (les deux Acts les
-plus lourds).
+plus lourds). Entre les deux, une **Phase 1.5** durcit ce socle pour les workflows **récurrents et
+réactifs** (planification, alertes, réactivité) — voir ci-dessous.
 
 ### Phase 1 — le socle réutilisable (terminée)
 
@@ -523,6 +524,33 @@ plus lourds).
 
 **Phase 1 terminée.** Aetherius est utilisable comme bibliothèque et comme service ; c'est le point de
 contrôle prévu pour l'éprouver en conditions réelles et corriger avant la suite.
+
+### Phase 1.5 — socle opérationnel (en cours)
+
+Un palier intermédiaire, dans l'esprit du durcissement du socle : rendre Aetherius capable de porter
+des workflows **récurrents et réactifs** (planifier un Blueprint, réagir aux données extraites,
+alerter au bon moment) avant les Acts autonomes. Le cas fil rouge : surveiller un produit en rupture,
+vérifier plusieurs fois par jour, alerter au retour en stock. Cadrage complet et **spécifications par
+jalon** : [docs/phase-1.5/](docs/phase-1.5/README.md).
+
+- [ ] **Persistance (`store/`)** : état durable SQLite (stdlib) sous `~/.aetherius` — schedules,
+  historique des runs, état inter-run. Fondation des autres jalons.
+  [docs/phase-1.5/a-store.md](docs/phase-1.5/a-store.md).
+- [ ] **Réactivité et flux conditionnel** : garde d'étape `when` + actions `if`/`repeat`/`for_each`
+  exécutées (débloque aussi la réutilisation de session Continuum).
+  [docs/phase-1.5/b-flow.md](docs/phase-1.5/b-flow.md).
+- [ ] **Notifications natives** : couche sans dépendance (webhook/Discord/Telegram/ntfy), action
+  `notify` + sink d'alerte automatique, déduplication au changement d'état.
+  [docs/phase-1.5/c-notifications.md](docs/phase-1.5/c-notifications.md).
+- [ ] **Scheduler (daemon)** : rejeu cron/intervalle persistant, CLI `aetherius schedule …`, API
+  `/v1/schedules`, rattrapage des tirs manqués.
+  [docs/phase-1.5/d-scheduler.md](docs/phase-1.5/d-scheduler.md).
+- [ ] **Actions custom / plugins** : registre d'actions activé + découverte par entry-points (actions
+  et canaux de notification tiers, sans forker le cœur).
+  [docs/phase-1.5/e-plugins.md](docs/phase-1.5/e-plugins.md).
+- [ ] **Déploiement always-on** : recette 24/7 (Docker + systemd) pour héberger le daemon sur une
+  machine allumée — la réponse honnête au « hors machine ».
+  [docs/phase-1.5/f-deployment.md](docs/phase-1.5/f-deployment.md).
 
 ### Phase 2 — les Acts autonomes (à venir)
 

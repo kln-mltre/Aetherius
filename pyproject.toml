@@ -36,6 +36,7 @@ dependencies = [
   "textual>=0.60",
   "rich>=13.7",
   "questionary>=2.0",
+  "croniter>=2.0",         # Phase 1.5 scheduler (Jalon D): cron expression math, pure-python, light
 ]
 
 [project.optional-dependencies]

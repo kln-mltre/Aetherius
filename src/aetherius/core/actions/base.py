@@ -39,6 +39,11 @@ class Capability(str, Enum):
     # ── Extract (all Acts) ───────────────────────────────────────────────────
     EXTRACT = "extract"
 
+    # ── Notifications (all Acts) ─────────────────────────────────────────────
+    # Phase 1.5, Jalon C: declared here so the builder surfaces it as a real (pending) action;
+    # dispatch is wired by the shared handler when Jalon C lands. See docs/phase-1.5/c-notifications.md.
+    NOTIFY = "notify"
+
 
 _VECTOR_CAPS: frozenset[Capability] = frozenset(
     {
@@ -50,6 +55,7 @@ _VECTOR_CAPS: frozenset[Capability] = frozenset(
         Capability.IF,
         Capability.FOR_EACH,
         Capability.EXTRACT,
+        Capability.NOTIFY,
     }
 )
 
@@ -92,8 +98,16 @@ ACT_CAPABILITIES: dict[str, frozenset[Capability]] = {
 # declared capability is neither dispatched nor listed here; shrink each entry as drivers catch up.
 # Only runnable Acts appear (see IMPLEMENTED_ACTS).
 PENDING_ACTIONS: dict[str, frozenset[Capability]] = {
-    "vector": frozenset({Capability.IF, Capability.FOR_EACH, Capability.EXTRACT}),
+    "vector": frozenset(
+        {Capability.IF, Capability.FOR_EACH, Capability.EXTRACT, Capability.NOTIFY}
+    ),
     "continuum": frozenset(
-        {Capability.IF, Capability.FOR_EACH, Capability.REPEAT, Capability.HTTP_REQUEST}
+        {
+            Capability.IF,
+            Capability.FOR_EACH,
+            Capability.REPEAT,
+            Capability.HTTP_REQUEST,
+            Capability.NOTIFY,
+        }
     ),
 }

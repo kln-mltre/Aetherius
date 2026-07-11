@@ -52,10 +52,10 @@ def action_specs() -> dict[str, ActionSpec]:
     """
     global _specs
     if _specs is None:
-        from . import data, flow, interaction, navigation
+        from . import data, flow, interaction, navigation, notification
 
         collected: dict[str, ActionSpec] = {}
-        for module in (navigation, interaction, data, flow):
+        for module in (navigation, interaction, data, flow, notification):
             for spec in module.SPECS:
                 collected[spec.name] = spec
         _specs = collected

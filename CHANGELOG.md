@@ -11,12 +11,15 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
-- **Cadrage Phase 1.5** — squelette (stubs, interfaces, contrats) et spécifications par jalon pour rendre le
-  socle **récurrent et réactif** : persistance SQLite (`store/`), notifications natives (`notify/`),
-  scheduler du daemon, flux conditionnel (`when`, `if`/`repeat`/`for_each`), plugins, déploiement
-  24/7. Aucune capacité n'est encore activée (jalons en attente : l'action `notify` est déclarée mais
+- **Cadrage Phase 1.5** — squelette (stubs, interfaces, contrats) et spécifications par jalon pour
+  rendre le socle **récurrent, réactif et furtif** : persistance SQLite (`store/`), notifications
+  natives (`notify/`), scheduler du daemon, flux conditionnel (`when`, `if`/`repeat`/`for_each`),
+  plugins, déploiement 24/7, **identité réseau** (`network/` : proxy, rotation d'IP, anti-fuite
+  WebRTC, cohérence géo, impersonation TLS) et **durcissement de l'empreinte**
+  (`stealth/fingerprint/` : canvas/audio/UA-CH/écran/WebGL2 + identité d'en-têtes pour Vector).
+  Aucune capacité n'est encore activée (jalons en attente : l'action `notify` est déclarée mais
   marquée `PENDING`, les modules lèvent une erreur « jalon en attente ») ; `make check` reste vert.
-  Voir [docs/phase-1.5/](docs/phase-1.5/README.md).
+  Nouvel extra optionnel `[network]` (SOCKS5 + `curl_cffi`). Voir [docs/phase-1.5/](docs/phase-1.5/README.md).
 
 ### Sécurité
 - **Évaluateur `where` (Act I — Vector)** : rejet explicite des attributs magiques (`__class__`,

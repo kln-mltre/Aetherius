@@ -530,8 +530,9 @@ contrôle prévu pour l'éprouver en conditions réelles et corriger avant la su
 Un palier intermédiaire, dans l'esprit du durcissement du socle : rendre Aetherius capable de porter
 des workflows **récurrents et réactifs** (planifier un Blueprint, réagir aux données extraites,
 alerter au bon moment) avant les Acts autonomes. Le cas fil rouge : surveiller un produit en rupture,
-vérifier plusieurs fois par jour, alerter au retour en stock. Cadrage complet et **spécifications par
-jalon** : [docs/phase-1.5/](docs/phase-1.5/README.md).
+vérifier plusieurs fois par jour, alerter au retour en stock. Et, dans la même veine furtive que la
+couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP). Cadrage complet et
+**spécifications par jalon** : [docs/phase-1.5/](docs/phase-1.5/README.md).
 
 - [ ] **Persistance (`store/`)** : état durable SQLite (stdlib) sous `~/.aetherius` — schedules,
   historique des runs, état inter-run. Fondation des autres jalons.
@@ -551,6 +552,12 @@ jalon** : [docs/phase-1.5/](docs/phase-1.5/README.md).
 - [ ] **Déploiement always-on** : recette 24/7 (Docker + systemd) pour héberger le daemon sur une
   machine allumée — la réponse honnête au « hors machine ».
   [docs/phase-1.5/f-deployment.md](docs/phase-1.5/f-deployment.md).
+- [ ] **Identité réseau** : proxy (Vector et Continuum, HTTP/HTTPS/SOCKS5), rotation d'IP, prévention
+  de la fuite WebRTC, cohérence géo (timezone/locale alignés sur l'IP) et impersonation TLS — pour
+  être invisible aussi au niveau réseau. [docs/phase-1.5/g-network.md](docs/phase-1.5/g-network.md).
+- [ ] **Durcissement de l'empreinte** : fermer les signaux restants (canvas, audio, polices, client
+  hints, écran, WebGL2), cohérents avec le profil, et donner une identité d'en-têtes à Vector.
+  [docs/phase-1.5/h-fingerprint.md](docs/phase-1.5/h-fingerprint.md).
 
 ### Phase 2 — les Acts autonomes (à venir)
 

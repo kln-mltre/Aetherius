@@ -31,10 +31,15 @@ impossible, car le socle a trois manques structurels :
   dépendance nouvelle, sûr en concurrence.
 - **Alertes = couche notifications native, sans dépendance** (tout en HTTP via `httpx`, déjà au
   cœur). Action `notify` + alerte automatique, avec détection de changement pour ne pas spammer.
+- **Furtivité réseau = option `options.proxy` de premier niveau** (Jalon G), atteignant les deux
+  moteurs. Proxy + rotation d'IP, mais aussi anti-fuite WebRTC et cohérence géo — sans quoi un proxy
+  laisse fuir l'IP réelle. Le durcissement de l'empreinte (Jalon H) complète le tableau côté
+  navigateur **et** côté Vector.
 
-Tout reste **léger** : `sqlite3` est stdlib, `httpx` déjà présent, `croniter` minuscule, et le
-scheduler vit dans `server/` (chargé seulement quand on `serve`). L'invariant « `import aetherius`
-reste léger » est préservé.
+Tout reste **léger** : `sqlite3` est stdlib, `httpx` déjà présent, `croniter` minuscule, le proxy
+HTTP/HTTPS ne coûte aucune dépendance (SOCKS5 et TLS impersonation dans l'extra optionnel `[network]`),
+et le scheduler vit dans `server/` (chargé seulement quand on `serve`). L'invariant « `import
+aetherius` reste léger » est préservé.
 
 ## Les jalons et leur ordre
 
@@ -42,12 +47,18 @@ Chaque jalon fait l'objet d'une **spécification autonome**. Le squelette (stubs
 contrats) est déjà en place dans le code ; chaque spécification décrit ce qu'il reste à implémenter,
 sa « Définition de terminé », son plan de test et son exemple exécutable.
 
+Deux familles : **socle opérationnel** (A–F, planification/réactivité/alertes) et **furtivité réseau**
+(G–H, orthogonales aux précédentes).
+
 ```
 A. Persistance (store/, SQLite)  ───────────────┐
                                                 ├──►  D. Scheduler (daemon)  ──►  F. Déploiement 24/7
 B. Réactivité (when + if/repeat/for_each)  ─────┤
 C. Notifications (notify/ + action + sink)  ────┘
 E. Actions custom / plugins   [indépendant, après B et C]
+
+G. Identité réseau (proxy + rotation + anti-fuite)  ──►  H. Durcissement de l'empreinte
+   [orthogonal à A–F]
 ```
 
 | Jalon | Spécification | Dépend de | Résumé |
@@ -58,8 +69,12 @@ E. Actions custom / plugins   [indépendant, après B et C]
 | D | [d-scheduler.md](d-scheduler.md) | A, C | Scheduler cron/intervalle dans le daemon + CLI + API. |
 | E | [e-plugins.md](e-plugins.md) | après B, C | Actions et canaux tiers via entry-points. |
 | F | [f-deployment.md](f-deployment.md) | D | Recette de déploiement always-on (Docker, systemd). |
+| G | [g-network.md](g-network.md) | — | Proxy (Vector + Continuum), rotation d'IP, anti-fuite WebRTC, cohérence géo, TLS impersonation. |
+| H | [h-fingerprint.md](h-fingerprint.md) | G | Empreinte durcie (canvas/audio/UA-CH/écran/WebGL2) + identité d'en-têtes pour Vector. |
 
-**Ordre recommandé :** A, puis B et C (parallélisables), puis D, puis E, puis F.
+**Ordre recommandé :** A, puis B et C (parallélisables), puis D, puis E, puis F. G et H sont
+indépendants du reste : G puis H, à tout moment (G se marie au scheduler D pour la surveillance
+récurrente).
 
 ## Implémenter un jalon
 

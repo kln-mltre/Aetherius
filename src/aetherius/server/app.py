@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from ..store import get_store
 from ..version import __version__
 from .config import DaemonConfig
 from .jobs import RunManager
@@ -22,7 +23,8 @@ def create_app(config: DaemonConfig | None = None) -> FastAPI:
         summary="Local HTTP + WebSocket gateway to the Aetherius engine.",
     )
     app.state.config = config
-    app.state.manager = RunManager()
+    # Runs persist their outcome to the durable store so history survives daemon restarts (Jalon A).
+    app.state.manager = RunManager(runs=get_store().runs)
 
     app.include_router(runs.router)
     app.include_router(blueprints.router)

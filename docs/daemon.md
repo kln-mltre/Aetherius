@@ -74,6 +74,12 @@ asyncio via `loop.call_soon_threadsafe` — le **même pattern Sink** que la Con
 plutôt que vers un widget. Toute la mutation d'état d'un job se fait sur le thread de la boucle, sans
 verrou (`server/jobs.py::RunManager`).
 
+Le **flux d'événements live** reste en mémoire (il ne concerne qu'un run en cours), mais le
+**résultat final** de chaque run est désormais persisté dans le [store](store.md) (Jalon 1.5-A) : il
+survit à un redémarrage et devient lisible via `RunRepository`. L'écriture se fait hors de la boucle
+(`asyncio.to_thread`) et en mode « best-effort » — une défaillance du store n'interrompt jamais le run
+ni son flux. Le lien vers un schedule (`schedule_id`) sera renseigné par le scheduler (Jalon 1.5-D).
+
 ## Le SDK TypeScript — `@aetherius/client`
 
 Client mince pour Node 20+. Il **spawn** un daemon local automatiquement (ou cible un daemon déjà

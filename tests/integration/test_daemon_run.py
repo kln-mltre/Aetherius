@@ -9,6 +9,7 @@ WebSocket to its ``done`` event is the deterministic barrier for "the run has fi
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -18,9 +19,23 @@ import pytest
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from aetherius.config import settings as settings_mod
 from aetherius.server import DaemonConfig, create_app
+from aetherius.store import engine as engine_mod
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture(autouse=True)
+def _isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    # The daemon persists run history to the store; keep it on a temp file so no test writes to the
+    # real ~/.aetherius. Reset both singletons so create_app resolves the temp database.
+    monkeypatch.setenv("AETHERIUS_DATA_DIR", str(tmp_path))
+    settings_mod.get_settings.cache_clear()
+    engine_mod.get_store.cache_clear()
+    yield
+    settings_mod.get_settings.cache_clear()
+    engine_mod.get_store.cache_clear()
 
 
 @pytest.fixture
@@ -74,6 +89,20 @@ def test_run_selftest_streams_events_and_returns_outputs(selftest_bp: dict[str, 
         assert run["status"] == "succeeded"
         assert run["outputs"]["greeting"] == "hello, daemon"
         assert run["error"] is None
+
+
+def test_finished_runs_are_persisted_to_the_store(selftest_bp: dict[str, Any]) -> None:
+    """A run driven through the daemon lands in the durable store (Jalon A soft migration)."""
+    with TestClient(create_app(DaemonConfig())) as client:
+        run_id = client.post(
+            "/v1/runs", json={"blueprint": selftest_bp, "inputs": {"subject": "store"}}
+        ).json()["run_id"]
+        _drain_events(client, run_id)
+
+    persisted = engine_mod.get_store().runs.get(run_id)
+    assert persisted is not None
+    assert persisted.status == "success"
+    assert persisted.outputs["greeting"] == "hello, store"
 
 
 def test_run_accepts_a_blueprint_path(examples_dir: Path) -> None:

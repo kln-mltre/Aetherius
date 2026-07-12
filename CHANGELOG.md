@@ -11,6 +11,11 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
+- **Persistance durable (Jalon 1.5-A)** — socle de stockage SQLite (stdlib `sqlite3`, mode WAL, zéro
+  dépendance) sous `~/.aetherius/aetherius.db`, avec migrations versionnées (`PRAGMA user_version`) et
+  trois dépôts typés : schedules, historique des runs, état clé/valeur inter-run (`compare_and_set`
+  pour la déduplication d'alertes). Le daemon persiste désormais le résultat de ses runs dans le store
+  (migration douce, sans régression). Voir [docs/store.md](docs/store.md).
 - **Cadrage Phase 1.5** — squelette (stubs, interfaces, contrats) et spécifications par jalon pour
   rendre le socle **récurrent, réactif et furtif** : persistance SQLite (`store/`), notifications
   natives (`notify/`), scheduler du daemon, flux conditionnel (`when`, `if`/`repeat`/`for_each`),

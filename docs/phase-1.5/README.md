@@ -63,7 +63,7 @@ G. Identité réseau (proxy + rotation + anti-fuite)  ──►  H. Durcissement
 
 | Jalon | Spécification | Dépend de | Résumé |
 |-------|---------------|-----------|--------|
-| A | [a-store.md](a-store.md) | — | Store SQLite durable (schedules, historique, état inter-run). |
+| A | [a-store.md](a-store.md) | — | **Livré.** Store SQLite durable (schedules, historique, état inter-run) — voir [docs/store.md](../store.md). |
 | B | [b-flow.md](b-flow.md) | — | Garde d'étape `when` + actions de flux `if`/`repeat`/`for_each`. |
 | C | [c-notifications.md](c-notifications.md) | A (pour la dédup) | Canaux d'alerte + action `notify` + sink d'alerte auto. |
 | D | [d-scheduler.md](d-scheduler.md) | A, C | Scheduler cron/intervalle dans le daemon + CLI + API. |

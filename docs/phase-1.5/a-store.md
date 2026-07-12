@@ -1,8 +1,10 @@
 # Jalon A — Persistance durable (`store/`, SQLite)
 
-**Statut : jalon en attente.** Le squelette (interfaces + records) existe dans
-[`src/aetherius/store/`](../../src/aetherius/store/) ; toute opération lève aujourd'hui un
-`NotImplementedError` « Jalon 1.5-A ». Ce document décrit ce qu'il reste à implémenter.
+**Statut : livré.** L'implémentation SQLite est en place dans
+[`src/aetherius/store/`](../../src/aetherius/store/) ; les trois dépôts sont fonctionnels et plus
+aucune opération ne lève de `NotImplementedError`. La **migration douce** (optionnelle) a été
+réalisée : le daemon persiste l'historique de ses runs dans le store. Référence d'usage et schéma :
+[`docs/store.md`](../store.md). Ce document conserve la spécification d'origine du jalon.
 
 ## Objectif
 

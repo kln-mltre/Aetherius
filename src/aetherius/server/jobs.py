@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Callable, Mapping
 
 from ..core.blueprint.models import Blueprint
@@ -24,6 +25,7 @@ from ..core.errors import AetheriusError
 from ..core.events.models import RunEvent
 from ..core.runtime.engine import RunEngine
 from ..core.runtime.result import Result
+from ..store import RunRecord, RunRepository
 from .schemas import DaemonRunStatus, to_daemon_status
 
 
@@ -60,9 +62,16 @@ class Job:
 
 
 class RunManager:
-    """In-memory registry of runs and their event streams for the lifetime of the daemon."""
+    """In-memory registry of runs and their event streams for the lifetime of the daemon.
 
-    def __init__(self) -> None:
+    Live event streams stay in memory (they only matter while a run is in flight), but each run's
+    final outcome graduates onto the durable store (Jalon A) so history survives a restart. The
+    ``runs`` repository is optional: passing ``None`` keeps the manager purely in-memory, which is how
+    the unit tests drive it.
+    """
+
+    def __init__(self, runs: RunRepository | None = None) -> None:
+        self._runs = runs
         self._jobs: dict[str, Job] = {}
         # The loop only keeps weak references to tasks; hold strong ones so a run cannot be
         # garbage-collected mid-flight while it awaits the worker thread.
@@ -107,6 +116,7 @@ class RunManager:
         sink: QueueSink,
     ) -> None:
         job.status = "running"
+        started = datetime.now(timezone.utc)
         try:
             result = await asyncio.to_thread(
                 RunEngine().run,
@@ -127,9 +137,21 @@ class RunManager:
             job.status = "failed"
             job.error = str(exc)
         finally:
+            # Persist the outcome before closing the stream so a consumer that saw the run finish can
+            # already read it back. The store access runs off the loop and never aborts the run.
+            await self._persist(job, blueprint, started)
             job.finished.set()
             for queue in list(job.subscribers):
                 queue.put_nowait(None)  # sentinel: end of stream
+
+    async def _persist(self, job: Job, blueprint: Blueprint, started: datetime) -> None:
+        """Graduate a finished run's outcome onto the durable store, off the event loop."""
+        if self._runs is None:
+            return
+        try:
+            await asyncio.to_thread(self._runs.record, _to_run_record(job, blueprint, started))
+        except Exception:  # noqa: BLE001 - history is best-effort; never fail or stall a run over it
+            pass
 
     def subscribe(self, run_id: str) -> asyncio.Queue[RunEvent | None] | None:
         """Return a queue pre-loaded with the retained history, then fed live events.
@@ -153,3 +175,31 @@ class RunManager:
         job = self._jobs.get(run_id)
         if job is not None:
             job.subscribers.discard(queue)
+
+
+def _to_run_record(job: Job, blueprint: Blueprint, started: datetime) -> RunRecord:
+    """Build the durable record from a finished job.
+
+    A successful (or partial) run carries a full :class:`Result` to draw from; a run that failed
+    before producing one falls back to the Blueprint name and the captured start time. ``schedule_id``
+    stays ``None`` here — the scheduler (Jalon D) is what ties a run back to the schedule that fired it.
+    """
+    if job.result is not None:
+        result = job.result
+        return RunRecord(
+            run_id=job.run_id,
+            blueprint_name=result.blueprint_name,
+            status=result.status.value,
+            error=result.error,
+            outputs=result.outputs,
+            started_at=result.started_at,
+            finished_at=result.finished_at,
+        )
+    return RunRecord(
+        run_id=job.run_id,
+        blueprint_name=blueprint.name,
+        status="failed",
+        error=job.error,
+        started_at=started,
+        finished_at=datetime.now(timezone.utc),
+    )

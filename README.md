@@ -534,8 +534,9 @@ vérifier plusieurs fois par jour, alerter au retour en stock. Et, dans la même
 couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP). Cadrage complet et
 **spécifications par jalon** : [docs/phase-1.5/](docs/phase-1.5/README.md).
 
-- [ ] **Persistance (`store/`)** : état durable SQLite (stdlib) sous `~/.aetherius` — schedules,
-  historique des runs, état inter-run. Fondation des autres jalons.
+- [x] **Persistance (`store/`)** : état durable SQLite (stdlib) sous `~/.aetherius` — schedules,
+  historique des runs, état inter-run. Fondation des autres jalons. Le daemon y persiste désormais
+  l'historique de ses runs. [docs/store.md](docs/store.md),
   [docs/phase-1.5/a-store.md](docs/phase-1.5/a-store.md).
 - [ ] **Réactivité et flux conditionnel** : garde d'étape `when` + actions `if`/`repeat`/`for_each`
   exécutées (débloque aussi la réutilisation de session Continuum).

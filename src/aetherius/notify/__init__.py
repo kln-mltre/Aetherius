@@ -8,13 +8,12 @@ alerts on failure/success.
 
 Channel targets (webhook URLs, bot tokens, topics) are provided as Blueprint secrets and never
 stored. De-duplication (alert once per state transition) is delegated to the store's inter-run state
-(``aetherius.store``).
-
-Status: jalon en attente. Public shape fixed here; implementation lands with Jalon C.
-See docs/phase-1.5/c-notifications.md.
+(``aetherius.store``). See docs/notifications.md.
 """
 
 from __future__ import annotations
+
+import logging
 
 from .base import NotificationChannel
 from .message import Notification, NotificationLevel
@@ -31,13 +30,19 @@ __all__ = [
     "dispatch",
 ]
 
-_PENDING = "Jalon 1.5-C (notify): dispatch not implemented yet."
+_log = logging.getLogger("aetherius.notify")
 
 
-def dispatch(notification: Notification, channel: NotificationChannel) -> None:
-    """Deliver *notification* through *channel*.
+def dispatch(notification: Notification, channel: NotificationChannel) -> bool:
+    """Deliver *notification* through *channel*; True when the channel accepted it.
 
     A delivery failure is contained (logged, not raised through the run) so an alerting hiccup never
-    aborts the work it merely observes — same discipline as the daemon's QueueSink.
+    aborts the work it merely observes — same discipline as the daemon's QueueSink. Callers that
+    care (the ``notify`` action exposes ``delivered``) read the returned bool instead.
     """
-    raise NotImplementedError(_PENDING)
+    try:
+        channel.send(notification)
+    except Exception:
+        _log.exception("Notification delivery through %r failed; continuing.", channel)
+        return False
+    return True

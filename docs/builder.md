@@ -51,12 +51,14 @@ les étiquette **« not runnable yet »** et l'aperçu remonte un avertissement.
 gardée par le test de dispatch :
 
 - **Vector** : `extract` (l'extraction Vector est un *paramètre* de `http.request`, pas un step
-  autonome) et `notify` (jalon 1.5-C).
+  autonome).
 - **Continuum** : `http.request` (hérité des capabilities de Vector mais non câblé dans le driver
-  navigateur) et `notify` (jalon 1.5-C).
+  navigateur).
 
 Les actions de flux `if`/`repeat`/`for_each` ne sont **plus** pending : elles sont interprétées par
 le moteur (`core/runtime/steps.py`) pour tous les Acts, donc runnables partout où l'Act les déclare.
+`notify` non plus (jalon 1.5-C livré) : le handler partagé la dispatche sur Vector et Continuum
+(voir [docs/notifications.md](notifications.md)).
 
 ## API headless
 

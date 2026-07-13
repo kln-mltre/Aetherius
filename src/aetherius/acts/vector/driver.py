@@ -45,6 +45,8 @@ class VectorDriver(SharedActionsMixin):
                 return self._emit(step, ctx, bus, renderer)
             case "wait":
                 return self._wait(step, renderer)
+            case "notify":
+                return self._notify(step, ctx, bus, renderer)
             case _:
                 raise ActionError(f"VectorDriver: unsupported action {step.action!r}")
 

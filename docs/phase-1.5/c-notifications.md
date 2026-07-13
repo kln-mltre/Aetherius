@@ -1,10 +1,17 @@
 # Jalon C — Notifications natives (`notify/` + action `notify` + sink)
 
-**Statut : jalon en attente.** Le squelette existe dans
-[`src/aetherius/notify/`](../../src/aetherius/notify/) ; l'envoi lève un `NotImplementedError`
-« Jalon 1.5-C ». La capacité `notify` est déclarée et marquée « en attente » dans
-[`core/actions/base.py`](../../src/aetherius/core/actions/base.py) (`PENDING_ACTIONS`), avec sa spec
-dans [`core/actions/notification.py`](../../src/aetherius/core/actions/notification.py).
+**Statut : livré.** Les quatre canaux ([`notify/channels/`](../../src/aetherius/notify/channels/)),
+`dispatch`, le registre et le `NotifySink` sont implémentés ; l'action `notify` est dispatchée par
+le handler partagé ([`acts/_shared.py`](../../src/aetherius/acts/_shared.py)) sur Vector et
+Continuum, et `NOTIFY` est sorti de `PENDING_ACTIONS`. Choix retenus par rapport à la piste
+initiale : `dispatch()` renvoie un **bool** (l'échec d'envoi est contenu mais le step expose
+`delivered`) ; `register_channel` déclare une **`target_key`** par canal (le param `target` reste
+le raccourci mono-valeur, le param `config` couvre les canaux multi-clés comme Telegram) ; ntfy
+publie en **mode JSON** (racine du serveur) pour survivre aux titres accentués (en-têtes HTTP
+latin-1). Référence d'usage : [`docs/notifications.md`](../notifications.md) ; exemple exécutable
+zéro config :
+[`books-restock-notify`](../../examples/vector/books-restock-notify.blueprint.json). Ce document
+conserve la spécification d'origine du jalon.
 
 ## Objectif
 

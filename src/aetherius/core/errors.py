@@ -108,6 +108,17 @@ class DependencyError(AetheriusError):
         self.extra = extra
 
 
+# ── Notifications ─────────────────────────────────────────────────────────────
+
+
+class NotificationError(AetheriusError):
+    """Invalid notification channel configuration: unknown kind or missing required key.
+
+    Raised before any delivery is attempted, so it fails the step that carries the broken
+    config. A delivery failure, by contrast, is contained by ``aetherius.notify.dispatch``.
+    """
+
+
 # ── Recorder ──────────────────────────────────────────────────────────────────
 
 

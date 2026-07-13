@@ -544,8 +544,13 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   rend la réutilisation de session Continuum exprimable). Exemples zéro config dans
   `examples/vector/`. [docs/blueprint-schema.md](docs/blueprint-schema.md),
   [docs/phase-1.5/b-flow.md](docs/phase-1.5/b-flow.md).
-- [ ] **Notifications natives** : couche sans dépendance (webhook/Discord/Telegram/ntfy), action
-  `notify` + sink d'alerte automatique, déduplication au changement d'état.
+- [x] **Notifications natives** : couche d'alerte sans dépendance nouvelle (webhook générique,
+  Discord, Telegram, **ntfy** pour la push téléphone — un POST `httpx` chacun), action `notify`
+  Act-agnostique (handler partagé, se combine à `when`) + `NotifySink` de fin de run
+  (`failure`/`success`/`always`), registre de canaux prêt pour les plugins (Jalon E), échec d'envoi
+  contenu (jamais fatal au run, `delivered` exposé). La dédup au changement d'état s'appuiera sur le
+  store via le scheduler (Jalon D). Exemple zéro config :
+  `examples/vector/books-restock-notify.blueprint.json`. [docs/notifications.md](docs/notifications.md),
   [docs/phase-1.5/c-notifications.md](docs/phase-1.5/c-notifications.md).
 - [ ] **Scheduler (daemon)** : rejeu cron/intervalle persistant, CLI `aetherius schedule …`, API
   `/v1/schedules`, rattrapage des tirs manqués.

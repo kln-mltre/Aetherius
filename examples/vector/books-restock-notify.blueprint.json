@@ -1,0 +1,51 @@
+{
+  "aetherius": "1.0",
+  "name": "books.restock-notify",
+  "description": "Le cas fil rouge : vérifie la disponibilité d'un produit (books.toscrape.com, démo publique) et alerte via un webhook quand il est en stock (garde when + action notify). Zéro configuration : le webhook par défaut est httpbin.org/post (écho public). Pour une alerte réelle, remplacer webhook_url (webhook.site, Discord, ...) ou passer au canal ntfy/telegram — cibles réelles via .env, voir docs/notifications.md.",
+  "act": "vector",
+  "inputs": {
+    "webhook_url": {
+      "type": "string",
+      "required": false,
+      "default": "https://httpbin.org/post",
+      "description": "URL du webhook qui reçoit l'alerte (défaut : écho public httpbin)."
+    }
+  },
+  "vars": {
+    "product_url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
+  },
+  "steps": [
+    {
+      "id": "check",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.product_url }}",
+      "expect": { "status": 200 },
+      "extract": {
+        "title": { "from": "html", "selector": "div.product_main h1::text" },
+        "price": { "from": "html", "selector": "p.price_color::text" },
+        "availability": {
+          "from": "html",
+          "selector": "normalize-space(//p[contains(@class, 'availability')])",
+          "selector_type": "xpath"
+        }
+      }
+    },
+    {
+      "id": "alert",
+      "action": "notify",
+      "when": "{{ 'In stock' in (steps.check.availability | first) }}",
+      "channel": "webhook",
+      "target": "{{ inputs.webhook_url }}",
+      "title": "Retour en stock",
+      "message": "{{ steps.check.title | first }} — {{ steps.check.availability | first }} ({{ steps.check.price | first }})",
+      "url": "{{ vars.product_url }}"
+    }
+  ],
+  "outputs": {
+    "title": "{{ steps.check.title | first }}",
+    "price": "{{ steps.check.price | first }}",
+    "availability": "{{ steps.check.availability | first }}",
+    "in_stock": "{{ 'In stock' in (steps.check.availability | first) }}"
+  }
+}

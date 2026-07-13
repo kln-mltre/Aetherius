@@ -9,12 +9,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from ..core.events.models import RunEvent
+from ..core.events.models import EventType, RunEvent
+from ..core.runtime.result import RunStatus
 from .base import NotificationChannel
+from .message import Notification, NotificationLevel
 
 NotifyOn = Literal["failure", "success", "always"]
-
-_PENDING = "Jalon 1.5-C (notify): run-level alerting not implemented yet."
 
 
 class NotifySink:
@@ -25,4 +25,27 @@ class NotifySink:
         self._on = on
 
     def on_event(self, event: RunEvent) -> None:
-        raise NotImplementedError(_PENDING)
+        if event.type is not EventType.DONE:
+            return
+        status = str(event.data.get("status", ""))
+        failed = status != RunStatus.SUCCESS.value
+        if (self._on == "failure" and not failed) or (self._on == "success" and failed):
+            return
+
+        error = event.data.get("error")
+        body = event.message or f"run finished: {status or 'unknown'}"
+        if error:
+            body = f"{body}\n{error}"
+
+        # Deferred import: the package __init__ imports this module before dispatch exists.
+        from . import dispatch
+
+        dispatch(
+            Notification(
+                body=body,
+                title=f"Aetherius — run {status or 'finished'}",
+                level=NotificationLevel.ERROR if failed else NotificationLevel.INFO,
+                data={"run_id": event.run_id, "status": status, "error": error},
+            ),
+            self._channel,
+        )

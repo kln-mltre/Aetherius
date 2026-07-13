@@ -92,6 +92,8 @@ class ContinuumDriver(SharedActionsMixin):
                 return self._set(step, renderer)
             case "assert":
                 return self._assert(step, renderer)
+            case "notify":
+                return self._notify(step, ctx, bus, renderer)
             case _:
                 raise ActionError(f"ContinuumDriver: unsupported action {step.action!r}")
 

@@ -76,7 +76,7 @@ def test_validate_draft_flags_errors_and_warnings() -> None:
 
     pend = BlueprintDraft(name="x.y", act="continuum")
     pend.add_step("navigate").params["url"] = "https://a"
-    pend.add_step("notify")
+    pend.add_step("http.request").params["url"] = "https://a"
     assert any(i.severity == "warning" and "runnable" in i.message for i in validate_draft(pend))
 
     missing = BlueprintDraft(name="x.y", act="continuum")

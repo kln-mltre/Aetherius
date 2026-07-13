@@ -1,9 +1,8 @@
 """Notification action: notify.
 
-Spec projected by the builder catalogue. ``notify`` is declared in the capability table but not yet
-dispatched by any driver (Phase 1.5, Jalon C), so the builder marks it "not runnable yet"; the
-parameter shape here is indicative and will firm up when the shared handler lands. The alerting
-machinery itself lives in ``aetherius.notify`` — this module carries shape only, no behaviour.
+Spec projected by the builder catalogue. ``notify`` is dispatched by the shared handler
+(``acts/_shared.py``) on every runnable Act; the alerting machinery itself lives in
+``aetherius.notify`` — this module carries shape only, no behaviour. Reference: docs/notifications.md.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ SPECS: Final[tuple[ActionSpec, ...]] = (
                 "channel",
                 "string",
                 required=True,
-                help="Channel type or configured name (webhook, discord, telegram, ntfy).",
+                help="Channel kind: webhook, discord, telegram or ntfy (plugins may add more).",
                 placeholder="discord",
             ),
             ParamSpec(
@@ -43,6 +42,17 @@ SPECS: Final[tuple[ActionSpec, ...]] = (
                 "string",
                 help="Channel address (webhook URL, chat id, topic). Usually a secret.",
                 placeholder="{{ secrets.discord_webhook }}",
+            ),
+            ParamSpec(
+                "url",
+                "string",
+                help="Optional deep link attached to the alert (the product page, ...).",
+            ),
+            ParamSpec(
+                "config",
+                "object",
+                help="Full channel config for multi-key channels; superset of 'target'.",
+                placeholder='{"bot_token": "{{ secrets.tg_token }}", "chat_id": "{{ secrets.tg_chat }}"}',
             ),
         ),
     ),

@@ -30,6 +30,7 @@ appels réseau du navigateur et pique les champs JSON à extraire. Voir
 | `if` | Exécute la branche `then` ou `else` selon `condition` (steps imbriqués). |
 | `repeat` | Exécute `steps` un nombre fixe de fois (`times`, interpolable). |
 | `for_each` | Exécute `steps` une fois par élément de `items`, variable de boucle via `as`. |
+| `notify` | Envoie une alerte (webhook, Discord, Telegram, ntfy). Champs : `channel`, `message`, `title`, `level`, `target`, `url`, `config` — voir [docs/notifications.md](../notifications.md). |
 | `extract` | Déclaré mais en attente en step autonome (l'extraction vit dans `http.request`). |
 
 Tout step accepte en plus la garde **`when`** (sauté si l'expression rend faux, statut `skipped`).

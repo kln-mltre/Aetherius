@@ -41,7 +41,7 @@ moteur tourne dans un worker `@work(thread=True)` (pas la boucle asyncio Textual
 fonctionne. `playwright` est importé **paresseusement** dans `BrowserSession.start()` : `import
 aetherius` reste léger et sans dépendance navigateur.
 
-Les actions Act-agnostiques (`emit`, `wait`, `set`, `assert`) sont fournies par
+Les actions Act-agnostiques (`emit`, `wait`, `set`, `assert`, `notify`) sont fournies par
 [`acts/_shared.py`](../../src/aetherius/acts/_shared.py) (`SharedActionsMixin`), partagé avec
 Vector — aucune duplication.
 
@@ -65,6 +65,7 @@ Vector — aucune duplication.
 | `wait_for` | Attend un sélecteur. | `selector`, `state` (défaut `visible`), `timeout_ms`, `on_timeout` |
 | `extract` | Lit le DOM vivant vers des outputs typés. | `outputs` (voir plus bas) |
 | `emit`, `wait`, `set`, `assert` | Hérités du core (mixin partagé). | cf. [Act I](vector.md) |
+| `notify` | Alerte multi-canaux (mixin partagé), voir [docs/notifications.md](../notifications.md). | `channel`, `message`, `title`, `level`, `target`, `url`, `config` |
 | `if` / `repeat` / `for_each` | Flux conditionnel et itération (steps imbriqués), interprétés par le moteur. | `condition`/`then`/`else`, `times`/`steps`, `items`/`as`/`steps` |
 
 Tout step accepte aussi la garde **`when`** (sauté si l'expression rend faux). Sémantique :

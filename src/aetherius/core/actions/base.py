@@ -40,8 +40,8 @@ class Capability(str, Enum):
     EXTRACT = "extract"
 
     # ── Notifications (all Acts) ─────────────────────────────────────────────
-    # Phase 1.5, Jalon C: declared here so the builder surfaces it as a real (pending) action;
-    # dispatch is wired by the shared handler when Jalon C lands. See docs/phase-1.5/c-notifications.md.
+    # Dispatched by the shared handler (acts/_shared.py) on every runnable Act.
+    # See docs/notifications.md.
     NOTIFY = "notify"
 
 
@@ -106,6 +106,6 @@ FLOW_ACTIONS: frozenset[Capability] = frozenset(
 # declared capability is neither dispatched, engine-interpreted (FLOW_ACTIONS) nor listed here;
 # shrink each entry as drivers catch up. Only runnable Acts appear (see IMPLEMENTED_ACTS).
 PENDING_ACTIONS: dict[str, frozenset[Capability]] = {
-    "vector": frozenset({Capability.EXTRACT, Capability.NOTIFY}),
-    "continuum": frozenset({Capability.HTTP_REQUEST, Capability.NOTIFY}),
+    "vector": frozenset({Capability.EXTRACT}),
+    "continuum": frozenset({Capability.HTTP_REQUEST}),
 }

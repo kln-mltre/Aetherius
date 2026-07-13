@@ -26,6 +26,14 @@ _EVENTS = [
     RunEvent(run_id="r", type=EventType.PROGRESS, message="run started", level="info"),
     RunEvent(run_id="r", type=EventType.STEP_STARTED, step_id="s1", level="debug"),
     RunEvent(run_id="r", type=EventType.STEP_FINISHED, step_id="s1", level="debug"),
+    RunEvent(
+        run_id="r",
+        type=EventType.STEP_SKIPPED,
+        step_id="s1",
+        message="skipped: when '{{ steps.check.ok }}' is false",
+        level="info",
+        data={"when": "{{ steps.check.ok }}"},
+    ),
     RunEvent(run_id="r", type=EventType.ERROR, step_id="s1", message="boom", level="error"),
     RunEvent(
         run_id="r",

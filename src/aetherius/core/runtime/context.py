@@ -18,16 +18,21 @@ class RunContext:
     inputs: dict[str, Any]
     secrets: dict[str, str]
     step_outputs: dict[str, Any] = field(default_factory=dict)
+    # Loop variables injected by flow actions (for_each) for the duration of an iteration.
+    scope: dict[str, Any] = field(default_factory=dict)
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def template_ctx(self) -> dict[str, Any]:
         """Build the Jinja2 context dict for rendering step fields and outputs."""
+        # Scope is merged last; the executor refuses loop variables that would shadow the
+        # reserved names below.
         return {
             "inputs": self.inputs,
             "secrets": self.secrets,
             "vars": self.blueprint.vars,
             "env": dict(os.environ),
             "steps": self.step_outputs,
+            **self.scope,
         }
 
 

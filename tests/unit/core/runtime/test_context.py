@@ -58,3 +58,7 @@ def test_template_ctx_structure() -> None:
     assert tctx["vars"]["domain"] == "https://example.com"
     assert "steps" in tctx
     assert "env" in tctx
+
+    # Flow-injected loop variables surface as top-level template names.
+    ctx.scope["item"] = {"id": 7}
+    assert ctx.template_ctx()["item"] == {"id": 7}

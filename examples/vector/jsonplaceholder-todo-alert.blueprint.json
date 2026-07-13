@@ -1,0 +1,43 @@
+{
+  "aetherius": "1.0",
+  "name": "jsonplaceholder.todo-alert",
+  "description": "Alerte conditionnelle via la garde when : lit un todo public et n'émet que la branche correspondant à son état. Zéro configuration (todo 1 = en cours, todo 4 = terminé).",
+  "act": "vector",
+  "inputs": {
+    "todo_id": {
+      "type": "integer",
+      "required": false,
+      "default": 1,
+      "description": "Identifiant du todo à inspecter (4 pour un todo terminé)."
+    }
+  },
+  "steps": [
+    {
+      "id": "fetch",
+      "action": "http.request",
+      "method": "GET",
+      "url": "https://jsonplaceholder.typicode.com/todos/{{ inputs.todo_id }}",
+      "expect": { "status": 200 },
+      "extract": {
+        "title": { "from": "json", "path": "$.title" },
+        "completed": { "from": "json", "path": "$.completed" }
+      }
+    },
+    {
+      "id": "alert_done",
+      "action": "emit",
+      "when": "{{ steps.fetch.completed | first }}",
+      "message": "TODO_DONE: {{ steps.fetch.title | first }}"
+    },
+    {
+      "id": "alert_pending",
+      "action": "emit",
+      "when": "{{ not steps.fetch.completed | first }}",
+      "message": "TODO_PENDING: {{ steps.fetch.title | first }}"
+    }
+  ],
+  "outputs": {
+    "title": "{{ steps.fetch.title | first }}",
+    "completed": "{{ steps.fetch.completed | first }}"
+  }
+}

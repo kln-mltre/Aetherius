@@ -17,6 +17,7 @@ def test_run_status_values() -> None:
     assert RunStatus.SUCCESS == "success"
     assert RunStatus.FAILED == "failed"
     assert RunStatus.PARTIAL == "partial"
+    assert RunStatus.SKIPPED == "skipped"
 
 
 def test_result_duration_ms() -> None:

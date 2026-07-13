@@ -1,0 +1,49 @@
+{
+  "aetherius": "1.0",
+  "name": "jsonplaceholder.flow",
+  "description": "Flux conditionnel et itération : if décide de la branche, for_each parcourt les utilisateurs extraits et émet un événement par élément. Zéro configuration.",
+  "act": "vector",
+  "steps": [
+    {
+      "id": "fetch",
+      "action": "http.request",
+      "method": "GET",
+      "url": "https://jsonplaceholder.typicode.com/users?_limit=3",
+      "expect": { "status": 200 },
+      "extract": {
+        "users": {
+          "from": "json",
+          "path": "$[*]",
+          "fields": { "id": "$.id", "name": "$.name" }
+        }
+      }
+    },
+    {
+      "id": "walk",
+      "action": "if",
+      "condition": "{{ steps.fetch.users | length > 0 }}",
+      "then": [
+        {
+          "id": "each_user",
+          "action": "for_each",
+          "items": "{{ steps.fetch.users }}",
+          "as": "user",
+          "steps": [
+            {
+              "id": "announce",
+              "action": "emit",
+              "message": "user {{ user.id }}: {{ user.name }}"
+            }
+          ]
+        }
+      ],
+      "else": [
+        { "id": "none", "action": "emit", "message": "NO_USERS" }
+      ]
+    }
+  ],
+  "outputs": {
+    "branch": "{{ steps.walk.branch }}",
+    "user_count": "{{ steps.fetch.users | length }}"
+  }
+}

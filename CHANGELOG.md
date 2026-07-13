@@ -11,6 +11,15 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
+- **Réactivité et flux conditionnel (Jalon 1.5-B)** — garde d'étape `when` universelle (évaluée
+  avant dispatch, même règle de véracité que `assert` ; step sauté = statut `skipped` + événement
+  `step_skipped`, contrats et SDK TypeScript à jour) et actions `if`/`repeat`/`for_each` exécutées
+  par un **exécuteur récursif** dans le moteur (`core/runtime/steps.py`), en amont des drivers —
+  tous les Acts en héritent sans câblage, `repeat` rejoint les capacités Vector. Variable de boucle
+  `as` (défaut `item`) exposée au template le temps de l'itération, validation sémantique récursive
+  des branches, identifiants de steps imbriqués traçables (`loop[2].fetch`), schéma des steps
+  formalisé (`when`, `then`/`else`/`steps`). Deux exemples zéro config dans `examples/vector/`.
+  Voir [docs/blueprint-schema.md](docs/blueprint-schema.md).
 - **Persistance durable (Jalon 1.5-A)** — socle de stockage SQLite (stdlib `sqlite3`, mode WAL, zéro
   dépendance) sous `~/.aetherius/aetherius.db`, avec migrations versionnées (`PRAGMA user_version`) et
   trois dépôts typés : schedules, historique des runs, état clé/valeur inter-run (`compare_and_set`

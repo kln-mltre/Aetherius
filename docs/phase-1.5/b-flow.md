@@ -1,9 +1,18 @@
 # Jalon B — Réactivité et flux conditionnel
 
-**Statut : jalon en attente.** Aucun squelette de code dédié : ce jalon **modifie le moteur** et le
-schéma. Les capacités `if`/`repeat`/`for_each` sont déjà déclarées et marquées « en attente » dans
-[`core/actions/base.py`](../../src/aetherius/core/actions/base.py) (`PENDING_ACTIONS`) et leurs specs
-existent dans [`core/actions/flow.py`](../../src/aetherius/core/actions/flow.py).
+**Statut : livré.** La garde `when` et les actions `if`/`repeat`/`for_each` sont exécutées par
+l'exécuteur récursif [`core/runtime/steps.py`](../../src/aetherius/core/runtime/steps.py),
+**en amont des drivers** : le flux est interprété par le moteur pour tous les Acts (ensemble
+déclaratif `FLOW_ACTIONS` dans [`core/actions/base.py`](../../src/aetherius/core/actions/base.py),
+sorti de `PENDING_ACTIONS`), la validation descend récursivement dans les branches, et un step
+sauté produit le statut `skipped` + l'événement `step_skipped` (contrats et SDK TypeScript à jour).
+Choix retenus par rapport à la piste initiale : dispatch moteur plutôt que par-driver (aucun
+changement dans Vector/Continuum, Oracle/Phantom hériteront du flux), et `repeat` étendu aux
+capacités Vector (l'enum le déclare « Flow (all Acts) »). Référence d'usage :
+[`docs/blueprint-schema.md`](../blueprint-schema.md) ; exemples exécutables :
+[`jsonplaceholder-todo-alert`](../../examples/vector/jsonplaceholder-todo-alert.blueprint.json) et
+[`jsonplaceholder-flow`](../../examples/vector/jsonplaceholder-flow.blueprint.json). Ce document
+conserve la spécification d'origine du jalon.
 
 ## Objectif
 

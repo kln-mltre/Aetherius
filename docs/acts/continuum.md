@@ -65,6 +65,10 @@ Vector — aucune duplication.
 | `wait_for` | Attend un sélecteur. | `selector`, `state` (défaut `visible`), `timeout_ms`, `on_timeout` |
 | `extract` | Lit le DOM vivant vers des outputs typés. | `outputs` (voir plus bas) |
 | `emit`, `wait`, `set`, `assert` | Hérités du core (mixin partagé). | cf. [Act I](vector.md) |
+| `if` / `repeat` / `for_each` | Flux conditionnel et itération (steps imbriqués), interprétés par le moteur. | `condition`/`then`/`else`, `times`/`steps`, `items`/`as`/`steps` |
+
+Tout step accepte aussi la garde **`when`** (sauté si l'expression rend faux). Sémantique :
+[docs/blueprint-schema.md](../blueprint-schema.md#garde-when).
 
 ### Cibles et sélecteurs
 
@@ -165,10 +169,12 @@ défaut). Détails, composants et limites : [docs/stealth.md](../stealth.md). Ex
 
 ## Limites connues
 
-- **Login à froid uniquement.** Un profil persistant déjà authentifié n'affiche plus le formulaire,
-  ce qui casserait les steps `fill`/`click`. Tant que le flux conditionnel (`if`) n'est pas
-  implémenté, un Blueprint de login fait un **login à froid** (contexte éphémère) : fiable à chaque
-  run. Réutiliser une session déjà authentifiée attend l'action `if`.
+- **Réutilisation de session : possible mais non éprouvée.** L'action `if` étant livrée (jalon
+  1.5-B), un Blueprint peut désormais **détecter** l'état de session et ne dérouler le login que si
+  nécessaire : `extract`/`evaluate` sur un marqueur de la page (avatar, formulaire absent), puis
+  `if` avec les steps `fill`/`click` dans `then`. Le pattern reste à éprouver sur un vrai profil
+  persistant authentifié ; à défaut, le **login à froid** (contexte éphémère) reste l'approche
+  fiable à chaque run.
 
 ## Notes de conception
 

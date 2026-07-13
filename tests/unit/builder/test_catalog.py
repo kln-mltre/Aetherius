@@ -28,7 +28,8 @@ def test_actions_for_vector_cover_its_capabilities() -> None:
     assert runnable["http.request"] is True
     # Declared but not dispatched by the vector driver.
     assert runnable["extract"] is False
-    assert runnable["for_each"] is False
+    # Flow actions are interpreted by the step executor, so they are runnable everywhere.
+    assert runnable["for_each"] is True
 
 
 def test_actions_for_a_pending_act_are_all_unrunnable() -> None:

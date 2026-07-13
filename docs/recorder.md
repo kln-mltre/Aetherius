@@ -186,8 +186,8 @@ et [`quotes-recorded-scrape`](../examples/continuum/quotes-recorded-scrape.bluep
 - **Boutons sans hook stable.** Un `<input type=submit>` sans `id`/`name`/`data-testid`/texte tombe
   sur un chemin CSS positionnel (unique mais plus fragile) — c'est ce que la page offre. L'exemple
   ci-dessus l'illustre honnêtement.
-- **Pas de flux conditionnel.** Le recorder produit une séquence linéaire ; `if`/`for_each` restent à
-  éditer à la main (comme pour Continuum en général).
+- **Pas de flux conditionnel.** Le recorder produit une séquence linéaire ; `when`/`if`/`for_each`
+  (exécutés depuis le jalon 1.5-B) s'ajoutent à la main après coup.
 - **Records non imbriqués.** Un tableau extrait une valeur simple par champ ; une **liste dans une
   ligne** (ex. les tags de chaque citation) n'est pas capturée en un geste — extraire la liste
   globale à part, ou éditer le Blueprint. Le sélecteur `each` s'appuie sur une **classe partagée** par

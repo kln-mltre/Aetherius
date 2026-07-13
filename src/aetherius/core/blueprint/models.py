@@ -50,6 +50,8 @@ class StepModel(BaseModel):
 
     id: str | None = None
     action: str
+    # Universal guard: the engine renders it before dispatch and skips the step when falsy.
+    when: str | None = None
 
     @property
     def extra_fields(self) -> dict[str, Any]:

@@ -538,8 +538,11 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   historique des runs, état inter-run. Fondation des autres jalons. Le daemon y persiste désormais
   l'historique de ses runs. [docs/store.md](docs/store.md),
   [docs/phase-1.5/a-store.md](docs/phase-1.5/a-store.md).
-- [ ] **Réactivité et flux conditionnel** : garde d'étape `when` + actions `if`/`repeat`/`for_each`
-  exécutées (débloque aussi la réutilisation de session Continuum).
+- [x] **Réactivité et flux conditionnel** : garde d'étape `when` universelle (step sauté = statut
+  `skipped` + événement `step_skipped`) et actions `if`/`repeat`/`for_each` exécutées récursivement
+  par le moteur sur tous les Acts (validation récursive des branches, variable de boucle `as`,
+  rend la réutilisation de session Continuum exprimable). Exemples zéro config dans
+  `examples/vector/`. [docs/blueprint-schema.md](docs/blueprint-schema.md),
   [docs/phase-1.5/b-flow.md](docs/phase-1.5/b-flow.md).
 - [ ] **Notifications natives** : couche sans dépendance (webhook/Discord/Telegram/ntfy), action
   `notify` + sink d'alerte automatique, déduplication au changement d'état.

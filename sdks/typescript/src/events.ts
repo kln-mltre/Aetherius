@@ -7,6 +7,7 @@ export type RunEventType =
   | "progress"
   | "step_started"
   | "step_finished"
+  | "step_skipped"
   | "debug"
   | "artifact"
   | "error"

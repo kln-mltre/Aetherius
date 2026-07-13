@@ -13,6 +13,8 @@ class RunStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "failed"
     PARTIAL = "partial"
+    # Step-level only: a step whose `when` guard rendered falsy. A run never reports SKIPPED.
+    SKIPPED = "skipped"
 
 
 class StepResult(BaseModel):

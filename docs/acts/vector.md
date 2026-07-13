@@ -27,7 +27,27 @@ appels réseau du navigateur et pique les champs JSON à extraire. Voir
 | `assert` | Vérifie une condition rendue ; lève `StatusAssertionError` si fausse. |
 | `emit` | Émet un événement nommé sur le bus. |
 | `wait` | Pause en millisecondes (rate limiting déclaratif). |
-| `if`, `for_each`, `extract` | Hérités du core, supportés par Vector. |
+| `if` | Exécute la branche `then` ou `else` selon `condition` (steps imbriqués). |
+| `repeat` | Exécute `steps` un nombre fixe de fois (`times`, interpolable). |
+| `for_each` | Exécute `steps` une fois par élément de `items`, variable de boucle via `as`. |
+| `extract` | Déclaré mais en attente en step autonome (l'extraction vit dans `http.request`). |
+
+Tout step accepte en plus la garde **`when`** (sauté si l'expression rend faux, statut `skipped`).
+Sémantique détaillée et exemples : [docs/blueprint-schema.md](../blueprint-schema.md#garde-when).
+
+## Flux conditionnel et itération
+
+Le cas fondateur — n'alerter que si une condition extraite est vraie — s'écrit avec `when` :
+
+```json
+{ "id": "alert_done", "action": "emit", "when": "{{ steps.fetch.completed | first }}", "message": "TODO_DONE" }
+```
+
+`if`/`repeat`/`for_each` sont interprétés par le moteur (jamais par le driver) et peuvent
+s'imbriquer librement ; la validation descend dans les branches. Exemples exécutables zéro
+config : [`jsonplaceholder-todo-alert`](../../examples/vector/jsonplaceholder-todo-alert.blueprint.json)
+(garde `when`) et [`jsonplaceholder-flow`](../../examples/vector/jsonplaceholder-flow.blueprint.json)
+(`if` + `for_each`).
 
 ## Extraction
 

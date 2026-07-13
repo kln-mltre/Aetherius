@@ -116,6 +116,10 @@ class StepDraft:
     @classmethod
     def from_data(cls, data: Mapping[str, Any]) -> "StepDraft":
         params = {k: v for k, v in data.items() if k not in ("id", "action")}
+        # Blueprint.model_dump emits `when: None` for unset guards; a file never carries a null
+        # `when` (the schema requires a string), so drop the artifact instead of saving it back.
+        if params.get("when") is None:
+            params.pop("when", None)
         return cls(action=str(data.get("action", "")), id=data.get("id"), params=params)
 
 

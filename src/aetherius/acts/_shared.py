@@ -16,6 +16,7 @@ from ..core.errors import StatusAssertionError
 from ..core.events.bus import EventBus
 from ..core.events.models import EventType, RunEvent
 from ..core.runtime.context import RunContext
+from ..core.runtime.steps import is_truthy
 
 
 class SharedActionsMixin:
@@ -28,7 +29,7 @@ class SharedActionsMixin:
     def _assert(self, step: StepModel, renderer: Callable[[Any], Any]) -> dict[str, Any]:
         p = step.extra_fields
         condition: str = renderer(p.get("condition", ""))
-        if str(condition).strip().lower() not in {"true", "1", "yes"}:
+        if not is_truthy(condition):
             message = renderer(p.get("message", f"Assertion failed: {p.get('condition')}"))
             raise StatusAssertionError(expected=1, actual=0, url="<assert>", body_preview=message)
         return {}

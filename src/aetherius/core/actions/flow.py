@@ -1,8 +1,8 @@
 """Control-flow actions: wait, wait_for, emit, if, repeat, for_each.
 
-Specs projected by the builder catalogue. ``if``/``repeat``/``for_each`` are declared in the
-capability table but not executed by any driver yet, so the builder marks them "not runnable yet";
-their parameter shapes here are indicative and will firm up when a driver implements them.
+Specs projected by the builder catalogue. ``if``/``repeat``/``for_each`` are interpreted by the
+step executor (core/runtime/steps.py) for every Act, so they never reach a driver; their nested
+step lists (``then``/``else``/``steps``) are formalised in contracts/blueprint.schema.json.
 """
 
 from __future__ import annotations
@@ -49,28 +49,35 @@ SPECS: Final[tuple[ActionSpec, ...]] = (
     ),
     ActionSpec(
         "if",
-        "Run nested steps conditionally (declared, not runnable yet).",
+        "Run nested steps conditionally.",
         params=(
-            ParamSpec("condition", "string", help="Expression deciding the branch."),
-            ParamSpec("then", "array", help="Steps to run when the condition holds."),
+            ParamSpec("condition", "string", required=True, help="Expression deciding the branch."),
+            ParamSpec(
+                "then", "array", required=True, help="Steps to run when the condition holds."
+            ),
             ParamSpec("else", "array", help="Steps to run otherwise."),
         ),
     ),
     ActionSpec(
         "repeat",
-        "Run nested steps a fixed number of times (declared, not runnable yet).",
+        "Run nested steps a fixed number of times.",
         params=(
-            ParamSpec("times", "integer", help="How many iterations."),
-            ParamSpec("steps", "array", help="Steps to repeat."),
+            ParamSpec("times", "integer", required=True, help="How many iterations."),
+            ParamSpec("steps", "array", required=True, help="Steps to repeat."),
         ),
     ),
     ActionSpec(
         "for_each",
-        "Run nested steps once per item (declared, not runnable yet).",
+        "Run nested steps once per item.",
         params=(
-            ParamSpec("items", "string", help="Expression yielding the items to iterate."),
-            ParamSpec("as", "string", help="Loop variable name."),
-            ParamSpec("steps", "array", help="Steps to run per item."),
+            ParamSpec(
+                "items",
+                "string",
+                required=True,
+                help="Expression yielding the list to iterate.",
+            ),
+            ParamSpec("as", "string", help="Loop variable name (default: item)."),
+            ParamSpec("steps", "array", required=True, help="Steps to run per item."),
         ),
     ),
 )

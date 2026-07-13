@@ -20,6 +20,8 @@ DaemonRunStatus = Literal["queued", "running", "succeeded", "failed"]
 _STATUS_MAP: dict[RunStatus, DaemonRunStatus] = {
     RunStatus.SUCCESS: "succeeded",
     RunStatus.PARTIAL: "succeeded",
+    # SKIPPED is a step-level status; a run never reports it. Mapped defensively.
+    RunStatus.SKIPPED: "succeeded",
     RunStatus.FAILED: "failed",
 }
 

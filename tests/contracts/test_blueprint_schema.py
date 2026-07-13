@@ -23,6 +23,25 @@ def test_blueprint_schema_is_valid(contracts_dir: Path) -> None:
     validator_for(schema).check_schema(schema)
 
 
+def test_shipped_schema_matches_contract(repo_root: Path, contracts_dir: Path) -> None:
+    # The loader validates against the copy shipped inside the package (aetherius._contracts);
+    # nothing else keeps it aligned with the contract, so guard the two byte for byte.
+    shipped = repo_root / "src" / "aetherius" / "_contracts" / "blueprint.schema.json"
+    assert shipped.read_bytes() == (contracts_dir / "blueprint.schema.json").read_bytes()
+
+
+def test_schema_rejects_non_array_flow_branch(contracts_dir: Path) -> None:
+    schema = _load(contracts_dir / "blueprint.schema.json")
+    validator = validator_for(schema)(schema)
+    blueprint = {
+        "aetherius": "1.0",
+        "name": "t",
+        "act": "vector",
+        "steps": [{"action": "if", "condition": "{{ true }}", "then": {"action": "emit"}}],
+    }
+    assert list(validator.iter_errors(blueprint)), "a non-array 'then' should be rejected"
+
+
 def test_examples_are_present() -> None:
     assert _EXAMPLES, "no *.blueprint.json example found under examples/"
 

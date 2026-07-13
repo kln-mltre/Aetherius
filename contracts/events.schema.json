@@ -10,7 +10,7 @@
     "run_id": { "type": "string" },
     "ts": { "type": "string", "format": "date-time" },
     "type": {
-      "enum": ["progress", "step_started", "step_finished", "debug", "artifact", "error", "done"]
+      "enum": ["progress", "step_started", "step_finished", "step_skipped", "debug", "artifact", "error", "done"]
     },
     "step_id": { "type": "string" },
     "level": { "enum": ["debug", "info", "warning", "error"] },

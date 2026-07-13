@@ -74,6 +74,17 @@ def test_step_model_extra_fields() -> None:
     assert step.extra_fields["method"] == "GET"
 
 
+def test_step_model_when_is_typed_not_extra() -> None:
+    step = StepModel.model_validate({"action": "emit", "when": "{{ steps.a.ok }}"})
+    assert step.when == "{{ steps.a.ok }}"
+    assert "when" not in step.extra_fields
+
+
+def test_step_model_when_rejects_a_json_boolean() -> None:
+    with pytest.raises(ValidationError):
+        StepModel.model_validate({"action": "emit", "when": True})
+
+
 def test_blueprint_with_inputs_and_vars() -> None:
     data = _minimal_blueprint(
         inputs={"group": {"type": "string", "required": True}},

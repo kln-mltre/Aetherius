@@ -1,9 +1,11 @@
 """Anti-drift guard: every capability an Act declares is actually dispatched by its driver.
 
 For each (act, capability) of the runnable Acts, the driver must not fall through to its "unsupported
-action" branch — unless the capability is listed in PENDING_ACTIONS. Driven with fakes (a mock HTTP
-client, a mock page), so it runs in the base CI. This is the test that would have caught a capability
-declared in the table but never wired into run_step (e.g. vector's ``extract``).
+action" branch — unless the capability is listed in PENDING_ACTIONS, or belongs to FLOW_ACTIONS
+(interpreted by the step executor before dispatch: a driver implementing one would shadow the
+engine, so the inverse is asserted). Driven with fakes (a mock HTTP client, a mock page), so it
+runs in the base CI. This is the test that would have caught a capability declared in the table but
+never wired into run_step (e.g. vector's ``extract``).
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ import pytest
 
 from aetherius.acts.continuum.driver import ContinuumDriver
 from aetherius.acts.vector.driver import VectorDriver
-from aetherius.core.actions.base import ACT_CAPABILITIES, PENDING_ACTIONS, Capability
+from aetherius.core.actions.base import ACT_CAPABILITIES, FLOW_ACTIONS, PENDING_ACTIONS, Capability
 from aetherius.core.blueprint.models import Blueprint, StepModel
 from aetherius.core.errors import ActionError
 from aetherius.core.events.bus import EventBus
@@ -84,14 +86,20 @@ def test_capabilities_dispatch_unless_pending(act: str, monkeypatch, tmp_path: P
 
     for cap in ACT_CAPABILITIES[act]:
         reason = _unsupported_reason(driver, cap.value, ctx)
-        if cap in pending:
+        if cap in FLOW_ACTIONS:
+            assert reason is not None, (
+                f"{act}.{cap.value} is engine-interpreted flow; a driver must not dispatch it"
+            )
+        elif cap in pending:
             assert reason is not None, f"{act}.{cap.value} should be pending but was dispatched"
         else:
             assert reason is None, f"{act}.{cap.value} is declared but not dispatched: {reason}"
 
 
 def test_pending_sets_match_the_undispatched_actions() -> None:
-    # Sanity: every entry currently in PENDING_ACTIONS is a genuine capability of that Act.
+    # Sanity: every entry currently in PENDING_ACTIONS is a genuine capability of that Act,
+    # and flow actions are never pending (the step executor runs them for every Act).
     for act, pending in PENDING_ACTIONS.items():
         assert all(isinstance(cap, Capability) for cap in pending)
         assert pending <= ACT_CAPABILITIES[act]
+        assert not pending & FLOW_ACTIONS, f"{act}: flow actions must not be pending"

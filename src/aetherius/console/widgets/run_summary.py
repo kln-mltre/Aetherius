@@ -9,13 +9,14 @@ from textual.containers import Vertical
 from textual.widgets import DataTable, Static
 
 from ...core.runtime.result import Result, RunStatus
-from ..theme import AMBER, LAUREL, POMPEIAN
+from ..theme import AMBER, LAUREL, POMPEIAN, STONE
 from .json_preview import JsonPreview
 
 _STATUS_STYLE: dict[RunStatus, str] = {
     RunStatus.SUCCESS: f"bold {LAUREL}",
     RunStatus.FAILED: f"bold {POMPEIAN}",
     RunStatus.PARTIAL: f"bold {AMBER}",
+    RunStatus.SKIPPED: f"bold {STONE}",
 }
 
 

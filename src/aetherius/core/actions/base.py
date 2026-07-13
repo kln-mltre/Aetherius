@@ -53,6 +53,7 @@ _VECTOR_CAPS: frozenset[Capability] = frozenset(
         Capability.EMIT,
         Capability.WAIT,
         Capability.IF,
+        Capability.REPEAT,
         Capability.FOR_EACH,
         Capability.EXTRACT,
         Capability.NOTIFY,
@@ -77,7 +78,6 @@ _CONTINUUM_CAPS: frozenset[Capability] = _VECTOR_CAPS | frozenset(
         Capability.SCREENSHOT,
         Capability.EVALUATE,
         Capability.WAIT_FOR,
-        Capability.REPEAT,
     }
 )
 
@@ -90,24 +90,22 @@ ACT_CAPABILITIES: dict[str, frozenset[Capability]] = {
 }
 
 
+# Flow actions are interpreted by the step executor (core/runtime/steps.py) for every Act, before
+# the driver sees the step: a driver must never dispatch them. They are therefore neither pending
+# nor driver-dispatched; tests/unit/acts/test_action_dispatch.py enforces both properties.
+FLOW_ACTIONS: frozenset[Capability] = frozenset(
+    {Capability.IF, Capability.REPEAT, Capability.FOR_EACH}
+)
+
+
 # Actions listed in ACT_CAPABILITIES but not yet dispatched by the Act's driver: declaring them
 # keeps the capability table forward-looking, but the builder must flag them "not runnable yet".
 # ``extract`` (vector) is implemented inside ``http.request`` rather than as a standalone step;
 # ``http.request`` (continuum) is inherited from the vector capability set but the browser driver
 # does not run it yet. Guarded by tests/unit/acts/test_action_dispatch.py, which fails the moment a
-# declared capability is neither dispatched nor listed here; shrink each entry as drivers catch up.
-# Only runnable Acts appear (see IMPLEMENTED_ACTS).
+# declared capability is neither dispatched, engine-interpreted (FLOW_ACTIONS) nor listed here;
+# shrink each entry as drivers catch up. Only runnable Acts appear (see IMPLEMENTED_ACTS).
 PENDING_ACTIONS: dict[str, frozenset[Capability]] = {
-    "vector": frozenset(
-        {Capability.IF, Capability.FOR_EACH, Capability.EXTRACT, Capability.NOTIFY}
-    ),
-    "continuum": frozenset(
-        {
-            Capability.IF,
-            Capability.FOR_EACH,
-            Capability.REPEAT,
-            Capability.HTTP_REQUEST,
-            Capability.NOTIFY,
-        }
-    ),
+    "vector": frozenset({Capability.EXTRACT, Capability.NOTIFY}),
+    "continuum": frozenset({Capability.HTTP_REQUEST, Capability.NOTIFY}),
 }

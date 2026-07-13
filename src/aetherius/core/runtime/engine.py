@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Mapping
@@ -16,6 +15,7 @@ from ..events.models import EventType, RunEvent
 from ..events.sinks import LogSink, NullSink, Sink
 from ..runtime.context import RunContext, resolve_inputs
 from ..runtime.result import Result, RunStatus, StepResult
+from ..runtime.steps import run_steps
 
 
 IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector", "continuum"})
@@ -91,62 +91,7 @@ class RunEngine:
         run_error: str | None = None
 
         try:
-            for i, step in enumerate(blueprint.steps):
-                step_key = step.id or f"_step_{i}"
-
-                bus.emit(
-                    RunEvent(
-                        run_id=run_id, type=EventType.STEP_STARTED, step_id=step.id, level="debug"
-                    )
-                )
-                t0 = time.monotonic()
-
-                def renderer(value: Any) -> Any:
-                    return render_value(value, ctx.template_ctx())
-
-                try:
-                    outputs = driver.run_step(step, ctx, bus, renderer)
-                    ctx.step_outputs[step_key] = outputs
-                    duration_ms = (time.monotonic() - t0) * 1000
-                    step_results.append(
-                        StepResult(
-                            step_id=step.id,
-                            action=step.action,
-                            status=RunStatus.SUCCESS,
-                            outputs=outputs,
-                            duration_ms=duration_ms,
-                        )
-                    )
-                    bus.emit(
-                        RunEvent(
-                            run_id=run_id,
-                            type=EventType.STEP_FINISHED,
-                            step_id=step.id,
-                            level="debug",
-                        )
-                    )
-
-                except AetheriusError as exc:
-                    duration_ms = (time.monotonic() - t0) * 1000
-                    step_results.append(
-                        StepResult(
-                            step_id=step.id,
-                            action=step.action,
-                            status=RunStatus.FAILED,
-                            error=str(exc),
-                            duration_ms=duration_ms,
-                        )
-                    )
-                    bus.emit(
-                        RunEvent(
-                            run_id=run_id,
-                            type=EventType.ERROR,
-                            step_id=step.id,
-                            message=str(exc),
-                            level="error",
-                        )
-                    )
-                    raise
+            run_steps(blueprint.steps, ctx, bus, driver, step_results)
 
         except AetheriusError as exc:
             final_status = RunStatus.FAILED

@@ -135,7 +135,26 @@
       "description": "A single action. Parameters depend on the action; extra properties are allowed and validated per-action by the engine.",
       "properties": {
         "id": { "type": "string" },
-        "action": { "type": "string" }
+        "action": { "type": "string" },
+        "when": {
+          "type": "string",
+          "description": "Guard expression rendered before dispatch; the step is skipped unless it yields true/1/yes."
+        },
+        "then": {
+          "type": "array",
+          "description": "Steps run when an if condition holds.",
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "else": {
+          "type": "array",
+          "description": "Steps run when an if condition does not hold.",
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "steps": {
+          "type": "array",
+          "description": "Nested steps for repeat and for_each.",
+          "items": { "$ref": "#/$defs/step" }
+        }
       },
       "required": ["action"],
       "additionalProperties": true

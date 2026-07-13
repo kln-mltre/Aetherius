@@ -1,10 +1,16 @@
-"""Semantic validation: verifies that every step action is supported by the Blueprint's Act."""
+"""Semantic validation: verifies that every step action is supported by the Blueprint's Act.
+
+Recurses into the nested step lists of the flow actions (``if``/``repeat``/``for_each``) so an
+unsupported action buried in a branch is rejected before the run starts, with a readable path.
+"""
 
 from __future__ import annotations
 
+from pydantic import ValidationError
+
 from ..actions.base import ACT_CAPABILITIES
 from ..errors import BlueprintValidationError
-from .models import Blueprint
+from .models import Blueprint, StepModel
 
 # Map back from Capability value to the first Act that introduces it.
 _CAPABILITY_ORIGIN: dict[str, str] = {
@@ -26,6 +32,13 @@ _CAPABILITY_ORIGIN: dict[str, str] = {
     "wait_for": "continuum",
 }
 
+# Step fields holding nested step lists, per flow action.
+_FLOW_NESTED_FIELDS: dict[str, tuple[str, ...]] = {
+    "if": ("then", "else"),
+    "repeat": ("steps",),
+    "for_each": ("steps",),
+}
+
 
 def validate_for_act(blueprint: Blueprint) -> None:
     """Raise BlueprintValidationError if any step uses an action unsupported by blueprint.act.
@@ -35,11 +48,32 @@ def validate_for_act(blueprint: Blueprint) -> None:
     supported = ACT_CAPABILITIES.get(blueprint.act, frozenset())
     supported_values = {cap.value for cap in supported}
 
-    for step in blueprint.steps:
-        if step.action not in supported_values:
-            origin = _CAPABILITY_ORIGIN.get(step.action)
-            hint = f" (requires act={origin!r} or higher)" if origin else ""
+    for index, step in enumerate(blueprint.steps):
+        _validate_step(step, blueprint.act, supported_values, f"steps[{index}]")
+
+
+def _validate_step(step: StepModel, act: str, supported_values: set[str], path: str) -> None:
+    if step.action not in supported_values:
+        origin = _CAPABILITY_ORIGIN.get(step.action)
+        hint = f" (requires act={origin!r} or higher)" if origin else ""
+        raise BlueprintValidationError(
+            f"Step {step.id!r}: action {step.action!r} is not supported "
+            f"by act={act!r}{hint} (at {path})."
+        )
+
+    for field_name in _FLOW_NESTED_FIELDS.get(step.action, ()):
+        raw = step.extra_fields.get(field_name)
+        if raw is None:
+            continue
+        if not isinstance(raw, list):
             raise BlueprintValidationError(
-                f"Step {step.id!r}: action {step.action!r} is not supported "
-                f"by act={blueprint.act!r}{hint}."
+                f"Step {step.id!r}: {field_name!r} must be a list of steps "
+                f"(at {path}.{field_name})."
             )
+        for index, item in enumerate(raw):
+            child_path = f"{path}.{field_name}[{index}]"
+            try:
+                child = StepModel.model_validate(item)
+            except ValidationError as exc:
+                raise BlueprintValidationError(f"Invalid step at {child_path}: {exc}") from exc
+            _validate_step(child, act, supported_values, child_path)

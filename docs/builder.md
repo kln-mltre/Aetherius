@@ -50,10 +50,13 @@ les étiquette **« not runnable yet »** et l'aperçu remonte un avertissement.
 [`core/actions/base.py::PENDING_ACTIONS`](../src/aetherius/core/actions/base.py) en est la source,
 gardée par le test de dispatch :
 
-- **Vector** : `if`, `for_each` (flux non implémenté) et `extract` (l'extraction Vector est un
-  *paramètre* de `http.request`, pas un step autonome).
-- **Continuum** : `if`, `for_each`, `repeat` (flux) et `http.request` (hérité des capabilities de
-  Vector mais non câblé dans le driver navigateur).
+- **Vector** : `extract` (l'extraction Vector est un *paramètre* de `http.request`, pas un step
+  autonome) et `notify` (jalon 1.5-C).
+- **Continuum** : `http.request` (hérité des capabilities de Vector mais non câblé dans le driver
+  navigateur) et `notify` (jalon 1.5-C).
+
+Les actions de flux `if`/`repeat`/`for_each` ne sont **plus** pending : elles sont interprétées par
+le moteur (`core/runtime/steps.py`) pour tous les Acts, donc runnables partout où l'Act les déclare.
 
 ## API headless
 
@@ -135,8 +138,10 @@ JSON validé en direct** à droite du contenu.
 
 ## Limites connues
 
-- **Flux conditionnel.** `if` / `repeat` / `for_each` sont proposés mais *pending* (aucun driver ne
-  les exécute) — étiquetés « not runnable yet ».
+- **Flux conditionnel : édition en JSON.** `if` / `repeat` / `for_each` sont exécutés (jalon 1.5-B)
+  et proposés par le catalogue, mais le Studio n'offre pas d'éditeur visuel des steps imbriqués :
+  les branches `then`/`else`/`steps` s'écrivent comme paramètres JSON (préservées au round-trip).
+  La validation du Studio ne descend pas dans les branches ; `aetherius validate` et le moteur, si.
 - **Params imbriqués = JSON.** Les valeurs objet/tableau s'éditent en JSON (le schéma laisse ces
   sous-structures ouvertes) ; la bascule « raw JSON » couvre tout le reste.
 - **Stealth fin.** Le sélecteur d'options couvre `off` + presets ; une configuration `stealth`

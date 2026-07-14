@@ -119,6 +119,17 @@ class NotificationError(AetheriusError):
     """
 
 
+# ── Scheduler ─────────────────────────────────────────────────────────────────
+
+
+class ScheduleError(AetheriusError):
+    """Invalid schedule definition: malformed trigger, unknown misfire policy, bad notify policy.
+
+    Raised when a schedule is created or parsed, never during a fire: a schedule that made it
+    into the store is executable, and runtime failures surface as failed runs instead.
+    """
+
+
 # ── Recorder ──────────────────────────────────────────────────────────────────
 
 

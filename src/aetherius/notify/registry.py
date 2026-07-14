@@ -47,6 +47,16 @@ def target_key(kind: str) -> str | None:
     return _target_keys.get(kind)
 
 
+def known_kinds() -> list[str]:
+    """The channel kinds currently registered (built-ins plus any loaded plugins), sorted.
+
+    Lets writers (the scheduler's notify policy, the Studio) reject a typo'd channel at
+    configuration time instead of silently dropping alerts at fire time.
+    """
+    _ensure_builtins()
+    return sorted(_channels)
+
+
 def build_channel(kind: str, config: Mapping[str, str]) -> NotificationChannel:
     """Construct the channel registered under *kind* from its resolved config.
 

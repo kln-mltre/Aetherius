@@ -1,0 +1,24 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.watch",
+  "description": "La cible de démonstration du scheduler (Jalon D) : scrape la première citation de quotes.toscrape.com (démo publique, zéro configuration). Planifié à intervalle court via 'aetherius schedule add', il alimente l'historique des runs et, avec une politique notify 'change', alerte quand la citation affichée change — voir docs/scheduler.md § Tester le scheduler.",
+  "act": "vector",
+  "steps": [
+    {
+      "id": "fetch",
+      "action": "http.request",
+      "method": "GET",
+      "url": "https://quotes.toscrape.com/",
+      "expect": { "status": 200 },
+      "extract": {
+        "quote": { "from": "html", "selector": "div.quote span.text::text" },
+        "author": { "from": "html", "selector": "div.quote small.author::text" }
+      }
+    }
+  ],
+  "outputs": {
+    "quote": "{{ steps.fetch.quote | first }}",
+    "author": "{{ steps.fetch.author | first }}",
+    "quotes_on_page": "{{ steps.fetch.quote | length }}"
+  }
+}

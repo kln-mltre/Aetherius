@@ -56,6 +56,39 @@ class Run(BaseModel):
     error: str | None = None
 
 
+class ScheduleCreate(BaseModel):
+    """Body of ``POST /v1/schedules``: which Blueprint to re-run, when, and how to alert.
+
+    ``trigger`` and ``notify`` are the same shapes the scheduler persists (see docs/scheduler.md);
+    they are validated semantically by the route before anything is written. ``secrets`` holds
+    names only — values are resolved from the daemon's environment at fire time, never stored.
+    """
+
+    name: str
+    blueprint: str = Field(..., description="Path to the Blueprint file the schedule re-runs.")
+    inputs: dict[str, Any] = Field(default_factory=dict)
+    secrets: list[str] = Field(default_factory=list)
+    trigger: dict[str, Any]
+    notify: dict[str, Any] = Field(default_factory=dict)
+    enabled: bool = True
+
+
+class ScheduleUpdate(BaseModel):
+    """Body of ``PATCH /v1/schedules/{id}``: partial edit; omitted fields keep their value.
+
+    Setting ``enabled`` to true (resume) or changing ``trigger`` recomputes ``next_run_at`` from
+    now, so a paused window is never treated as a misfire to catch up.
+    """
+
+    name: str | None = None
+    blueprint: str | None = None
+    inputs: dict[str, Any] | None = None
+    secrets: list[str] | None = None
+    trigger: dict[str, Any] | None = None
+    notify: dict[str, Any] | None = None
+    enabled: bool | None = None
+
+
 class ValidationErrorItem(BaseModel):
     path: str
     message: str

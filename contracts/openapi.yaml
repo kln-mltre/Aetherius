@@ -100,6 +100,92 @@ paths:
       responses:
         "200": { description: JSON Schema document. }
 
+  /v1/schedules:
+    post:
+      summary: Create a persistent schedule (re-run a Blueprint on a cron/interval/at trigger).
+      operationId: createSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduleCreate" }
+      responses:
+        "201":
+          description: Schedule created (with its computed next_run_at).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Schedule" }
+        "422": { description: Invalid trigger or notify policy. }
+    get:
+      summary: List every schedule.
+      operationId: listSchedules
+      responses:
+        "200":
+          description: All schedules, oldest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Schedule" }
+
+  /v1/schedules/{scheduleId}:
+    get:
+      summary: Fetch one schedule.
+      operationId: getSchedule
+      parameters:
+        - { name: scheduleId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The schedule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Schedule" }
+        "404": { description: Unknown schedule. }
+    patch:
+      summary: Partially edit a schedule (pause/resume via `enabled`, retune the trigger, ...).
+      description: >
+        Omitted fields keep their value. Setting `enabled` to true (resume) or changing `trigger`
+        recomputes `next_run_at` from now, so a paused window is never caught up as a misfire.
+      operationId: updateSchedule
+      parameters:
+        - { name: scheduleId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduleUpdate" }
+      responses:
+        "200":
+          description: The updated schedule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Schedule" }
+        "404": { description: Unknown schedule. }
+        "422": { description: Invalid trigger or notify policy. }
+    delete:
+      summary: Delete a schedule.
+      operationId: deleteSchedule
+      parameters:
+        - { name: scheduleId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Deleted. }
+        "404": { description: Unknown schedule. }
+
+  /v1/schedules/{scheduleId}/run:
+    post:
+      summary: Fire the schedule immediately, without touching its cadence.
+      operationId: runSchedule
+      parameters:
+        - { name: scheduleId, in: path, required: true, schema: { type: string } }
+      responses:
+        "202":
+          description: Run accepted; poll and stream it like any other run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunHandle" }
+        "404": { description: Unknown schedule. }
+        "422": { description: The schedule's Blueprint cannot be loaded. }
+
   /v1/recorder/sessions:
     post:
       summary: Start a recorder session that emits a Blueprint from live actions.
@@ -150,3 +236,73 @@ components:
             properties:
               path: { type: string }
               message: { type: string }
+    Trigger:
+      type: object
+      description: >
+        When a schedule fires. Cron expressions are evaluated in the daemon host's local timezone.
+        `misfire` decides what happens to fire times missed while the daemon was down
+        (default run_once: one catch-up fire).
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [cron, interval, at] }
+        expr: { type: string, description: 5-field cron expression (kind=cron). }
+        seconds: { type: integer, minimum: 1, description: Seconds between fires (kind=interval). }
+        when: { type: string, format: date-time, description: One-shot fire time (kind=at). }
+        misfire: { type: string, enum: [skip, run_once, run_all], default: run_once }
+    NotifyPolicy:
+      type: object
+      description: >
+        Per-schedule alert policy; an empty object disables alerting. `target`/`config` values may
+        reference `{{ secrets.x }}`, resolved from the daemon's environment at fire time (channel
+        addresses are never persisted). `on: change` alerts only when a successful run's outputs
+        differ from the previous fire.
+      properties:
+        channel: { type: string, description: Channel kind (webhook, discord, telegram, ntfy, ...). }
+        target: { type: string, description: Single-value channel address (url, topic, chat id). }
+        config: { type: object, additionalProperties: { type: string } }
+        "on": { type: string, enum: [failure, success, always, change], default: failure }
+    ScheduleCreate:
+      type: object
+      required: [name, blueprint, trigger]
+      properties:
+        name: { type: string }
+        blueprint:
+          type: string
+          description: Path to the Blueprint file, resolvable by the daemon at fire time.
+        inputs: { type: object }
+        secrets:
+          type: array
+          items: { type: string }
+          description: Secret names only; values are resolved from the environment at fire time.
+        trigger: { $ref: "#/components/schemas/Trigger" }
+        notify: { $ref: "#/components/schemas/NotifyPolicy" }
+        enabled: { type: boolean, default: true }
+    ScheduleUpdate:
+      type: object
+      description: Partial edit; omitted fields keep their value.
+      properties:
+        name: { type: string }
+        blueprint: { type: string }
+        inputs: { type: object }
+        secrets:
+          type: array
+          items: { type: string }
+        trigger: { $ref: "#/components/schemas/Trigger" }
+        notify: { $ref: "#/components/schemas/NotifyPolicy" }
+        enabled: { type: boolean }
+    Schedule:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        blueprint: { type: string }
+        inputs: { type: object }
+        secrets:
+          type: array
+          items: { type: string }
+        trigger: { $ref: "#/components/schemas/Trigger" }
+        notify: { $ref: "#/components/schemas/NotifyPolicy" }
+        enabled: { type: boolean }
+        created_at: { type: string, format: date-time }
+        next_run_at: { type: string, format: date-time, nullable: true }
+        last_run_at: { type: string, format: date-time, nullable: true }

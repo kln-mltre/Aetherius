@@ -18,6 +18,9 @@ class DaemonConfig(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8787
     token: str | None = None
+    # Scheduler polling period (Jalon D): the resolution at which due schedules are noticed.
+    # Lowered in demos/tests via AETHERIUS_DAEMON_SCHEDULER_TICK_SECONDS.
+    scheduler_tick_seconds: float = 30.0
 
     @property
     def base_url(self) -> str:

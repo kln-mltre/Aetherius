@@ -11,6 +11,26 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
+- **Scheduler intégré au daemon (Jalon 1.5-D)** — rejeu persistant d'un Blueprint à heure fixe
+  (cron à 5 champs, évalué dans le fuseau local, DST gérés via `tzlocal`), par intervalle ou en tir
+  unique (`at`). Boucle de tick dans le lifespan du daemon (30 s, `AETHERIUS_DAEMON_SCHEDULER_TICK_SECONDS`) ;
+  un run planifié passe par `RunManager.submit` — mêmes événements, même historique, plus le lien
+  `schedule_id`. Rattrapage des tirs manqués par politique `misfire` (`skip`/`run_once`/`run_all`,
+  portée par le trigger, résolue par le tick au-delà d'une fenêtre de grâce) et politique d'alerte
+  par schedule (`failure`/`success`/`always`/`change` — la dédup au changement d'état s'appuie sur
+  `state.compare_and_set`, cibles `{{ secrets.x }}` rendues au tir, jamais persistées). CLI
+  `aetherius schedule add|list|rm|pause|resume|run` (écrit directement dans le store : marche daemon
+  éteint ; `cli.py` devient le package `cli/`) et API `/v1/schedules` (CRUD + tir immédiat,
+  contrat OpenAPI à jour). Exemple zéro config : `examples/vector/quotes-watch.blueprint.json`.
+  Dépendances : `croniter` (déjà déclarée) + `tzlocal`. Voir [docs/scheduler.md](docs/scheduler.md).
+- **Notifications natives (Jalon 1.5-C)** — couche d'alerte sans dépendance nouvelle (`notify/`) :
+  quatre canaux built-in en un POST `httpx` chacun (webhook générique, Discord, Telegram, ntfy pour
+  la push téléphone, en mode JSON publishing), action `notify` Act-agnostique (handler partagé, se
+  combine à `when`), `NotifySink` de fin de run (`failure`/`success`/`always`) et registre de canaux
+  prêt pour les plugins (Jalon E). Échec d'envoi contenu : jamais fatal au run, `delivered` exposé
+  dans les outputs du step. Exemple zéro config :
+  `examples/vector/books-restock-notify.blueprint.json`. Voir
+  [docs/notifications.md](docs/notifications.md).
 - **Réactivité et flux conditionnel (Jalon 1.5-B)** — garde d'étape `when` universelle (évaluée
   avant dispatch, même règle de véracité que `assert` ; step sauté = statut `skipped` + événement
   `step_skipped`, contrats et SDK TypeScript à jour) et actions `if`/`repeat`/`for_each` exécutées

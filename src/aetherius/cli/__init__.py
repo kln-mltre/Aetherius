@@ -1,7 +1,9 @@
 """Command-line entry point.
 
 Running ``aetherius`` with no argument opens the interactive Console (the terminal control center).
-Subcommands (``run``, ``validate``, ``serve``, ``record``) are the scriptable, non-interactive paths.
+Subcommands (``run``, ``validate``, ``serve``, ``record``, ``schedule …``) are the scriptable,
+non-interactive paths; command groups beyond the core verbs live in their own module of this
+package (``schedule.py`` for the scheduler CRUD).
 
 Kept dependency-light on purpose: heavy imports (Textual for the Console, the Aetherius facade)
 happen inside the relevant command, not at module import time.
@@ -14,22 +16,11 @@ from pathlib import Path
 
 import typer
 
+from ._shared import parse_pairs
+from .schedule import schedule_app
+
 app = typer.Typer(add_completion=False, no_args_is_help=False)
-
-
-def _parse_pairs(pairs: list[str], *, label: str) -> dict[str, str]:
-    """Parse a list of ``key=value`` CLI options into a dict.
-
-    Raises:
-        typer.BadParameter: an entry has no ``=``.
-    """
-    result: dict[str, str] = {}
-    for pair in pairs:
-        if "=" not in pair:
-            raise typer.BadParameter(f"Malformed {label} {pair!r}: expected key=value.")
-        key, _, value = pair.partition("=")
-        result[key] = value
-    return result
+app.add_typer(schedule_app, name="schedule")
 
 
 @app.callback(invoke_without_command=True)
@@ -42,7 +33,7 @@ def main_callback(ctx: typer.Context) -> None:
 @app.command()
 def console() -> None:
     """Open the interactive terminal Console."""
-    from .console.app import AetheriusConsoleApp
+    from ..console.app import AetheriusConsoleApp
 
     AetheriusConsoleApp().run()
 
@@ -58,13 +49,13 @@ def run(
     from rich.console import Console as RichConsole
     from rich.table import Table
 
-    from .core.blueprint.loader import load_blueprint
-    from .core.errors import AetheriusError
-    from .core.runtime.engine import RunEngine
+    from ..core.blueprint.loader import load_blueprint
+    from ..core.errors import AetheriusError
+    from ..core.runtime.engine import RunEngine
 
     rich_console = RichConsole()
-    inputs = _parse_pairs(input, label="--input")
-    secrets = _parse_pairs(secret, label="--secret")
+    inputs = parse_pairs(input, label="--input")
+    secrets = parse_pairs(secret, label="--secret")
 
     try:
         loaded = load_blueprint(blueprint)
@@ -108,9 +99,9 @@ def validate(blueprint: Path) -> None:
     """Load a Blueprint and check it against the schema and its Act's capabilities."""
     from rich.console import Console as RichConsole
 
-    from .core.blueprint.loader import load_blueprint
-    from .core.blueprint.validator import validate_for_act
-    from .core.errors import AetheriusError
+    from ..core.blueprint.loader import load_blueprint
+    from ..core.blueprint.validator import validate_for_act
+    from ..core.errors import AetheriusError
 
     rich_console = RichConsole()
     try:
@@ -141,7 +132,7 @@ def serve(
     """
     import uvicorn
 
-    from .server import DaemonConfig, create_app
+    from ..server import DaemonConfig, create_app
 
     # Start from the environment (AETHERIUS_DAEMON_*), then let explicit CLI options win.
     config = DaemonConfig()
@@ -174,8 +165,8 @@ def record(
     """Record a Blueprint by demonstrating a task in a visible browser."""
     from rich.console import Console as RichConsole
 
-    from .core.errors import AetheriusError
-    from .recorder import record_blueprint
+    from ..core.errors import AetheriusError
+    from ..recorder import record_blueprint
 
     rich_console = RichConsole()
     rich_console.print(f"[bold]Recording[/bold] {name!r} — a browser opens at {url}.")
@@ -209,8 +200,8 @@ def record_gestures_command(
     """Capture real mouse gestures to extend the stealth gesture library."""
     from rich.console import Console as RichConsole
 
-    from .core.errors import AetheriusError
-    from .recorder import record_gestures
+    from ..core.errors import AetheriusError
+    from ..recorder import record_gestures
 
     rich_console = RichConsole()
     rich_console.print("A browser opens. Move and click naturally, then close the window to save.")

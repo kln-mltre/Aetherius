@@ -36,6 +36,9 @@ def test_openapi_declares_the_implemented_paths(contracts_dir: Path) -> None:
         "/v1/runs/{runId}/events",
         "/v1/blueprints/validate",
         "/v1/schema",
+        "/v1/schedules",
+        "/v1/schedules/{scheduleId}",
+        "/v1/schedules/{scheduleId}/run",
         "/v1/recorder/sessions",
     ):
         assert path in paths, f"{path} missing from the OpenAPI contract"

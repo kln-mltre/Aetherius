@@ -101,8 +101,11 @@ RunEngine().run(blueprint, sinks=[LogSink(), channel])
 
 Le sink n'écoute que l'événement `done` : selon `on` (`failure` défaut / `success` / `always`),
 il construit une Notification (statut, message d'issue, erreur éventuelle, `run_id` dans `data`,
-level `error` sur échec) et l'envoie via `dispatch` — donc lui aussi contenu. C'est la brique que
-le scheduler (Jalon D) attache par schedule.
+level `error` sur échec) et l'envoie via `dispatch` — donc lui aussi contenu. Le scheduler
+(Jalon D) n'attache pas ce sink : sa politique par schedule ajoute `change` (dédup via le store,
+que le sink, sans état, ne peut pas porter) et vit donc côté scheduler, sur les mêmes primitives
+`build_channel` + `dispatch` (voir [docs/scheduler.md](scheduler.md)). `NotifySink` reste la brique
+des runs pilotés en direct (`RunEngine.run(sinks=...)`).
 
 ## Déduplication (n'alerter qu'au changement d'état)
 
@@ -110,7 +113,9 @@ le scheduler (Jalon D) attache par schedule.
 (rupture → en stock), le point de jonction est `StateRepository.compare_and_set(scope, key, value)`
 du store (Jalon A, voir [docs/store.md](store.md)) : il renvoie `True` seulement quand la valeur
 change. Cette politique appartient au **scheduler** (Jalon D), qui possède le `scope` (l'id de
-schedule) ; la couche notify reste sans état.
+schedule) ; la couche notify reste sans état. C'est la politique `notify` d'un schedule avec
+`"on": "change"` : elle compare les outputs de chaque run réussi au tir précédent et n'alerte
+qu'au changement (voir [docs/scheduler.md](scheduler.md)).
 
 ## Tester les notifications
 

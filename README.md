@@ -548,12 +548,19 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   Discord, Telegram, **ntfy** pour la push téléphone — un POST `httpx` chacun), action `notify`
   Act-agnostique (handler partagé, se combine à `when`) + `NotifySink` de fin de run
   (`failure`/`success`/`always`), registre de canaux prêt pour les plugins (Jalon E), échec d'envoi
-  contenu (jamais fatal au run, `delivered` exposé). La dédup au changement d'état s'appuiera sur le
-  store via le scheduler (Jalon D). Exemple zéro config :
+  contenu (jamais fatal au run, `delivered` exposé). La dédup au changement d'état est désormais
+  portée par le scheduler (Jalon D, politique `change`). Exemple zéro config :
   `examples/vector/books-restock-notify.blueprint.json`. [docs/notifications.md](docs/notifications.md),
   [docs/phase-1.5/c-notifications.md](docs/phase-1.5/c-notifications.md).
-- [ ] **Scheduler (daemon)** : rejeu cron/intervalle persistant, CLI `aetherius schedule …`, API
-  `/v1/schedules`, rattrapage des tirs manqués.
+- [x] **Scheduler (daemon)** : rejeu persistant d'un Blueprint à heure fixe (cron, fuseau local,
+  DST gérés) ou par intervalle, plus le tir unique (`at`). Intégré au daemon (lifespan FastAPI,
+  tick 30 s) ; un run planifié passe par `RunManager.submit` — indiscernable d'un run manuel, avec
+  le lien `schedule_id` dans l'historique. CLI `aetherius schedule add|list|rm|pause|resume|run`
+  (écrit directement dans le store : marche daemon éteint) et API `/v1/schedules` (CRUD + tir
+  immédiat). Rattrapage des tirs manqués par politique `misfire` (`skip`/`run_once`/`run_all`) et
+  politique d'alerte par schedule (`failure`/`success`/`always`/`change` — dédup au changement
+  d'état via le store). Exemple zéro config : `examples/vector/quotes-watch.blueprint.json`.
+  [docs/scheduler.md](docs/scheduler.md),
   [docs/phase-1.5/d-scheduler.md](docs/phase-1.5/d-scheduler.md).
 - [ ] **Actions custom / plugins** : registre d'actions activé + découverte par entry-points (actions
   et canaux de notification tiers, sans forker le cœur).

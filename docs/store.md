@@ -84,8 +84,10 @@ Le daemon persiste désormais le **résultat** de chaque run dans `RunRepository
 (voir [`server/jobs.py`](../src/aetherius/server/jobs.py) et [daemon.md](daemon.md) § Sous le capot).
 L'écriture se fait hors de la boucle (`asyncio.to_thread`), **avant** la fermeture du flux, et en mode
 best-effort : une défaillance du store n'interrompt jamais le run. Le flux d'événements *live* reste,
-lui, en mémoire. Le lien `schedule_id` reste `None` pour les runs manuels ; il sera renseigné par le
-scheduler (Jalon 1.5-D).
+lui, en mémoire. Le lien `schedule_id` reste `None` pour les runs manuels ; le scheduler
+(Jalon 1.5-D) le renseigne pour les runs qu'il tire — c'est lui aussi qui consomme `due()`,
+`mark_fired` et l'état inter-run (`compare_and_set`) pour la dédup d'alerte (voir
+[scheduler.md](scheduler.md)).
 
 ## Limites
 

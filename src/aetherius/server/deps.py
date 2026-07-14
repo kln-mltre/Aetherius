@@ -10,8 +10,10 @@ from __future__ import annotations
 from fastapi import HTTPException, status
 from starlette.requests import HTTPConnection
 
+from ..store import Store
 from .config import DaemonConfig
 from .jobs import RunManager
+from .scheduler import SchedulerService
 
 
 def get_config(conn: HTTPConnection) -> DaemonConfig:
@@ -25,6 +27,18 @@ def get_manager(conn: HTTPConnection) -> RunManager:
     manager = conn.app.state.manager
     assert isinstance(manager, RunManager)
     return manager
+
+
+def get_store(conn: HTTPConnection) -> Store:
+    store = conn.app.state.store
+    assert isinstance(store, Store)
+    return store
+
+
+def get_scheduler(conn: HTTPConnection) -> SchedulerService:
+    scheduler = conn.app.state.scheduler
+    assert isinstance(scheduler, SchedulerService)
+    return scheduler
 
 
 def require_auth(request: HTTPConnection) -> None:

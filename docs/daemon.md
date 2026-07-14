@@ -42,6 +42,7 @@ Depuis la **Console**, l'écran **Settings** démarre et arrête ce daemon sans 
 | `WS /v1/runs/{id}/events` | Flux d'événements du run (voir ci-dessous). |
 | `POST /v1/blueprints/validate` | Rapport de validation **non-levant** : `{valid, errors:[{path, message}]}`. |
 | `GET /v1/schema` | Le JSON Schema du Blueprint. |
+| `POST /v1/schedules`, `GET /v1/schedules[/{id}]`, `PATCH`/`DELETE /v1/schedules/{id}`, `POST /v1/schedules/{id}/run` | CRUD des schedules persistants + tir immédiat (Jalon 1.5-D) ; voir [scheduler.md](scheduler.md). |
 | `POST /v1/recorder/sessions` | **501** : l'enregistrement est un flux host-local interactif, délibérément non exposé (voir plus bas). |
 
 Le champ `blueprint` d'un run accepte un **objet** (validé en mémoire) ou une **chaîne** (chemin que
@@ -78,7 +79,14 @@ Le **flux d'événements live** reste en mémoire (il ne concerne qu'un run en c
 **résultat final** de chaque run est désormais persisté dans le [store](store.md) (Jalon 1.5-A) : il
 survit à un redémarrage et devient lisible via `RunRepository`. L'écriture se fait hors de la boucle
 (`asyncio.to_thread`) et en mode « best-effort » — une défaillance du store n'interrompt jamais le run
-ni son flux. Le lien vers un schedule (`schedule_id`) sera renseigné par le scheduler (Jalon 1.5-D).
+ni son flux. Un run tiré par le scheduler porte en plus son lien `schedule_id` (Jalon 1.5-D).
+
+Le daemon héberge aussi le **scheduler** (Jalon 1.5-D) : le lifespan FastAPI démarre un
+`SchedulerService` (`app.state.scheduler`) qui, toutes les `scheduler_tick_seconds` (30 s par
+défaut, env `AETHERIUS_DAEMON_SCHEDULER_TICK_SECONDS`), relit les schedules dus dans le store et
+les soumet via le même `RunManager.submit` — un run planifié est indiscernable d'un run manuel. À
+l'arrêt, la boucle de tick est annulée mais les suivis de fin (alertes) sont attendus. Détails :
+[scheduler.md](scheduler.md).
 
 ## Le SDK TypeScript — `@aetherius/client`
 

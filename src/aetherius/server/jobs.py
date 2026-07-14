@@ -53,6 +53,8 @@ class Job:
     """A single run: its status, retained event history, and live subscriber queues."""
 
     run_id: str
+    # Set when the run was fired by a schedule (Jalon D); ties the history back to it.
+    schedule_id: str | None = None
     status: DaemonRunStatus = "queued"
     history: list[RunEvent] = field(default_factory=list)
     subscribers: set[asyncio.Queue[RunEvent | None]] = field(default_factory=set)
@@ -85,10 +87,16 @@ class RunManager:
         blueprint: Blueprint,
         inputs: Mapping[str, Any] | None,
         secrets: Mapping[str, str] | None,
+        *,
+        schedule_id: str | None = None,
     ) -> str:
-        """Register a run and start it in the background, returning its id immediately."""
+        """Register a run and start it in the background, returning its id immediately.
+
+        ``schedule_id`` marks a run fired by the scheduler; it flows into the persisted history
+        but changes nothing else — a scheduled run is indistinguishable from a manual one.
+        """
         run_id = uuid.uuid4().hex
-        job = Job(run_id=run_id)
+        job = Job(run_id=run_id, schedule_id=schedule_id)
         self._jobs[run_id] = job
 
         loop = asyncio.get_running_loop()
@@ -181,8 +189,7 @@ def _to_run_record(job: Job, blueprint: Blueprint, started: datetime) -> RunReco
     """Build the durable record from a finished job.
 
     A successful (or partial) run carries a full :class:`Result` to draw from; a run that failed
-    before producing one falls back to the Blueprint name and the captured start time. ``schedule_id``
-    stays ``None`` here — the scheduler (Jalon D) is what ties a run back to the schedule that fired it.
+    before producing one falls back to the Blueprint name and the captured start time.
     """
     if job.result is not None:
         result = job.result
@@ -190,6 +197,7 @@ def _to_run_record(job: Job, blueprint: Blueprint, started: datetime) -> RunReco
             run_id=job.run_id,
             blueprint_name=result.blueprint_name,
             status=result.status.value,
+            schedule_id=job.schedule_id,
             error=result.error,
             outputs=result.outputs,
             started_at=result.started_at,
@@ -199,6 +207,7 @@ def _to_run_record(job: Job, blueprint: Blueprint, started: datetime) -> RunReco
         run_id=job.run_id,
         blueprint_name=blueprint.name,
         status="failed",
+        schedule_id=job.schedule_id,
         error=job.error,
         started_at=started,
         finished_at=datetime.now(timezone.utc),

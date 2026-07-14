@@ -1,8 +1,32 @@
 # Jalon D — Scheduler intégré au daemon
 
-**Statut : jalon en attente.** Le squelette existe dans
-[`src/aetherius/server/scheduler/`](../../src/aetherius/server/scheduler/) ; chaque opération lève un
-`NotImplementedError` « Jalon 1.5-D ». `croniter` est déjà déclaré dans `pyproject.toml`.
+**Statut : livré.** Triggers (`cron`/`interval`/`at`), misfire, `SchedulerService` (boucle de tick
+dans le lifespan du daemon), politique d'alerte par schedule, routes `/v1/schedules` et CLI
+`aetherius schedule …` sont implémentés dans
+[`src/aetherius/server/scheduler/`](../../src/aetherius/server/scheduler/),
+[`server/routes/schedules.py`](../../src/aetherius/server/routes/schedules.py) et
+[`cli/schedule.py`](../../src/aetherius/cli/schedule.py) (le module `cli.py` est devenu le package
+`cli/`, sans changement de comportement). Choix retenus par rapport à la piste initiale :
+
+- **La politique `misfire` voyage dans le dict `trigger`** (`{"misfire": "skip", …}`) : pas de
+  migration de schéma, le store garde ses dicts opaques. Résolue par le tick lui-même au-delà d'une
+  fenêtre de grâce (2 × tick) — pas de phase spéciale au démarrage.
+- **La politique d'alerte vit côté scheduler** (`scheduler/alerts.py`), pas via `NotifySink` : elle
+  ajoute `on: "change"` (dédup `state.compare_and_set`, scope = id du schedule) que le sink, sans
+  état, ne peut pas porter. Mêmes primitives `build_channel` + `dispatch`. Le registre notify gagne
+  `known_kinds()` pour rejeter un canal inconnu à l'écriture.
+- **L'issue d'un run planifié est enregistrée par le `RunManager`** (kwarg `schedule_id` sur
+  `submit`, propagé au `RunRecord`), pas par un `store.runs.record` séparé dans le tick — l'écriture
+  d'historique reste unique.
+- **Dépendance ajoutée en plus de `croniter` : `tzlocal`** (minuscule, pure-python). Les cron
+  s'évaluent dans le fuseau local ; `datetime.astimezone()` ne fournit qu'un offset figé, et il faut
+  le fuseau IANA réel pour que « 3h du matin » survive aux DST.
+- `aetherius schedule run` exécute **in-process** (immédiat, marche daemon éteint) ;
+  `POST /v1/schedules/{id}/run` passe par le daemon. Ni l'un ni l'autre ne touche la cadence.
+
+Référence d'usage : [`docs/scheduler.md`](../scheduler.md) ; exemple zéro config :
+[`quotes-watch`](../../examples/vector/quotes-watch.blueprint.json). Ce document conserve la
+spécification d'origine du jalon.
 
 ## Objectif
 

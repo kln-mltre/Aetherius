@@ -37,6 +37,7 @@ dependencies = [
   "rich>=13.7",
   "questionary>=2.0",
   "croniter>=2.0",         # Phase 1.5 scheduler (Jalon D): cron expression math, pure-python, light
+  "tzlocal>=5.0",          # Jalon D: resolve the host's IANA timezone so cron math survives DST
 ]
 
 [project.optional-dependencies]
@@ -87,7 +88,10 @@ strict = true
 files = ["src/aetherius"]
 
 [[tool.mypy.overrides]]
-module = ["jsonpath_ng.*", "jsonschema.*", "yaml.*", "parsel.*", "tenacity.*", "playwright.*"]
+module = [
+  "jsonpath_ng.*", "jsonschema.*", "yaml.*", "parsel.*", "tenacity.*", "playwright.*",
+  "croniter.*",  # no upstream stubs; the scheduler wraps it behind typed helpers
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -31,6 +31,7 @@ Les tests **reflètent** l'arborescence de `src/aetherius/` : un module de logiq
 tests/
 ├── conftest.py      # fixtures partagées (chemins repo / examples / contracts)
 ├── unit/            # tests unitaires isolés ; miroir de src/aetherius/
+│   ├── conftest.py  # fixture `plugin_action` : action plugin de test, nettoyée en teardown
 │   └── core/blueprint/test_models.py   <->  src/aetherius/core/blueprint/models.py
 ├── integration/     # traversées multi-modules, runtime, daemon
 ├── contracts/       # garde les contrats (schémas JSON, OpenAPI, events)

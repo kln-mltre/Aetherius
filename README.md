@@ -392,20 +392,24 @@ console.log(result.outputs.events);
 ```
 src/aetherius/
   core/        blueprint (models/loader/validator/template), actions (le dictionnaire),
-               runtime (engine/context/selector/result), extraction, events, errors, driver
+               runtime (engine/context/steps/selector/result), extraction, events, errors, driver
   acts/        vector (I), continuum (II), oracle (III), phantom (IV)
   stealth/     policy, humanizer (mouse/keyboard/scroll/timing), gestures, fingerprint,
                session (store/warmup), ml (optionnel)
   recorder/    blueprint_recorder, gesture_recorder, capture, selector_synth
   builder/     construction headless de Blueprint (factory, catalog, templates)
-  console/     interface terminale globale (Textual) : Blueprint Studio, runs, catalogue,
-               sessions, settings — la porte d'entrée de l'outil
+  console/     interface terminale globale (Textual) : Blueprint Studio, runs, schedules,
+               catalogue, sessions, settings — la porte d'entrée de l'outil
+  notify/      canaux d'alerte natifs (webhook/discord/telegram/ntfy) + registre ouvert aux plugins
+  store/       état durable SQLite sous ~/.aetherius : schedules, historique des runs, état inter-run
+  plugins.py   découverte des extensions tierces par entry-points (actions + canaux)
   models/      registry + cache des assets ML runtime
-  server/      daemon FastAPI (routes/jobs/schemas)
+  server/      daemon FastAPI (routes/jobs/schemas) + scheduler (triggers/misfire/alerts)
+  cli/         commandes scriptables (run/validate/serve/record, groupe schedule)
   config/      settings
 contracts/     blueprint.schema.json, openapi.yaml, events.schema.json  (source de vérité)
 sdks/          typescript (@aetherius/client), python
-examples/      Blueprints de démonstration
+examples/      Blueprints de démonstration (par Act + plugins/)
 training/      entraînement des modèles Oracle (hors runtime)
 legacy_examples/  code de référence des projets d'origine (UKit, TikTok) + carte de provenance
 ```

@@ -250,8 +250,9 @@ aetherius            # ouvre la Console
 
 ![La Console Aetherius : écran d'accueil](docs/screenshots/home.svg)
 
-> **État actuel** : la Console est navigable de bout en bout. Library, Runs, Catalog, le **Recorder**,
-> le **Blueprint Studio** et **Settings** (démarrer/arrêter le daemon) sont pleinement fonctionnels
+> **État actuel** : la Console est navigable de bout en bout. Library, Runs, **Schedules** (runs
+> récurrents : liste, tir manuel, historique, création guidée), Catalog, le **Recorder**, le
+> **Blueprint Studio** et **Settings** (démarrer/arrêter le daemon) sont pleinement fonctionnels
 > pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ; seul **Sessions** affiche
 > honnêtement son jalon en attente (stealth/session). Détails : [docs/console.md](docs/console.md).
 
@@ -559,7 +560,9 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   (écrit directement dans le store : marche daemon éteint) et API `/v1/schedules` (CRUD + tir
   immédiat). Rattrapage des tirs manqués par politique `misfire` (`skip`/`run_once`/`run_all`) et
   politique d'alerte par schedule (`failure`/`success`/`always`/`change` — dédup au changement
-  d'état via le store). Exemple zéro config : `examples/vector/quotes-watch.blueprint.json`.
+  d'état via le store). **Écran Console dédié** : liste, pause/reprise, suppression, détail avec
+  historique et tir manuel (événements en direct), formulaire de création/édition guidé, raccourci
+  `s` depuis Library. Exemple zéro config : `examples/vector/quotes-watch.blueprint.json`.
   [docs/scheduler.md](docs/scheduler.md),
   [docs/phase-1.5/d-scheduler.md](docs/phase-1.5/d-scheduler.md).
 - [ ] **Actions custom / plugins** : registre d'actions activé + découverte par entry-points (actions

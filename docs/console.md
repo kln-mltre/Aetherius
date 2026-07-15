@@ -3,7 +3,7 @@
 Le centre de contrôle terminal (voir aussi le [README](../README.md)). `aetherius` ou
 `aetherius console` ouvre l'app Textual [`console/app.py`](../src/aetherius/console/app.py) ;
 `aetherius run|validate` sont les chemins scriptables non-interactifs
-([`cli.py`](../src/aetherius/cli.py)).
+([`cli/`](../src/aetherius/cli/)).
 
 ![L'écran d'accueil de la Console Aetherius](screenshots/home.svg)
 
@@ -12,8 +12,12 @@ Le centre de contrôle terminal (voir aussi le [README](../README.md)). `aetheri
 ```
 Home ─┬─ Library ──► Runs   (Library parcourt les Blueprints ; en ouvrir un mène à Runs :
       │         │            formulaire d'inputs/secrets, toggle Debug, exécution +
-      │         └► Studio    événements en direct, résultat final ; la touche `e` ouvre
-      │                       l'entrée surlignée dans le Blueprint Studio en édition)
+      │         ├► Studio    événements en direct, résultat final ; la touche `e` ouvre
+      │         │             l'entrée surlignée dans le Blueprint Studio en édition,
+      │         └► Schedule   `s` la planifie dans le formulaire de schedule prérempli)
+      ├─ Schedules ──► Détail ──► Form   (les schedules persistants : liste, pause/reprise,
+      │                                   historique des runs, tir manuel avec événements en
+      │                                   direct, création/édition guidée — voir plus bas)
       ├─ Catalog   (les 4 Acts, statut d'implémentation, capabilities par Act)
       ├─ Recorder  (capture un Blueprint par démonstration — voir docs/recorder.md)
       ├─ Builder   (Blueprint Studio : créer et éditer un Blueprint, guidé — voir docs/builder.md)
@@ -49,7 +53,8 @@ Toutes les captures ci-dessous sont générées automatiquement par `make screen
 ce document) — elles restent donc fidèles à l'UI réelle.
 
 **Library** — parcourir les Blueprints découverts, avec leur statut (`ready` / `act pending` /
-`invalid`). `Entrée` ouvre dans Runs, `e` ouvre dans le Blueprint Studio, `r` rescanne.
+`invalid`). `Entrée` ouvre dans Runs, `e` ouvre dans le Blueprint Studio, `s` planifie dans un
+schedule prérempli, `r` rescanne.
 
 ![L'écran Library : table des Blueprints et statuts](screenshots/library.svg)
 
@@ -62,6 +67,32 @@ puis événements en direct et résultat final.
 une action déclarée mais pas encore exécutée par le driver de l'Act).
 
 ![L'écran Catalog : les 4 Acts et leurs capabilities](screenshots/catalog.svg)
+
+**Schedules** — la contrepartie Console du scheduler (Jalon 1.5-D, voir
+[docs/scheduler.md](scheduler.md)) : même store durable, mêmes règles de validation que la CLI et
+l'API. La liste montre chaque schedule avec son trigger, sa politique d'alerte, son statut et ses
+prochains/derniers tirs (heures locales), plus une ligne d'honnêteté qui sonde le daemon configuré :
+les schedules ne tirent que pendant qu'un daemon tourne. `n` crée, `p` met en pause/reprend (la
+reprise recale la cadence sur maintenant), `d` supprime après confirmation, `Entrée` ouvre le détail.
+
+![L'écran Schedules : liste des schedules persistants](screenshots/schedules.svg)
+
+Le **détail** montre la définition complète, l'historique des 20 derniers runs du schedule
+(`schedule_id` dans le store) et un bouton **Fire now** : tir manuel immédiat, exécuté in-process
+via la même brique que `aetherius schedule run` (`server/scheduler/manual.py::fire_schedule` —
+historique consigné, politique d'alerte appliquée, cadence intacte), avec les événements streamés
+en direct par le pattern Sink ci-dessous. `e` ouvre l'édition, `d` supprime.
+
+![Le détail d'un schedule : définition, tir manuel, historique](screenshots/schedule-detail.svg)
+
+Le **formulaire** (création via `n` ou depuis Library avec `s`, édition via `e`) est guidé de bout
+en bout : choix du Blueprint (les inputs déclarés deviennent des champs, les secrets s'affichent
+avec leur état `.env` — jamais saisis ici, résolus au tir), trigger (`interval`/`cron`/`at` +
+politique de tirs manqués), politique d'alerte (canal du registre notify, cible interpolable
+`{{ secrets.x }}`, `on` failure/success/always/change). Un trigger ou une politique invalide est
+rejeté à la sauvegarde avec le message exact du scheduler — rien n'est écrit.
+
+![Le formulaire de schedule : création guidée](screenshots/schedule-form.svg)
 
 **Settings** — démarre et arrête le daemon local (`aetherius serve`) sans quitter le terminal, et
 affiche son statut (arrêté / en marche + `healthy`), son adresse de bind et son état d'auth. Le daemon
@@ -97,14 +128,18 @@ possède un unique `BlueprintDraft` que ses éditeurs enfants alimentent ; voir
 frontière thread-worker → thread-UI. Ne lève jamais.
 
 Tout futur écran qui doit streamer des événements d'un run (Act II+, daemon) doit réutiliser ce
-même pattern plutôt que d'en inventer un nouveau.
+même pattern plutôt que d'en inventer un nouveau — le tir manuel de l'écran Schedules le fait
+déjà (worker `@work(thread=True)` → `fire_schedule(sinks=[TextualRunSink(...)])`).
 
 ## Widgets réutilisables
 
 - [`widgets/event_log.py`](../src/aetherius/console/widgets/event_log.py) — `EventLog(RichLog)`,
   flux d'événements coloré par niveau.
 - [`widgets/form.py`](../src/aetherius/console/widgets/form.py) — `BlueprintInputForm`, formulaire
-  généré depuis `Blueprint.inputs`/`secrets`.
+  généré depuis `Blueprint.inputs`/`secrets` ; le param `values` préremplit avec des valeurs
+  existantes (édition d'un schedule).
+- [`widgets/confirm.py`](../src/aetherius/console/widgets/confirm.py) — `ConfirmModal`, dialogue de
+  confirmation générique pour les actions destructrices (dismiss avec `True`/`False`).
 - [`widgets/json_preview.py`](../src/aetherius/console/widgets/json_preview.py) — `JsonPreview`,
   rendu JSON coloré (Rich `Syntax`).
 - [`widgets/run_summary.py`](../src/aetherius/console/widgets/run_summary.py) — `RunSummary`,
@@ -136,8 +171,11 @@ dans un terminal bas (les champs de formulaire gardent leur hauteur, l'écran sc
 Les captures des écrans (`docs/screenshots/*.svg`) sont **générées**, jamais prises à la main :
 [`console/screenshots.py`](../src/aetherius/console/screenshots.py) pilote l'app en headless
 (`run_test`/`Pilot`, comme les tests), exporte chaque écran en SVG et le **normalise** (identifiant
-Rich stabilisé, `@font-face` externe strippé, chemin du dépôt neutralisé) — d'où des fichiers
-déterministes et sans fuite de chemin local.
+Rich stabilisé, `@font-face` externe strippé, chemins du dépôt **et** du home neutralisés — même
+tronqué dans une colonne, un chemin ne doit jamais laisser fuir le nom d'utilisateur) — d'où des
+fichiers déterministes et sans fuite de chemin local. Les écrans Schedules affichant des heures
+**locales**, la génération épingle `TZ=Europe/Paris` (restauré ensuite) et seed un store temporaire
+à datetimes figées : les captures sont identiques quelle que soit la machine.
 
 ```bash
 make screenshots         # régénère docs/screenshots/ après toute évolution de l'UI

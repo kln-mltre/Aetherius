@@ -51,18 +51,6 @@ def _local(value: datetime | None) -> str:
     return value.astimezone().strftime("%Y-%m-%d %H:%M:%S") if value is not None else "-"
 
 
-def _trigger_label(trigger: dict[str, object]) -> str:
-    kind = trigger.get("kind")
-    if kind == "cron":
-        label = f"cron {trigger.get('expr')}"
-    elif kind == "interval":
-        label = f"every {trigger.get('seconds')}s"
-    else:
-        label = f"at {trigger.get('when')}"
-    misfire = trigger.get("misfire")
-    return f"{label} (misfire: {misfire})" if misfire else label
-
-
 @schedule_app.command()
 def add(
     name: str,
@@ -163,6 +151,7 @@ def list_schedules() -> None:
     from rich.console import Console as RichConsole
     from rich.table import Table
 
+    from ..server.scheduler import describe_trigger
     from ..store import get_store
 
     table = Table(title="Schedules")
@@ -172,7 +161,7 @@ def list_schedules() -> None:
         table.add_row(
             record.id,
             record.name,
-            _trigger_label(record.trigger),
+            describe_trigger(record.trigger),
             "yes" if record.enabled else "no",
             _local(record.next_run_at) if record.enabled else "-",
             _local(record.last_run_at),
@@ -233,58 +222,20 @@ def run(ident: str) -> None:
     """Fire a schedule immediately, in-process, without touching its cadence."""
     from rich.console import Console as RichConsole
 
-    from ..config.secrets import resolve_secrets
-    from ..core.blueprint.loader import load_blueprint
     from ..core.errors import AetheriusError
-    from ..core.runtime.engine import RunEngine
-    from ..server.scheduler import apply_notify_policy
-    from ..store import RunRecord, get_store
+    from ..server.scheduler import fire_schedule
+    from ..store import get_store
 
     rich_console = RichConsole()
     store = get_store()
     record = _resolve(store, ident)
-    secrets = resolve_secrets(record.secrets, None)
-    started = datetime.now(timezone.utc)
     try:
-        result = RunEngine().run(load_blueprint(record.blueprint), record.inputs, secrets)
+        # Same contract as a tick-driven fire: the outcome (even a load failure) lands in the
+        # history under the schedule's id and the alert policy applies.
+        result, delivered = fire_schedule(record, store)
     except AetheriusError as exc:
-        # Same contract as a tick-driven fire: the failure lands in the history and alerts.
-        store.runs.record(
-            RunRecord(
-                run_id=uuid.uuid4().hex,
-                blueprint_name=record.blueprint,
-                status="failed",
-                schedule_id=record.id,
-                error=str(exc),
-                started_at=started,
-                finished_at=datetime.now(timezone.utc),
-            )
-        )
-        apply_notify_policy(
-            record, status="failed", error=str(exc), outputs={}, secrets=secrets, store=store
-        )
         raise _fail(str(exc)) from exc
 
-    store.runs.record(
-        RunRecord(
-            run_id=result.run_id,
-            blueprint_name=result.blueprint_name,
-            status=result.status.value,
-            schedule_id=record.id,
-            error=result.error,
-            outputs=result.outputs,
-            started_at=result.started_at,
-            finished_at=result.finished_at,
-        )
-    )
-    delivered = apply_notify_policy(
-        record,
-        status=result.status.value,
-        error=result.error,
-        outputs=result.outputs,
-        secrets=secrets,
-        store=store,
-    )
     alert = "no alert" if delivered is None else ("alert sent" if delivered else "alert failed")
     rich_console.print(
         f"Run {result.run_id}: [bold]{result.status.value}[/bold] "

@@ -11,6 +11,17 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
+- **Écran Console « Schedules »** — l'UI du scheduler (Jalon 1.5-D) dans la Console : liste des
+  schedules (trigger, politique d'alerte, statut, prochains/derniers tirs en heure locale, sonde
+  d'honnêteté « daemon actif ou non »), pause/reprise (`p`, la reprise recale la cadence),
+  suppression confirmée (`d`, nouveau `ConfirmModal` réutilisable), **détail** avec l'historique
+  des runs du schedule et un **tir manuel** aux événements streamés en direct (même brique
+  in-process que `aetherius schedule run`, extraite dans `server/scheduler/manual.py::fire_schedule`
+  et partagée CLI/Console), et **formulaire guidé** de création/édition (inputs du Blueprint en
+  champs, secrets jamais saisis — état `.env` affiché, trigger/misfire/notify validés à la
+  sauvegarde). Raccourci `s` dans Library pour planifier le Blueprint surligné. Captures SVG
+  déterministes (fuseau épinglé, store de démo figé) et neutralisation renforcée des chemins
+  (le home ne fuit plus, même tronqué dans une colonne). Voir [docs/console.md](docs/console.md).
 - **Scheduler intégré au daemon (Jalon 1.5-D)** — rejeu persistant d'un Blueprint à heure fixe
   (cron à 5 champs, évalué dans le fuseau local, DST gérés via `tzlocal`), par intervalle ou en tir
   unique (`at`). Boucle de tick dans le lifespan du daemon (30 s, `AETHERIUS_DAEMON_SCHEDULER_TICK_SECONDS`) ;

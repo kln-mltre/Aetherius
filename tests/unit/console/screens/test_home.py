@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from aetherius.console.app import AetheriusConsoleApp
@@ -36,6 +38,7 @@ async def test_home_menu_lists_all_sections() -> None:
 
         assert ids == {
             "library",
+            "schedules",
             "catalog",
             "sessions",
             "settings",
@@ -59,13 +62,42 @@ async def test_selecting_library_navigates_there() -> None:
 
 
 @pytest.mark.asyncio
+async def test_selecting_schedules_navigates_there(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The Schedules screen reads the process-wide store: keep it on a temp file.
+    from aetherius.config import settings as settings_mod
+    from aetherius.store import engine as engine_mod
+
+    monkeypatch.setenv("AETHERIUS_DATA_DIR", str(tmp_path))
+    settings_mod.get_settings.cache_clear()
+    engine_mod.get_store.cache_clear()
+    app = AetheriusConsoleApp()
+
+    try:
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            option_list = app.screen.query_one(OptionList)
+            option_list.highlighted = 1  # "schedules" is the second entry
+            await pilot.press("enter")
+            await pilot.pause()
+
+            from aetherius.console.screens.schedules import SchedulesScreen
+
+            assert isinstance(app.screen, SchedulesScreen)
+    finally:
+        settings_mod.get_settings.cache_clear()
+        engine_mod.get_store.cache_clear()
+
+
+@pytest.mark.asyncio
 async def test_selecting_catalog_navigates_there() -> None:
     app = AetheriusConsoleApp()
 
     async with app.run_test() as pilot:
         await pilot.pause()
         option_list = app.screen.query_one(OptionList)
-        option_list.highlighted = 1  # "catalog" is the second entry (Runs removed from Home)
+        option_list.highlighted = 2  # "catalog" is the third entry (after Library and Schedules)
         await pilot.press("enter")
         await pilot.pause()
 

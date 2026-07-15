@@ -34,6 +34,7 @@ class LibraryScreen(Screen[None]):
     BINDINGS = [
         Binding("r", "rescan", "Rescan"),
         Binding("e", "edit", "Edit in Studio"),
+        Binding("s", "schedule", "Schedule"),
     ]
 
     def __init__(self) -> None:
@@ -71,6 +72,22 @@ class LibraryScreen(Screen[None]):
         from .builder.screen import BlueprintStudioScreen
 
         self.app.push_screen(BlueprintStudioScreen(entry.path))
+
+    def action_schedule(self) -> None:
+        """Open the schedule form pre-filled with the highlighted Blueprint."""
+        entry = self._highlighted_entry()
+        if entry is None:
+            return
+        if entry.blueprint is None:
+            self.app.notify(
+                "This file does not parse — fix it before scheduling it.",
+                severity="error",
+                timeout=8,
+            )
+            return
+        from .schedules.form import ScheduleFormScreen
+
+        self.app.push_screen(ScheduleFormScreen(blueprint_path=entry.path))
 
     def _highlighted_entry(self) -> BlueprintEntry | None:
         table = self.query_one("#library-table", DataTable)

@@ -110,6 +110,70 @@ async def test_edit_binding_opens_the_studio_for_a_valid_entry(examples_dir: Pat
         assert isinstance(app.screen, BlueprintStudioScreen)
 
 
+@pytest.fixture
+def _isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The schedule form defaults to the process-wide store: keep it on a temp file here.
+    from aetherius.config import settings as settings_mod
+    from aetherius.store import engine as engine_mod
+
+    monkeypatch.setenv("AETHERIUS_DATA_DIR", str(tmp_path))
+    settings_mod.get_settings.cache_clear()
+    engine_mod.get_store.cache_clear()
+    yield
+    settings_mod.get_settings.cache_clear()
+    engine_mod.get_store.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_schedule_binding_opens_the_prefilled_form(
+    examples_dir: Path, _isolated_store: None
+) -> None:
+    path = examples_dir / "vector" / "daemon-selftest.blueprint.json"
+    good_entry = BlueprintEntry(path=path, blueprint=load_blueprint(path), act="vector", error=None)
+    app = _Harness()
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, LibraryScreen)
+        screen._entries = [good_entry]
+        screen._render_table()
+        await pilot.pause()
+
+        screen.action_schedule()
+        await pilot.pause()
+
+        from aetherius.console.screens.schedules.form import ScheduleFormScreen
+
+        from textual.widgets import Select
+
+        assert isinstance(app.screen, ScheduleFormScreen)
+        assert str(app.screen.query_one("#sf-blueprint", Select).value) == str(path.resolve())
+
+
+@pytest.mark.asyncio
+async def test_schedule_binding_refuses_an_unparseable_entry(examples_dir: Path) -> None:
+    bad_entry = BlueprintEntry(
+        path=examples_dir / "broken.blueprint.json", blueprint=None, act=None, error="boom"
+    )
+    app = _Harness()
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, LibraryScreen)
+        screen._entries = [bad_entry]
+        screen._render_table()
+        await pilot.pause()
+
+        with patch.object(app, "notify") as mock_notify:
+            screen.action_schedule()
+            await pilot.pause()
+
+        mock_notify.assert_called_once()
+        assert app.screen is screen
+
+
 @pytest.mark.asyncio
 async def test_edit_binding_refuses_an_unparseable_entry(examples_dir: Path) -> None:
     bad_entry = BlueprintEntry(

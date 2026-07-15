@@ -30,5 +30,8 @@ async def test_capture_all_writes_one_valid_svg_per_shot(tmp_path: Path) -> None
         assert svg.lstrip().startswith("<svg"), f"{path.name} is not an SVG"
         # Deterministic: the random Rich terminal id must have been normalised away.
         assert not re.search(r"terminal-\d+", svg), f"{path.name} keeps a variable id"
-        # No absolute checkout path (author username / machine) leaked into a committed asset.
+        # No absolute checkout path (author username / machine) leaked into a committed asset —
+        # including a home prefix left over by a path clipped inside a narrow table column.
         assert str(_REPO) not in svg, f"{path.name} leaks the repo path"
+        if Path.home() != Path("/home/user"):
+            assert str(Path.home()) not in svg, f"{path.name} leaks the home path"

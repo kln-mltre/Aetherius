@@ -40,24 +40,28 @@ class BlueprintInputForm(Vertical):
         inputs: dict[str, InputSpec],
         secrets: list[str],
         available_secrets: set[str] | None = None,
+        values: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
         self._inputs = inputs
         self._secrets = secrets
         # Secrets already resolvable from the environment (.env): shown optional, not required.
         self._available_secrets = available_secrets or set()
+        # Existing values (e.g. editing a stored schedule) win over the specs' defaults.
+        self._values = values or {}
 
     def compose(self) -> ComposeResult:
         for name, spec in self._inputs.items():
             label = name + (" *" if spec.required else "")
             if spec.description:
                 label += f" - {spec.description}"
+            initial = self._values.get(name, spec.default)
             with Vertical(classes="form-field"):
                 yield Label(label)
                 if spec.type == "boolean":
-                    yield Switch(value=bool(spec.default), id=_INPUT_ID_PREFIX + name)
+                    yield Switch(value=bool(initial), id=_INPUT_ID_PREFIX + name)
                 else:
-                    default = "" if spec.default is None else str(spec.default)
+                    default = "" if initial is None else str(initial)
                     yield Input(
                         value=default,
                         placeholder=spec.type,

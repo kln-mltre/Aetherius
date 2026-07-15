@@ -70,6 +70,25 @@ def parse_trigger(data: Mapping[str, Any]) -> Trigger:
     raise ScheduleError(f"Unknown trigger kind {kind!r}; expected 'cron', 'interval' or 'at'.")
 
 
+def describe_trigger(data: Mapping[str, Any]) -> str:
+    """Human-readable one-liner for a trigger dict, shared by the CLI table and the Console.
+
+    Descriptive only: tolerates malformed dicts (shows what is there) instead of raising, so a
+    listing never breaks on a row that ``parse_trigger`` would reject.
+    """
+    kind = data.get("kind")
+    if kind == "cron":
+        label = f"cron {data.get('expr')}"
+    elif kind == "interval":
+        label = f"every {data.get('seconds')}s"
+    elif kind == "at":
+        label = f"at {data.get('when')}"
+    else:
+        label = f"unknown trigger {kind!r}"
+    misfire = data.get("misfire")
+    return f"{label} (misfire: {misfire})" if misfire else label
+
+
 def next_run_at(trigger: Trigger, after: datetime) -> datetime | None:
     """Return the next fire time strictly after *after*, or None if the trigger is exhausted."""
     after = _as_utc(after)

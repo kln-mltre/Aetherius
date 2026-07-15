@@ -12,15 +12,18 @@ See docs/scheduler.md.
 from __future__ import annotations
 
 from .alerts import apply_notify_policy, validate_notify_policy
+from .manual import fire_schedule
 from .misfire import MisfirePolicy, misfire_policy, resolve_misfires
 from .service import SchedulerService
-from .triggers import Trigger, next_run_at, parse_trigger
+from .triggers import Trigger, describe_trigger, next_run_at, parse_trigger
 
 __all__ = [
     "MisfirePolicy",
     "SchedulerService",
     "Trigger",
     "apply_notify_policy",
+    "describe_trigger",
+    "fire_schedule",
     "misfire_policy",
     "next_run_at",
     "parse_trigger",

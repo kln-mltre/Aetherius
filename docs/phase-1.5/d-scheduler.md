@@ -23,6 +23,10 @@ dans le lifespan du daemon), politique d'alerte par schedule, routes `/v1/schedu
   le fuseau IANA réel pour que « 3h du matin » survive aux DST.
 - `aetherius schedule run` exécute **in-process** (immédiat, marche daemon éteint) ;
   `POST /v1/schedules/{id}/run` passe par le daemon. Ni l'un ni l'autre ne touche la cadence.
+- **L'écran Console Schedules a été livré séparément**, juste après le jalon : liste, détail
+  (historique + tir manuel via la brique partagée `scheduler/manual.py::fire_schedule`),
+  formulaire guidé de création/édition, raccourci `s` depuis Library — voir
+  [docs/console.md](../console.md) § Schedules.
 
 Référence d'usage : [`docs/scheduler.md`](../scheduler.md) ; exemple zéro config :
 [`quotes-watch`](../../examples/vector/quotes-watch.blueprint.json). Ce document conserve la

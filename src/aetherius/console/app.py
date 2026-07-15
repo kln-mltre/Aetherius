@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 
 class AetheriusConsoleApp(App[None]):
-    """The Aetherius Console: navigation shell for Home, Library, Runs, Catalog, Recorder, the
-    Blueprint Studio and the daemon Settings (Sessions is still pending)."""
+    """The Aetherius Console: navigation shell for Home, Library, Runs, Schedules, Catalog,
+    Recorder, the Blueprint Studio and the daemon Settings (Sessions is still pending)."""
 
     CSS_PATH = Path(__file__).parent / "console.tcss"
     TITLE = "Aetherius"

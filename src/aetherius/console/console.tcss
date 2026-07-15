@@ -62,6 +62,46 @@ Screen {
     color: $text-muted;
 }
 
+.schedule-info {
+    padding: 0 2 1 2;
+}
+
+.sf-row {
+    height: auto;
+}
+
+.sf-row Select {
+    width: 32;
+}
+
+.sf-switch-label {
+    padding: 1 0 0 1;
+    color: $text-muted;
+}
+
+#sf-inputs {
+    height: auto;
+    margin: 0 0 1 0;
+    border: double $accent;
+}
+
+ScheduleFormScreen .form-field {
+    height: auto;
+    padding: 0 0 1 0;
+}
+
+#schedule-fire, #sf-save {
+    border: double $accent;
+    background: $panel;
+    color: $accent;
+    text-style: bold;
+    padding: 0 3;
+}
+
+#schedule-fire:hover, #sf-save:hover {
+    background: $accent 20%;
+}
+
 RunsScreen BlueprintInputForm {
     border: double $accent;
 }

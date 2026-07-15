@@ -105,6 +105,18 @@ aetherius schedule rm stock-watch
 Contrat : [`contracts/openapi.yaml`](../contracts/openapi.yaml) (schemas `Trigger`, `NotifyPolicy`,
 `Schedule*`), gardé par `tests/contracts/`. Auth bearer identique au reste de la surface `/v1`.
 
+## Depuis la Console
+
+L'écran **Schedules** (`aetherius` → Home → Schedules) offre la parité avec la CLI et l'API :
+liste avec statut et prochains tirs, pause/reprise, suppression confirmée, **détail** avec
+l'historique des runs du schedule et un tir manuel aux événements streamés en direct, et un
+**formulaire guidé** de création/édition (inputs du Blueprint en champs, secrets affichés avec
+leur état `.env`, trigger et politique d'alerte validés à la sauvegarde). Le tir manuel de la
+Console passe par la même brique in-process que `aetherius schedule run`
+(`server/scheduler/manual.py::fire_schedule`) : historique, alertes et cadence obéissent aux mêmes
+règles. Depuis **Library**, la touche `s` planifie le Blueprint surligné (formulaire prérempli).
+Prise en main illustrée : [docs/console.md](console.md) § Schedules.
+
 ## Sous le capot
 
 - **`SchedulerService`** démarre avec le daemon (lifespan FastAPI, `app.state.scheduler`) et tick
@@ -158,9 +170,9 @@ par `--notify ntfy --notify-target "{{ secrets.ntfy_topic }}" --notify-on change
 - La politique `change` compare le **JSON trié des outputs** : un Blueprint dont les outputs
   contiennent un champ volatil (horodatage, compteur) alertera à chaque run — exposer des outputs
   stables, ou dédier un Blueprint à la surveillance.
-- `aetherius schedule run` exécute dans le processus de la CLI (pas via le daemon) : un tir manuel
-  peut donc chevaucher un tir planifié du daemon. Le tir via API
-  (`POST /v1/schedules/{id}/run`) passe, lui, par le daemon.
+- `aetherius schedule run` et le **Fire now** de la Console exécutent dans leur propre processus
+  (pas via le daemon) : un tir manuel peut donc chevaucher un tir planifié du daemon. Le tir via
+  API (`POST /v1/schedules/{id}/run`) passe, lui, par le daemon.
 
 ## Tests
 

@@ -408,6 +408,7 @@ src/aetherius/
   cli/         commandes scriptables (run/validate/serve/record, groupe schedule)
   config/      settings
 contracts/     blueprint.schema.json, openapi.yaml, events.schema.json  (source de vérité)
+deploy/        recette always-on : Dockerfile, docker-compose.yml, service systemd
 sdks/          typescript (@aetherius/client), python
 examples/      Blueprints de démonstration (par Act + plugins/)
 training/      entraînement des modèles Oracle (hors runtime)
@@ -577,8 +578,14 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   et pannes isolées (un plugin cassé est loggé et sauté, jamais fatal au démarrage). Plugin d'exemple
   exécutable : `examples/plugins/` (action `demo.slugify` + canal `logfile`).
   [docs/plugins.md](docs/plugins.md), [docs/phase-1.5/e-plugins.md](docs/phase-1.5/e-plugins.md).
-- [ ] **Déploiement always-on** : recette 24/7 (Docker + systemd) pour héberger le daemon sur une
-  machine allumée — la réponse honnête au « hors machine ».
+- [x] **Déploiement always-on** : recette 24/7 vérifiée de bout en bout pour héberger le daemon sur
+  une machine allumée (VPS, Raspberry Pi, NAS) — la réponse honnête au « hors machine ». Deux voies
+  dans [`deploy/`](deploy/) : image Docker durcie (multi-stage, non-root, healthcheck, variante Act
+  II via `--build-arg BROWSER=1`) + `docker-compose.yml` (volume persistant unique `/data`, port
+  publié sur la loopback de l'hôte, Blueprints utilisateur montés) et service systemd utilisateur
+  (`enable-linger`, redémarrage automatique). Tout l'état durable (schedules, historique, profils)
+  vit sous `AETHERIUS_DATA_DIR` et survit aux redémarrages ; sécurité par défaut : loopback, et
+  exposer exige token + reverse proxy TLS. [docs/deployment.md](docs/deployment.md),
   [docs/phase-1.5/f-deployment.md](docs/phase-1.5/f-deployment.md).
 - [ ] **Identité réseau** : proxy (Vector et Continuum, HTTP/HTTPS/SOCKS5), rotation d'IP, prévention
   de la fuite WebRTC, cohérence géo (timezone/locale alignés sur l'IP) et impersonation TLS — pour

@@ -1,26 +1,28 @@
-# Phase 1.5 - Jalon F (brouillon a finaliser ; voir docs/phase-1.5/f-deployment.md).
 # Fait tourner le daemon Aetherius 24/7. Le volume nomme conserve la base SQLite (schedules,
-# historique) et les profils entre redemarrages.
+# historique, etat inter-run) et les profils entre redemarrages ; ./blueprints porte les
+# Blueprints utilisateur references par les schedules. Recette complete : docs/deployment.md.
+#
+# Prerequis : cp .env.example .env (le fichier est requis, meme vide).
 
 services:
   aetherius:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+      # Act II (Continuum, navigateur) : decommenter (image plus lourde, Chromium inclus).
+      # args:
+      #   BROWSER: "1"
     restart: unless-stopped
     ports:
-      # Par defaut on n'expose que sur la loopback de l'hote. Retirer 127.0.0.1 seulement derriere
-      # un reverse proxy TLS, et avec un token defini.
+      # Par defaut on n'expose que sur la loopback de l'hote. Retirer 127.0.0.1 seulement
+      # derriere un reverse proxy TLS, et avec AETHERIUS_DAEMON_TOKEN defini (voir .env.example).
       - "127.0.0.1:8787:8787"
-    environment:
-      AETHERIUS_DATA_DIR: /data
-      AETHERIUS_DAEMON_HOST: 0.0.0.0
-      # Secrets et token via un fichier .env non versionne (voir docs/secrets.md).
-      AETHERIUS_DAEMON_TOKEN: ${AETHERIUS_DAEMON_TOKEN:-}
+    # Token et secrets (AETHERIUS_SECRET_*) via .env, jamais dans ce fichier versionne.
     env_file:
       - .env
     volumes:
       - aetherius-data:/data
+      - ./blueprints:/app/blueprints:ro
 
 volumes:
   aetherius-data:

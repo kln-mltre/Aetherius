@@ -29,3 +29,14 @@ def test_environment_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.port == 9999
     assert config.token == "sekret"
     assert config.base_url == "http://0.0.0.0:9999"
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_token_means_no_token(monkeypatch: pytest.MonkeyPatch, blank: str) -> None:
+    # Compose interpolation (`${VAR:-}`) and env files materialise unset tokens as empty
+    # strings; auth must stay disabled instead of demanding an empty bearer.
+    monkeypatch.setenv("AETHERIUS_DAEMON_TOKEN", blank)
+
+    config = DaemonConfig()
+
+    assert config.token is None

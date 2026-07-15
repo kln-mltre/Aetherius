@@ -32,6 +32,10 @@ Depuis la **Console**, l'écran **Settings** démarre et arrête ce daemon sans 
 à la navigation, mais s'arrête à la fermeture de la Console. Pour un daemon persistant, utiliser
 `aetherius serve` dans son propre terminal.
 
+Pour l'héberger **en continu (24/7)** sur un hôte toujours allumé — VPS, Raspberry Pi, NAS, afin que
+les schedules tirent machine personnelle éteinte — suivre la recette de déploiement (Docker ou
+systemd) : [deployment.md](deployment.md).
+
 ## L'API
 
 | Route | Rôle |

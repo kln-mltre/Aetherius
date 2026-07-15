@@ -1,0 +1,11 @@
+# Contexte de build Docker (deploy/Dockerfile, contexte = racine du depot).
+# Allowlist : seul ce que le Dockerfile copie entre dans le contexte — le reste (dont .env et
+# tout secret local) est exclu par construction.
+*
+!pyproject.toml
+!README.md
+!LICENSE
+!src
+!examples
+**/__pycache__
+**/*.pyc

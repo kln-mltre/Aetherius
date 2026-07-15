@@ -1,8 +1,15 @@
 # Jalon F — Déploiement always-on (24/7)
 
-**Statut : jalon en attente.** Des brouillons existent dans [`deploy/`](../../deploy/)
-(`Dockerfile`, `docker-compose.yml`, `aetherius.service`, `.dockerignore`), marqués « brouillon, à
-vérifier ». Ce jalon les finalise et les **vérifie de bout en bout**.
+**Statut : livré.** Les artefacts [`deploy/`](../../deploy/) sont finalisés et vérifiés de bout en
+bout : image Docker multi-stage non-root avec healthcheck (variante Act II via
+`--build-arg BROWSER=1`), `docker-compose.yml` (volume persistant `/data`, port publié sur la
+loopback de l'hôte, `.env` non versionné, montage `blueprints/`), service systemd utilisateur
+(`enable-linger`, redémarrage automatique) et `.dockerignore` racine en allowlist (le contexte de
+build ne peut pas embarquer un secret). La recette complète — VPS / Raspberry Pi / NAS, volume,
+secrets, sécurité — est documentée dans [`docs/deployment.md`](../deployment.md). Décision actée en
+la vérifiant : un `AETHERIUS_DAEMON_TOKEN` vide vaut absence de token (`server/config.py`), pour
+que l'interpolation d'environnement des déploiements n'active jamais l'auth par accident. Ce
+document conserve la spécification d'origine du jalon.
 
 ## Objectif
 

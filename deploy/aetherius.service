@@ -1,8 +1,13 @@
-# Phase 1.5 - Jalon F (brouillon a finaliser ; voir docs/phase-1.5/f-deployment.md).
-# Service systemd utilisateur pour faire tourner le daemon Aetherius en continu sur une machine
-# allumee (sans Docker). Installer sous ~/.config/systemd/user/aetherius.service puis :
+# Service systemd utilisateur : le daemon Aetherius en continu sur une machine allumee, sans
+# Docker (Raspberry Pi, machine perso). Recette complete : docs/deployment.md.
+#
+# Installation :
+#   cp deploy/aetherius.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
 #   systemctl --user enable --now aetherius
-#   loginctl enable-linger $USER   # pour que le service survive a la deconnexion
+#   loginctl enable-linger $USER   # le service survit a la deconnexion de la session
+#
+# Journal : journalctl --user -u aetherius -f
 
 [Unit]
 Description=Aetherius daemon (scheduler + engine gateway)
@@ -11,11 +16,12 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# Adapter le chemin si aetherius n'est pas sur le PATH du service.
+# Adapter au binaire reel : ~/.local/bin (pip install --user, pipx) ou le bin/ d'un venv.
 ExecStart=%h/.local/bin/aetherius serve
 Environment=AETHERIUS_DATA_DIR=%h/.aetherius
-# Secrets et token : preferer un EnvironmentFile non versionne plutot que des valeurs en clair ici.
-# EnvironmentFile=%h/.aetherius/daemon.env
+# Token et secrets (AETHERIUS_SECRET_*) : dans un fichier d'environnement non versionne,
+# jamais en clair ici. Le tiret rend le fichier optionnel.
+EnvironmentFile=-%h/.aetherius/daemon.env
 Restart=on-failure
 RestartSec=5
 

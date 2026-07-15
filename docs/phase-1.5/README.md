@@ -68,7 +68,7 @@ G. Identité réseau (proxy + rotation + anti-fuite)  ──►  H. Durcissement
 | C | [c-notifications.md](c-notifications.md) | A (pour la dédup) | **Livré.** Canaux d'alerte + action `notify` + sink d'alerte auto — voir [docs/notifications.md](../notifications.md). |
 | D | [d-scheduler.md](d-scheduler.md) | A, C | **Livré.** Scheduler cron/intervalle dans le daemon + CLI + API — voir [docs/scheduler.md](../scheduler.md). |
 | E | [e-plugins.md](e-plugins.md) | après B, C | **Livré.** Actions et canaux tiers via entry-points — voir [docs/plugins.md](../plugins.md). |
-| F | [f-deployment.md](f-deployment.md) | D | Recette de déploiement always-on (Docker, systemd). |
+| F | [f-deployment.md](f-deployment.md) | D | **Livré.** Recette de déploiement always-on (Docker, systemd) — voir [docs/deployment.md](../deployment.md). |
 | G | [g-network.md](g-network.md) | — | Proxy (Vector + Continuum), rotation d'IP, anti-fuite WebRTC, cohérence géo, TLS impersonation. |
 | H | [h-fingerprint.md](h-fingerprint.md) | G | Empreinte durcie (canvas/audio/UA-CH/écran/WebGL2) + identité d'en-têtes pour Vector. |
 

@@ -11,6 +11,20 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
+- **Déploiement always-on (Jalon 1.5-F)** — recette 24/7 vérifiée de bout en bout pour héberger le
+  daemon (et donc le scheduler) sur un hôte toujours allumé : VPS, Raspberry Pi, NAS. Les brouillons
+  `deploy/` sont finalisés : image Docker multi-stage (wheel construit à part, image finale sans
+  sources ni outils de build), utilisateur non-root, `HEALTHCHECK` sur `/health`, exemples embarqués
+  comme sondes zéro config, variante Act II exécutable (`--build-arg BROWSER=1` : extra `[browser]` +
+  Chromium sous `PLAYWRIGHT_BROWSERS_PATH` partagé) ; `docker-compose.yml` (volume persistant unique
+  `/data`, port publié sur la loopback de l'hôte, `env_file` + `.env.example`, montage lecture seule
+  `blueprints/` — les schedules résolvent des chemins côté conteneur) ; service systemd utilisateur
+  (`enable-linger`, `EnvironmentFile` optionnel, redémarrage automatique) ; `.dockerignore` racine en
+  allowlist (l'ancien `deploy/.dockerignore` était inopérant, le contexte de build étant la racine).
+  Durcissement afférent : un `AETHERIUS_DAEMON_TOKEN` vide vaut absence de token — l'interpolation
+  compose (`${VAR:-}`) n'active plus l'auth par accident (`server/config.py`, test miroir). Doc
+  complète (recettes, persistance, sauvegarde SQLite, sécurité : loopback par défaut, exposer =
+  token + reverse proxy TLS) : voir [docs/deployment.md](docs/deployment.md).
 - **Actions custom / plugins (Jalon 1.5-E)** — points d'extension activés : un paquet tiers ajoute
   des actions de Blueprint et des canaux de notification sans forker le cœur. Découverte par
   entry-points (`aetherius.actions`, `aetherius.notify_channels`) dans le nouveau module

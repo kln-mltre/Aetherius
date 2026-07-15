@@ -25,7 +25,12 @@ app.add_typer(schedule_app, name="schedule")
 
 @app.callback(invoke_without_command=True)
 def main_callback(ctx: typer.Context) -> None:
-    """Dispatch to the Console when no subcommand is given."""
+    """Load installed plugins, then dispatch to the Console when no subcommand is given."""
+    # Every command needs the plugins loaded (run/validate accept plugin actions, schedule and the
+    # Console list plugin notify channels); one idempotent call here covers them all.
+    from ..plugins import load_plugins
+
+    load_plugins()
     if ctx.invoked_subcommand is None:
         console()
 

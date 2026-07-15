@@ -41,3 +41,11 @@ def test_unknown_act_raises() -> None:
         get_act_info("nope")
     with pytest.raises(BuilderError):
         actions_for_act("nope")
+
+
+def test_plugin_actions_appear_under_every_act(plugin_action: str) -> None:
+    # Plugin actions are act-agnostic (Jalon E): projected under each Act, runnable wherever the
+    # Act itself is implemented.
+    for act in ("vector", "continuum", "oracle", "phantom"):
+        info = next(i for i in actions_for_act(act) if i.spec.name == plugin_action)
+        assert info.runnable == (act in IMPLEMENTED_ACTS)

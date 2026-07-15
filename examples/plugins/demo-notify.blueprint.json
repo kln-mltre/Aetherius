@@ -1,0 +1,29 @@
+{
+  "aetherius": "1.0",
+  "name": "demo.plugin.notify",
+  "description": "Plugin seams demo (Jalon E): a custom action (demo.slugify) and a custom notify channel (logfile). Requires the demo plugin: pip install -e examples/plugins/aetherius-plugin-demo",
+  "act": "vector",
+  "vars": {
+    "title": "Aetherius : per nubes, ad aethera !",
+    "logfile": "aetherius-demo-notifications.log"
+  },
+  "steps": [
+    {
+      "id": "slug",
+      "action": "demo.slugify",
+      "value": "{{ vars.title }}"
+    },
+    {
+      "id": "alert",
+      "action": "notify",
+      "channel": "logfile",
+      "target": "{{ vars.logfile }}",
+      "title": "Plugin demo",
+      "message": "Slug ready: {{ steps.slug.slug }}"
+    }
+  ],
+  "outputs": {
+    "slug": "{{ steps.slug.slug }}",
+    "delivered": "{{ steps.alert.delivered }}"
+  }
+}

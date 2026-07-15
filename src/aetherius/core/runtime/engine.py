@@ -45,6 +45,11 @@ class RunEngine:
         sinks: list[Sink] | None = None,
         run_id: str | None = None,
     ) -> Result:
+        # Plugins must be visible before validation: a Blueprint may use a plugin action. Imported
+        # lazily (like resolve_secrets below) and idempotent, so per-run cost is a flag check.
+        from ...plugins import load_plugins
+
+        load_plugins()
         validate_for_act(blueprint)
 
         # The daemon assigns the id it returned to the caller (HTTP 202) before the run starts, so

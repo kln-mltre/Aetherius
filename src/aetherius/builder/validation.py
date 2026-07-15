@@ -16,7 +16,7 @@ from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
 from ..core.actions.base import ACT_CAPABILITIES, PENDING_ACTIONS, Capability
-from ..core.actions.registry import action_specs
+from ..core.actions.registry import action_specs, plugin_actions
 from ..core.blueprint.loader import blueprint_schema
 from ..core.blueprint.models import Blueprint
 from ..core.runtime.engine import IMPLEMENTED_ACTS
@@ -63,6 +63,7 @@ def _semantic_issues(draft: "BlueprintDraft") -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     caps = ACT_CAPABILITIES.get(draft.act)
     specs = action_specs()
+    plugins = plugin_actions()
     pending: frozenset[Capability] = PENDING_ACTIONS.get(draft.act, frozenset())
 
     if draft.act and draft.act not in IMPLEMENTED_ACTS:
@@ -77,19 +78,21 @@ def _semantic_issues(draft: "BlueprintDraft") -> list[ValidationIssue]:
         if action not in specs:
             issues.append(ValidationIssue("error", base, f"Unknown action {action!r}."))
             continue
-        if caps is not None and action not in {c.value for c in caps}:
-            issues.append(
-                ValidationIssue(
-                    "error", base, f"Action {action!r} is not supported by act {draft.act!r}."
+        # Plugin actions are act-agnostic (docs/plugins.md): they bypass the capability table and
+        # are never pending, so only their required parameters remain to check.
+        if action not in plugins:
+            if caps is not None and action not in {c.value for c in caps}:
+                issues.append(
+                    ValidationIssue(
+                        "error", base, f"Action {action!r} is not supported by act {draft.act!r}."
+                    )
                 )
-            )
-            continue
-        cap = Capability(action)
-        if cap in pending:
-            issues.append(
-                ValidationIssue("warning", base, f"Action {action!r} is not runnable yet.")
-            )
-            continue
+                continue
+            if Capability(action) in pending:
+                issues.append(
+                    ValidationIssue("warning", base, f"Action {action!r} is not runnable yet.")
+                )
+                continue
         for param in specs[action].required_params():
             if _missing(step.params.get(param.name)):
                 issues.append(

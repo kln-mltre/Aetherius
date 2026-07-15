@@ -30,9 +30,18 @@ def register_channel(
 
     ``target_key`` names the config entry the ``notify`` action's ``target`` parameter fills for
     this kind; omit it for a channel that cannot be addressed by a single value.
+
+    A kind registers exactly once: built-ins stay authoritative and a plugin colliding with an
+    existing channel fails loudly at load time (log + skip in load_plugins) instead of silently
+    winning by import order. Load order guarantees built-ins register first (docs/plugins.md).
+
+    Raises:
+        NotificationError: *kind* is already registered.
     """
 
     def decorator(factory: ChannelFactory) -> ChannelFactory:
+        if kind in _channels:
+            raise NotificationError(f"Notification channel {kind!r} is already registered.")
         _channels[kind] = factory
         if target_key is not None:
             _target_keys[kind] = target_key

@@ -19,7 +19,9 @@ consomme lui aussi le builder (`assemble_blueprint` y a migré).
   `act_infos()`, `actions_for_act(act)`. Aucune métadonnée d'action n'est définie ici, seulement
   **croisée** (specs × capabilities × statut). C'est la matérialisation de l'invariant
   d'[architecture](architecture.md) : « le registre est l'unique source, le catalogue en est la
-  projection ». L'écran Catalog de la Console le consomme (plus de descriptions dupliquées).
+  projection ». L'écran Catalog de la Console le consomme (plus de descriptions dupliquées). Les
+  actions **plugin** chargées (Jalon 1.5-E) sont projetées sous chaque Act avec leur spec, sans rien
+  changer ici — voir [plugins.md](plugins.md).
 - [`factory.py`](../src/aetherius/builder/factory.py) — `BlueprintDraft` (état d'édition mutable,
   **lossless**), `StepDraft`, `build_blueprint`, `save_blueprint`, plus `assemble_blueprint` /
   `slugify_name`.

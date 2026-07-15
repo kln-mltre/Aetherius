@@ -81,6 +81,10 @@ survit à un redémarrage et devient lisible via `RunRepository`. L'écriture se
 (`asyncio.to_thread`) et en mode « best-effort » — une défaillance du store n'interrompt jamais le run
 ni son flux. Un run tiré par le scheduler porte en plus son lien `schedule_id` (Jalon 1.5-D).
 
+Au démarrage, le lifespan FastAPI **charge d'abord les plugins** (Jalon 1.5-E,
+`aetherius.plugins.load_plugins()`, entry-points loggés) pour que les actions et canaux tiers
+soient visibles des runs comme de la validation des schedules — voir [plugins.md](plugins.md).
+
 Le daemon héberge aussi le **scheduler** (Jalon 1.5-D) : le lifespan FastAPI démarre un
 `SchedulerService` (`app.state.scheduler`) qui, toutes les `scheduler_tick_seconds` (30 s par
 défaut, env `AETHERIUS_DAEMON_SCHEDULER_TICK_SECONDS`), relit les schedules dus dans le store et

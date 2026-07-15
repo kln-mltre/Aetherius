@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from .._shared import SharedActionsMixin
+from ...core.actions.registry import find_handler
 from ...core.blueprint.models import StepModel
 from ...core.errors import ActionError
 from ...core.events.bus import EventBus
@@ -95,6 +96,10 @@ class ContinuumDriver(SharedActionsMixin):
             case "notify":
                 return self._notify(step, ctx, bus, renderer)
             case _:
+                # Built-ins first, then the plugin registry (docs/plugins.md).
+                handler = find_handler(step.action)
+                if handler is not None:
+                    return handler(step, ctx, bus, renderer)
                 raise ActionError(f"ContinuumDriver: unsupported action {step.action!r}")
 
     def _screenshot(

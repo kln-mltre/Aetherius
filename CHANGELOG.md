@@ -11,6 +11,19 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
+- **Actions custom / plugins (Jalon 1.5-E)** — points d'extension activés : un paquet tiers ajoute
+  des actions de Blueprint et des canaux de notification sans forker le cœur. Découverte par
+  entry-points (`aetherius.actions`, `aetherius.notify_channels`) dans le nouveau module
+  `aetherius.plugins` (`load_plugins()` idempotent, appelé au démarrage par la CLI, le lifespan du
+  daemon et `RunEngine.run` ; surface d'import unique pour les auteurs de plugins). Le registre
+  d'actions dormant est activé : une action plugin embarque son `ActionSpec` (visible du Studio et
+  des validators, invariant « registre = source, catalogue = projection » préservé), est
+  **act-agnostique** (hors capability-table, validée dynamiquement) et dispatchée par les drivers
+  en repli après leur `match` built-in. Gardes de collision sur les deux registres (les built-ins
+  restent prioritaires, un conflit est un échec de chargement explicite) et pannes isolées (un
+  plugin qui lève à l'import est loggé et sauté, jamais fatal). Plugin d'exemple exécutable
+  (`examples/plugins/` : action `demo.slugify` + canal `logfile` + Blueprint zéro réseau), chargé
+  par de vrais entry-points dans les tests. Voir [docs/plugins.md](docs/plugins.md).
 - **Écran Console « Schedules »** — l'UI du scheduler (Jalon 1.5-D) dans la Console : liste des
   schedules (trigger, politique d'alerte, statut, prochains/derniers tirs en heure locale, sonde
   d'honnêteté « daemon actif ou non »), pause/reprise (`p`, la reprise recale la cadence),

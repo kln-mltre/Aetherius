@@ -67,7 +67,7 @@ G. Identité réseau (proxy + rotation + anti-fuite)  ──►  H. Durcissement
 | B | [b-flow.md](b-flow.md) | — | **Livré.** Garde d'étape `when` + actions de flux `if`/`repeat`/`for_each` exécutées par le moteur — voir [docs/blueprint-schema.md](../blueprint-schema.md). |
 | C | [c-notifications.md](c-notifications.md) | A (pour la dédup) | **Livré.** Canaux d'alerte + action `notify` + sink d'alerte auto — voir [docs/notifications.md](../notifications.md). |
 | D | [d-scheduler.md](d-scheduler.md) | A, C | **Livré.** Scheduler cron/intervalle dans le daemon + CLI + API — voir [docs/scheduler.md](../scheduler.md). |
-| E | [e-plugins.md](e-plugins.md) | après B, C | Actions et canaux tiers via entry-points. |
+| E | [e-plugins.md](e-plugins.md) | après B, C | **Livré.** Actions et canaux tiers via entry-points — voir [docs/plugins.md](../plugins.md). |
 | F | [f-deployment.md](f-deployment.md) | D | Recette de déploiement always-on (Docker, systemd). |
 | G | [g-network.md](g-network.md) | — | Proxy (Vector + Continuum), rotation d'IP, anti-fuite WebRTC, cohérence géo, TLS impersonation. |
 | H | [h-fingerprint.md](h-fingerprint.md) | G | Empreinte durcie (canvas/audio/UA-CH/écran/WebGL2) + identité d'en-têtes pour Vector. |

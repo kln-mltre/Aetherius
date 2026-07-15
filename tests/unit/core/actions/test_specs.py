@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from aetherius.core.actions.base import ACT_CAPABILITIES, PENDING_ACTIONS, Capability
-from aetherius.core.actions.registry import action_specs, get_spec
+from aetherius.core.actions.registry import action_specs, builtin_action_specs, get_spec
 from aetherius.core.errors import ActionError
 from aetherius.core.runtime.engine import IMPLEMENTED_ACTS
 
@@ -18,7 +18,10 @@ pytestmark = pytest.mark.unit
 
 
 def test_specs_are_a_bijection_with_capabilities() -> None:
-    assert set(action_specs()) == {cap.value for cap in Capability}
+    # Static table only: plugin specs (Jalon E) legitimately extend action_specs() beyond the
+    # Capability set, so the bijection is asserted on the built-in aggregation — robust even when
+    # a real plugin is installed in the environment.
+    assert set(builtin_action_specs()) == {cap.value for cap in Capability}
 
 
 def test_every_spec_has_a_summary_and_unique_params() -> None:

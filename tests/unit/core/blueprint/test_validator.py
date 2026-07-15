@@ -96,3 +96,22 @@ def test_invalid_nested_step_shape_is_rejected() -> None:
     bp = _make_nested("vector", {"action": "repeat", "times": 1, "steps": [{"id": "x"}]})
     with pytest.raises(BlueprintValidationError, match="steps\\[0\\].steps\\[0\\]"):
         validate_for_act(bp)
+
+
+def test_plugin_actions_are_accepted_on_every_act(plugin_action: str) -> None:
+    # Plugin actions are act-agnostic (Jalon E, docs/plugins.md): registered = accepted.
+    validate_for_act(_make("vector", [plugin_action]))
+    validate_for_act(_make("continuum", [plugin_action]))
+
+
+def test_plugin_actions_are_accepted_inside_flow_branches(plugin_action: str) -> None:
+    validate_for_act(
+        _make_nested(
+            "vector", {"action": "if", "condition": "x", "then": [{"action": plugin_action}]}
+        )
+    )
+
+
+def test_unregistered_actions_stay_rejected() -> None:
+    with pytest.raises(BlueprintValidationError, match="does.not.exist"):
+        validate_for_act(_make("vector", ["does.not.exist"]))

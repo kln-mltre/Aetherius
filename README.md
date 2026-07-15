@@ -565,9 +565,14 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   `s` depuis Library. Exemple zéro config : `examples/vector/quotes-watch.blueprint.json`.
   [docs/scheduler.md](docs/scheduler.md),
   [docs/phase-1.5/d-scheduler.md](docs/phase-1.5/d-scheduler.md).
-- [ ] **Actions custom / plugins** : registre d'actions activé + découverte par entry-points (actions
-  et canaux de notification tiers, sans forker le cœur).
-  [docs/phase-1.5/e-plugins.md](docs/phase-1.5/e-plugins.md).
+- [x] **Actions custom / plugins** : points d'extension activés — un paquet tiers ajoute des
+  **actions** et des **canaux de notification** sans forker le cœur. Découverte par entry-points
+  (`aetherius.actions`, `aetherius.notify_channels`) chargée au démarrage (CLI, daemon, moteur
+  in-process) ; une action plugin embarque sa spec (visible du Studio et du validator, act-agnostique,
+  dispatchée en repli après les built-ins) ; gardes de collision (les built-ins restent prioritaires)
+  et pannes isolées (un plugin cassé est loggé et sauté, jamais fatal au démarrage). Plugin d'exemple
+  exécutable : `examples/plugins/` (action `demo.slugify` + canal `logfile`).
+  [docs/plugins.md](docs/plugins.md), [docs/phase-1.5/e-plugins.md](docs/phase-1.5/e-plugins.md).
 - [ ] **Déploiement always-on** : recette 24/7 (Docker + systemd) pour héberger le daemon sur une
   machine allumée — la réponse honnête au « hors machine ».
   [docs/phase-1.5/f-deployment.md](docs/phase-1.5/f-deployment.md).

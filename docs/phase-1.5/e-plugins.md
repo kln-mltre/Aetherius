@@ -1,9 +1,13 @@
 # Jalon E — Actions custom / mécanisme de plugins
 
-**Statut : jalon en attente.** Le registre d'actions existe déjà mais est **dormant** :
-[`core/actions/registry.py`](../../src/aetherius/core/actions/registry.py) définit `@register` /
-`get_handler` sans aucun site d'appel. La table de canaux de `notify` est prête à accueillir des
-plugins ([`notify/registry.py`](../../src/aetherius/notify/registry.py)).
+**Statut : livré.** Le registre d'actions est activé (repli des drivers après leur `match`
+built-in, via [`core/actions/registry.py`](../../src/aetherius/core/actions/registry.py)), la
+découverte par entry-points est en place ([`plugins.py`](../../src/aetherius/plugins.py), groupes
+`aetherius.actions` / `aetherius.notify_channels`, chargée au démarrage CLI/daemon/moteur) et un
+plugin d'exemple exécutable vit dans [`examples/plugins/`](../../examples/plugins/). Le contrat
+d'extension est documenté dans [`docs/plugins.md`](../plugins.md). Décision actée : une action
+plugin est **hors capability-table** (act-agnostique, validée dynamiquement). Ce document conserve
+la spécification d'origine du jalon.
 
 ## Objectif
 

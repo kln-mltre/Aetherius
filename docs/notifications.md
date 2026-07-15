@@ -28,7 +28,7 @@ built-in est un simple POST JSON via `httpx`, déjà au cœur. Deux surfaces d'u
 
 | Paramètre | Rôle |
 |-----------|------|
-| `channel` (requis) | Type de canal : `webhook`, `discord`, `telegram`, `ntfy` (les plugins du Jalon E pourront en ajouter). |
+| `channel` (requis) | Type de canal : `webhook`, `discord`, `telegram`, `ntfy` — ou tout canal ajouté par un plugin (voir [docs/plugins.md](plugins.md)). |
 | `message` (requis) | Corps de l'alerte (interpolable). |
 | `title` | Titre optionnel. |
 | `level` | `info` (défaut), `warning` ou `error` — mappé sur la sévérité du fournisseur. |
@@ -58,8 +58,8 @@ Sorties du step : `{"delivered": bool, "channel": "<kind>"}` — et un événeme
 ## Canaux built-in et mapping wire
 
 Tous enregistrés dans le registre (`notify/registry.py`) via `register_channel` — la même couture
-que les canaux tiers du Jalon E. Chaque `send` est **un** POST JSON (timeout fixe 10 s,
-indépendant des options du Blueprint).
+que les canaux tiers du Jalon E (contrat d'extension : [docs/plugins.md](plugins.md)). Chaque
+`send` est **un** POST JSON (timeout fixe 10 s, indépendant des options du Blueprint).
 
 | Canal | Cible | Requête |
 |-------|-------|---------|

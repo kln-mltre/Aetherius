@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
 from fastapi import FastAPI
 
+from ..plugins import load_plugins
 from ..store import get_store
 from ..version import __version__
 from .config import DaemonConfig
 from .jobs import RunManager
 from .routes import blueprints, recorder, runs, schedules, stream
 from .scheduler import SchedulerService
+
+_log = logging.getLogger("aetherius.daemon")
 
 
 def create_app(config: DaemonConfig | None = None) -> FastAPI:
@@ -21,6 +25,11 @@ def create_app(config: DaemonConfig | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        # Plugin actions and notify channels must be visible before any run or schedule validation,
+        # even when the app is created programmatically rather than through the CLI (Jalon E).
+        loaded_plugins = load_plugins()
+        if loaded_plugins:
+            _log.info("Loaded plugins: %s", ", ".join(loaded_plugins))
         # The scheduler shares the app's manager and store: scheduled runs go through the same
         # submit path (same events, same history) and the same durable file the CLI writes to.
         scheduler = SchedulerService(

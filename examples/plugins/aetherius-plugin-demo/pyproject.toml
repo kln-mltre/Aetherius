@@ -1,0 +1,27 @@
+# Minimal Aetherius plugin: one custom action (demo.slugify) and one notification channel
+# (logfile), each declared through its entry-point group. Install it next to aetherius to try it:
+#
+#   pip install -e examples/plugins/aetherius-plugin-demo
+#
+# Both entry points target the same module: importing it performs the registration (decorators at
+# module level). That import-registers contract is the whole plugin mechanism — see docs/plugins.md.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aetherius-plugin-demo"
+version = "0.1.0"
+description = "Demo Aetherius plugin: a demo.slugify action and a logfile notification channel."
+requires-python = ">=3.11"
+dependencies = ["aetherius"]
+
+[project.entry-points."aetherius.actions"]
+demo = "aetherius_plugin_demo"
+
+[project.entry-points."aetherius.notify_channels"]
+demo = "aetherius_plugin_demo"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aetherius_plugin_demo"]

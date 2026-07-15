@@ -34,7 +34,8 @@ les parties au fil de l'implémentation.
   déclaratives par action vivent dans `core/actions/{navigation,interaction,data,flow}.py` et sont
   agrégées par le registre ; deux tests anti-drift garantissent la bijection specs ↔ capabilities et
   le dispatch réel specs ↔ drivers (`PENDING_ACTIONS` documente les actions déclarées mais pas encore
-  exécutées). Voir [builder.md](builder.md).
+  exécutées). Voir [builder.md](builder.md). Les actions et canaux **tiers** se greffent sur les mêmes
+  registres par entry-points (`src/aetherius/plugins.py`, Jalon 1.5-E) : voir [plugins.md](plugins.md).
 - Les tests co-évoluent avec le code : chaque module de logique a son test miroir dans `tests/`,
   les contrats sont gardés par des tests, et la suite passe sans dépendances lourdes (skips
   propres). Voir [testing.md](testing.md).

@@ -64,3 +64,13 @@ def test_third_party_channels_register_through_the_same_seam() -> None:
     finally:
         registry._channels.pop("echo", None)
         registry._target_keys.pop("echo", None)
+
+
+def test_registering_an_existing_kind_is_refused() -> None:
+    # Collision guard (Jalon E): built-ins keep their names; a conflicting plugin fails at load
+    # time (load_plugins logs and skips it) instead of silently shadowing the channel.
+    with pytest.raises(NotificationError, match="already registered"):
+
+        @register_channel("webhook")
+        def _dup(config: Mapping[str, str]) -> NotificationChannel:
+            raise AssertionError("never built")

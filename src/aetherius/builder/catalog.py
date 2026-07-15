@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..core.actions.base import ACT_CAPABILITIES, PENDING_ACTIONS, Capability
-from ..core.actions.registry import action_specs
+from ..core.actions.registry import action_specs, plugin_actions
 from ..core.actions.spec import ActionSpec
 from ..core.errors import BuilderError
 from ..core.runtime.engine import IMPLEMENTED_ACTS
@@ -79,6 +79,8 @@ def actions_for_act(act: str) -> list[ActionInfo]:
 
     An action is runnable when its Act is implemented and the action is not in that Act's
     PENDING_ACTIONS set (declared in the capability table but not dispatched by a driver yet).
+    Loaded plugin actions are act-agnostic (docs/plugins.md), so they appear under every Act,
+    runnable wherever the Act itself is.
     """
     caps = ACT_CAPABILITIES.get(act)
     if caps is None:
@@ -90,4 +92,5 @@ def actions_for_act(act: str) -> list[ActionInfo]:
         ActionInfo(spec=specs[cap.value], runnable=implemented and cap not in pending)
         for cap in caps
     ]
+    infos += [ActionInfo(spec=specs[name], runnable=implemented) for name in plugin_actions()]
     return sorted(infos, key=lambda info: info.spec.name)

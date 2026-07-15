@@ -9,6 +9,7 @@ from __future__ import annotations
 from pydantic import ValidationError
 
 from ..actions.base import ACT_CAPABILITIES
+from ..actions.registry import plugin_actions
 from ..errors import BlueprintValidationError
 from .models import Blueprint, StepModel
 
@@ -46,7 +47,10 @@ def validate_for_act(blueprint: Blueprint) -> None:
     This is a semantic check complementing the JSON Schema structural validation.
     """
     supported = ACT_CAPABILITIES.get(blueprint.act, frozenset())
-    supported_values = {cap.value for cap in supported}
+    # Plugin actions are act-agnostic by design (docs/plugins.md): registered = accepted on every
+    # Act. They must be loaded before validation — the engine, the CLI and the daemon all call
+    # load_plugins() at startup.
+    supported_values = {cap.value for cap in supported} | plugin_actions()
 
     for index, step in enumerate(blueprint.steps):
         _validate_step(step, blueprint.act, supported_values, f"steps[{index}]")

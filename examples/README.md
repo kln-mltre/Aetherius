@@ -10,6 +10,7 @@ examples/
   vector/       Act I  — HTTP/API (le plus rapide, pas de navigateur)
   continuum/    Act II — navigateur scripté (Playwright)
   oracle/       Act III — vision + discrétion (jalon à venir)
+  plugins/      Extension par paquet tiers : action + canal custom (Jalon 1.5-E)
 ```
 
 ## Act I — Vector
@@ -52,6 +53,21 @@ formulaire) l'emporte toujours sur l'environnement.
 | Fichier | Ce qu'il montre |
 |---------|-----------------|
 | [`oracle/tiktok-upload.blueprint.json`](oracle/tiktok-upload.blueprint.json) | Cibles par vision + discrétion. Non exécutable tant qu'Oracle n'est pas implémenté ; sert de référence de format. |
+
+## Plugins
+
+Le plugin de démonstration du Jalon 1.5-E : un paquet tiers minimal
+([`plugins/aetherius-plugin-demo/`](plugins/aetherius-plugin-demo/)) qui ajoute l'action
+`demo.slugify` et le canal de notification `logfile` par entry-points, sans toucher au cœur.
+Contrat d'extension complet : [docs/plugins.md](../docs/plugins.md).
+
+| Fichier | Ce qu'il montre | Prérequis |
+|---------|-----------------|-----------|
+| [`plugins/demo-notify.blueprint.json`](plugins/demo-notify.blueprint.json) | Une action plugin (`demo.slugify`) enchaînée à `notify` sur un canal plugin (`logfile`, alerte ajoutée à `./aetherius-demo-notifications.log`). Zéro réseau. | `pip install -e examples/plugins/aetherius-plugin-demo` |
+
+Sans le plugin installé, la validation rejette l'action inconnue — c'est le comportement attendu.
+Après l'essai, le désinstaller (`pip uninstall aetherius-plugin-demo`) avant de relancer
+`make check` : les tests d'intégration démarrent le vrai moteur, qui le découvrirait.
 
 ## Lancer un exemple
 

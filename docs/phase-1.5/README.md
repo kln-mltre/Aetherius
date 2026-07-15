@@ -69,7 +69,7 @@ G. Identité réseau (proxy + rotation + anti-fuite)  ──►  H. Durcissement
 | D | [d-scheduler.md](d-scheduler.md) | A, C | **Livré.** Scheduler cron/intervalle dans le daemon + CLI + API — voir [docs/scheduler.md](../scheduler.md). |
 | E | [e-plugins.md](e-plugins.md) | après B, C | **Livré.** Actions et canaux tiers via entry-points — voir [docs/plugins.md](../plugins.md). |
 | F | [f-deployment.md](f-deployment.md) | D | **Livré.** Recette de déploiement always-on (Docker, systemd) — voir [docs/deployment.md](../deployment.md). |
-| G | [g-network.md](g-network.md) | — | Proxy (Vector + Continuum), rotation d'IP, anti-fuite WebRTC, cohérence géo, TLS impersonation. |
+| G | [g-network.md](g-network.md) | — | **Livré.** Proxy (Vector + Continuum), rotation d'IP, anti-fuite WebRTC, cohérence géo, TLS impersonation — voir [docs/network.md](../network.md). |
 | H | [h-fingerprint.md](h-fingerprint.md) | G | Empreinte durcie (canvas/audio/UA-CH/écran/WebGL2) + identité d'en-têtes pour Vector. |
 
 **Ordre recommandé :** A, puis B et C (parallélisables), puis D, puis E, puis F. G et H sont

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import sys
+
 import httpx
 import pytest
 
 from aetherius.acts.vector.client import VectorClient
-from aetherius.core.errors import StatusAssertionError
+from aetherius.core.errors import DependencyError, StatusAssertionError
 
 pytestmark = pytest.mark.unit
 
@@ -72,3 +74,32 @@ def test_context_manager() -> None:
         client._retry_decorator = None
         resp = client.request("GET", "https://example.com/")
         assert resp.status_code == 200
+
+
+def test_proxy_is_passed_to_httpx_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict = {}
+    real_client = httpx.Client
+
+    def spy(**kwargs: object) -> httpx.Client:
+        captured.update(kwargs)
+        # Build a real, network-free client; MockTransport does not accept a proxy kwarg.
+        return real_client(
+            transport=httpx.MockTransport(lambda r: httpx.Response(200)),
+            timeout=kwargs.get("timeout"),
+            follow_redirects=bool(kwargs.get("follow_redirects", True)),
+        )
+
+    monkeypatch.setattr(httpx, "Client", spy)
+    client = VectorClient(proxy="http://user:pass@h:8080")
+    assert captured.get("proxy") == "http://user:pass@h:8080"
+    client.close()
+
+
+def test_impersonation_without_extra_raises_dependency_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Simulate the [network] extra being absent so the import fails deterministically.
+    monkeypatch.setitem(sys.modules, "curl_cffi", None)
+    with pytest.raises(DependencyError) as exc:
+        VectorClient(impersonate="chrome")
+    assert exc.value.extra == "network"

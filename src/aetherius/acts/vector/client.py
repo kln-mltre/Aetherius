@@ -1,8 +1,14 @@
-"""HTTP client wrapper: httpx.Client with tenacity-based retries and pluggable auth."""
+"""HTTP client wrapper: httpx.Client with tenacity-based retries and pluggable auth.
+
+Two transports share one request pipeline (guard, retries, status assertion): the default httpx
+client (native HTTP/HTTPS, plus SOCKS5 with the [network] extra), and an optional browser-TLS
+impersonation transport (curl_cffi, also [network]) selected when a run asks to defeat JA3/JA4
+fingerprinting. See acts/vector/impersonate.py and docs/network.md.
+"""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol, cast
 
 import httpx
 from tenacity import (
@@ -21,7 +27,20 @@ from .auth import AuthStrategy, NoAuth
 _RETRYABLE = (httpx.TransportError, httpx.TimeoutException)
 
 
-def _build_retry(retries: RetriesOptions) -> Any:
+class HttpResponse(Protocol):
+    """The response surface both transports expose and the driver reads (read-only)."""
+
+    @property
+    def status_code(self) -> int: ...
+    @property
+    def headers(self) -> Any: ...
+    @property
+    def content(self) -> bytes: ...
+    @property
+    def text(self) -> str: ...
+
+
+def _build_retry(retries: RetriesOptions, exc_types: tuple[type[BaseException], ...]) -> Any:
     """Return a tenacity retry decorator configured from Blueprint options."""
     if retries.max == 0:
         return None
@@ -34,7 +53,7 @@ def _build_retry(retries: RetriesOptions) -> Any:
     else:
         wait = wait_fixed(0)
     return retry(
-        retry=retry_if_exception_type(_RETRYABLE),
+        retry=retry_if_exception_type(exc_types),
         stop=stop,
         wait=wait,
         reraise=True,
@@ -48,13 +67,31 @@ class VectorClient:
         timeout_ms: int = 30_000,
         retries: RetriesOptions | None = None,
         auth: AuthStrategy | None = None,
+        proxy: str | None = None,
+        impersonate: str | None = None,
     ) -> None:
         self._timeout = timeout_ms / 1000
         self._retries = retries or RetriesOptions()
         self._auth: AuthStrategy = auth or NoAuth()
-        self._client = httpx.Client(timeout=self._timeout, follow_redirects=True)
-        self._auth.prepare(self._client)
-        self._retry_decorator = _build_retry(self._retries)
+        self._impersonate_client: Any = None
+
+        if impersonate is not None:
+            # Impersonation replaces the httpx transport entirely (curl_cffi carries its own TLS and
+            # SOCKS support). Retries key off Aetherius' typed errors raised by the impersonation send.
+            from .impersonate import ImpersonateClient
+
+            self._impersonate_client = ImpersonateClient(
+                impersonate=impersonate, proxy=proxy, timeout_ms=timeout_ms
+            )
+            self._client: httpx.Client | None = None
+            self._retry_decorator = _build_retry(self._retries, (NetworkError,))
+        else:
+            client_kwargs: dict[str, Any] = {"timeout": self._timeout, "follow_redirects": True}
+            if proxy is not None:
+                client_kwargs["proxy"] = proxy
+            self._client = httpx.Client(**client_kwargs)
+            self._auth.prepare(self._client)
+            self._retry_decorator = _build_retry(self._retries, _RETRYABLE)
 
     def request(
         self,
@@ -66,12 +103,12 @@ class VectorClient:
         form: dict[str, str] | None = None,
         params: dict[str, str] | None = None,
         expected_status: int | None = None,
-    ) -> httpx.Response:
+    ) -> HttpResponse:
         """Send an HTTP request with optional auth, retries, and status assertion.
 
         Raises:
             ActionError: if both json and form are provided.
-            TimeoutError: on httpx timeout.
+            TimeoutError: on transport timeout.
             RetryExhaustedError: after all retry attempts fail.
             NetworkError: on other transport failures.
             StatusAssertionError: if expected_status is set and response status doesn't match.
@@ -81,33 +118,12 @@ class VectorClient:
         if json is not None and form is not None:
             raise ActionError("Cannot set both 'json' and 'form' on the same http.request step.")
 
-        req = httpx.Request(
-            method=method.upper(),
-            url=url,
-            headers=headers or {},
-            params=params,
-            json=json,
-            data=form,
-        )
-        req = self._auth.apply(req)
-
-        def _send() -> httpx.Response:
-            return self._client.send(req)
-
-        try:
-            if self._retry_decorator is not None:
-                response: httpx.Response = self._retry_decorator(_send)()
-            else:
-                response = _send()
-        except httpx.TimeoutException as exc:
-            raise TimeoutError(f"Request timed out: {method} {url}") from exc
-        except RetryError as exc:
-            raise RetryExhaustedError(
-                f"All {self._retries.max} retry attempts failed: {method} {url}",
-                last_error=exc,
-            ) from exc
-        except httpx.TransportError as exc:
-            raise NetworkError(f"Transport error: {exc}") from exc
+        if self._impersonate_client is not None:
+            response: HttpResponse = self._request_impersonated(
+                method, url, headers, json, form, params
+            )
+        else:
+            response = self._request_httpx(method, url, headers, json, form, params)
 
         if expected_status is not None and response.status_code != expected_status:
             raise StatusAssertionError(
@@ -119,8 +135,71 @@ class VectorClient:
 
         return response
 
+    def _request_httpx(
+        self,
+        method: str,
+        url: str,
+        headers: dict[str, str] | None,
+        json: Any | None,
+        form: dict[str, str] | None,
+        params: dict[str, str] | None,
+    ) -> httpx.Response:
+        req = httpx.Request(
+            method=method.upper(),
+            url=url,
+            headers=headers or {},
+            params=params,
+            json=json,
+            data=form,
+        )
+        req = self._auth.apply(req)
+        assert self._client is not None  # invariant: the httpx path is chosen only with a client
+
+        def _send() -> httpx.Response:
+            assert self._client is not None
+            return self._client.send(req)
+
+        try:
+            if self._retry_decorator is not None:
+                return self._retry_decorator(_send)()  # type: ignore[no-any-return]
+            return _send()
+        except httpx.TimeoutException as exc:
+            raise TimeoutError(f"Request timed out: {method} {url}") from exc
+        except RetryError as exc:
+            raise RetryExhaustedError(
+                f"All {self._retries.max} retry attempts failed: {method} {url}",
+                last_error=exc,
+            ) from exc
+        except httpx.TransportError as exc:
+            raise NetworkError(f"Transport error: {exc}") from exc
+
+    def _request_impersonated(
+        self,
+        method: str,
+        url: str,
+        headers: dict[str, str] | None,
+        json: Any | None,
+        form: dict[str, str] | None,
+        params: dict[str, str] | None,
+    ) -> HttpResponse:
+        def _send() -> HttpResponse:
+            return cast(
+                HttpResponse,
+                self._impersonate_client.send(
+                    method, url, headers=headers, json=json, data=form, params=params
+                ),
+            )
+
+        # The impersonation send raises typed errors; tenacity (reraise=True) re-raises them as-is.
+        if self._retry_decorator is not None:
+            return self._retry_decorator(_send)()  # type: ignore[no-any-return]
+        return _send()
+
     def close(self) -> None:
-        self._client.close()
+        if self._client is not None:
+            self._client.close()
+        if self._impersonate_client is not None:
+            self._impersonate_client.close()
 
     def __enter__(self) -> "VectorClient":
         return self

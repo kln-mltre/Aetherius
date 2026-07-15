@@ -7,11 +7,13 @@ from typing import Any, Callable
 from .._shared import SharedActionsMixin
 from ...core.actions.registry import find_handler
 from ...core.blueprint.models import StepModel
+from ...core.blueprint.template import render_value
 from ...core.errors import ActionError
 from ...core.events.bus import EventBus
 from ...core.extraction.html_extractor import HtmlExtractSpec, extract_html
 from ...core.extraction.json_extractor import ExtractSpec, extract_json
 from ...core.runtime.context import RunContext
+from ...network import httpx_proxy_kwargs, resolve_identity
 from .client import VectorClient
 
 
@@ -19,11 +21,31 @@ class VectorDriver(SharedActionsMixin):
     act = "vector"
 
     def setup(self, ctx: RunContext) -> None:
-        timeout_ms = ctx.blueprint.options.timeout_ms or 30_000
-        self._client = VectorClient(
-            timeout_ms=timeout_ms,
-            retries=ctx.blueprint.options.retries,
-        )
+        opts = ctx.blueprint.options
+        timeout_ms = opts.timeout_ms or 30_000
+
+        # Network identity (Jalon G): options.proxy may carry {{ secrets.x }}, so render it against the
+        # run context before decoding. run_key keys sticky rotation to the Blueprint (a schedule-level
+        # key arrives with the store).
+        proxy_opt = render_value(opts.proxy, ctx.template_ctx()) if opts.proxy is not None else None
+        identity = resolve_identity(proxy_opt, run_key=ctx.blueprint.name)
+
+        if identity.impersonate is not None:
+            # curl_cffi handles its own proxying (including SOCKS5) — hand it the raw proxy URL.
+            proxy = identity.proxy.for_httpx() if identity.proxy is not None else None
+            self._client = VectorClient(
+                timeout_ms=timeout_ms,
+                retries=opts.retries,
+                proxy=proxy,
+                impersonate=identity.impersonate,
+            )
+        else:
+            # httpx_proxy_kwargs guards SOCKS5 without the [network] extra with a typed error.
+            self._client = VectorClient(
+                timeout_ms=timeout_ms,
+                retries=opts.retries,
+                **httpx_proxy_kwargs(identity),
+            )
 
     def teardown(self, ctx: RunContext) -> None:
         self._client.close()

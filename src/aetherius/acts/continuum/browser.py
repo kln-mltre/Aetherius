@@ -8,12 +8,15 @@ lazily so ``import aetherius`` never pulls it in; a missing extra surfaces as a 
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from ...core.errors import DependencyError
+from ...network.identity import NetworkIdentity
 from ...stealth.fingerprint.patch import FINGERPRINT_PATCH_JS
-from ...stealth.fingerprint.profile import get_profile
+from ...stealth.fingerprint.profile import FingerprintProfile, get_profile
+from ...stealth.fingerprint.webrtc import WEBRTC_LAUNCH_FLAGS, webrtc_leak_patch
 from ...stealth.humanizer.input import HumanInput
 from ...stealth.policy import OFF, StealthPolicy
 from .debug_overlay import DEBUG_OVERLAY_JS
@@ -56,11 +59,13 @@ class BrowserSession:
         timeout_ms: int = 30_000,
         profile_dir: Path | None = None,
         stealth: StealthPolicy = OFF,
+        identity: NetworkIdentity | None = None,
     ) -> None:
         self._debug = debug
         self._timeout_ms = timeout_ms
         self._profile_dir = profile_dir
         self._stealth = stealth
+        self._identity = identity
         self._pw: Any = None
         self._browser: Any = None
         self._context: Any = None
@@ -76,21 +81,40 @@ class BrowserSession:
         slow_mo = self._slow_mo_ms()
         context_options = self._context_options()
 
+        # A browser proxy without WebRTC hardening still leaks the real IP over UDP; the two go
+        # together. The launch flag forces proxied-only UDP, the init script neutralises local
+        # candidates. Applied only when a proxy is active, so the default path is untouched.
+        proxy = self._identity.proxy if self._identity is not None else None
+        launch_args = list(WEBRTC_LAUNCH_FLAGS) if proxy is not None else None
+        pw_proxy = proxy.for_playwright() if proxy is not None else None
+
         if self._profile_dir is not None:
+            persistent_kwargs: dict[str, Any] = dict(
+                headless=headless, slow_mo=slow_mo, **context_options
+            )
+            if launch_args is not None:
+                persistent_kwargs["args"] = launch_args
+            if pw_proxy is not None:
+                persistent_kwargs["proxy"] = pw_proxy
             self._context = self._pw.chromium.launch_persistent_context(
-                str(self._profile_dir),
-                headless=headless,
-                slow_mo=slow_mo,
-                **context_options,
+                str(self._profile_dir), **persistent_kwargs
             )
             pages = self._context.pages
             self._page = pages[0] if pages else self._context.new_page()
         else:
-            self._browser = self._pw.chromium.launch(headless=headless, slow_mo=slow_mo)
-            self._context = self._browser.new_context(**context_options)
+            launch_kwargs: dict[str, Any] = dict(headless=headless, slow_mo=slow_mo)
+            if launch_args is not None:
+                launch_kwargs["args"] = launch_args
+            self._browser = self._pw.chromium.launch(**launch_kwargs)
+            new_context_kwargs: dict[str, Any] = dict(context_options)
+            if pw_proxy is not None:
+                new_context_kwargs["proxy"] = pw_proxy
+            self._context = self._browser.new_context(**new_context_kwargs)
             self._page = self._context.new_page()
 
         self._context.set_default_timeout(self._timeout_ms)
+        if proxy is not None:
+            self._context.add_init_script(webrtc_leak_patch())
         self._apply_stealth()
 
         # Attach only after the initial page is set, so the listener reacts to genuine new
@@ -153,19 +177,45 @@ class BrowserSession:
         if self._human is not None:
             self._human = HumanInput(self._page, self._stealth)
 
-    def _context_options(self) -> dict[str, Any]:
-        """Playwright context options for the active fingerprint profile (empty when none)."""
+    def _effective_profile(self) -> FingerprintProfile | None:
+        """The active fingerprint profile, with timezone/locale/languages aligned to the exit-IP geo.
+
+        A US exit IP behind a ``Europe/Paris`` profile is a tell; when the proxy carries a country the
+        profile follows it. Returns ``None`` when no fingerprint profile is worn.
+        """
         if self._stealth.fingerprint is None:
-            return {}
-        return get_profile(self._stealth.fingerprint).context_options()
+            return None
+        profile = get_profile(self._stealth.fingerprint)
+        geo = self._identity.geo if self._identity is not None else None
+        if geo is not None:
+            profile = replace(
+                profile,
+                timezone_id=geo.timezone_id,
+                locale=geo.locale,
+                languages=geo.languages,
+            )
+        return profile
+
+    def _context_options(self) -> dict[str, Any]:
+        """Playwright context options for the fingerprint profile and/or the exit-IP geo (empty when
+        neither applies)."""
+        profile = self._effective_profile()
+        if profile is not None:
+            return profile.context_options()
+        # No fingerprint profile, but a geo hint still aligns the browser's timezone/locale with the IP.
+        geo = self._identity.geo if self._identity is not None else None
+        if geo is not None:
+            return {"locale": geo.locale, "timezone_id": geo.timezone_id}
+        return {}
 
     def _apply_stealth(self) -> None:
         """Inject the fingerprint patches and, if inputs are humanized, build the HumanInput facade."""
         if not self._stealth.is_active:
             return
         self._context.add_init_script(FINGERPRINT_PATCH_JS)
-        if self._stealth.fingerprint is not None:
-            self._context.add_init_script(get_profile(self._stealth.fingerprint).init_script())
+        profile = self._effective_profile()
+        if profile is not None:
+            self._context.add_init_script(profile.init_script())
         if humanized_actions(self._stealth):
             self._human = HumanInput(self._page, self._stealth)
 

@@ -11,6 +11,23 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
+- **Identité réseau (Jalon 1.5-G)** — option `options.proxy` de premier niveau qui rend le bot
+  invisible **au niveau réseau**, pour les **deux** moteurs (la couche stealth ne touche que le
+  navigateur). Le module `aetherius.network` est activé : `parse_proxy`/`ProxySpec` (rendu httpx et
+  Playwright, credentials masqués dans les logs), `ProxyPool` (rotation `per_run`/`round_robin`/
+  `random`/`sticky` — l'IP change d'un run à l'autre, ou reste stable par clé), `geo_hint` (cohérence
+  timezone/locale/langues avec le pays de l'IP), `resolve_identity` (option du Blueprint > défaut
+  d'environnement `AETHERIUS_PROXY_*` > aucun). Vector route par `httpx.Client(proxy=...)`
+  (HTTP/HTTPS, plus SOCKS5 via l'extra `[network]` avec garde typée si absent) et peut imiter la
+  poignée de main TLS d'un vrai navigateur (JA3/JA4) via un transport `curl_cffi` isolé
+  (`acts/vector/impersonate.py`, extra `[network]`, `DependencyError` claire sinon). Continuum lie le
+  proxy au lancement du contexte, force l'anti-fuite WebRTC (flag Chromium `disable_non_proxied_udp`
+  + init-script filtrant les candidats ICE locaux — indispensable, sinon le proxy laisse fuir l'IP
+  réelle) et dérive le profil d'empreinte pour coller à la géo (timezone/locale/`navigator.languages`
+  alignés sur l'IP, vérifiés sur Chromium réel). Identifiants **jamais** stockés dans le Blueprint
+  (`{{ secrets.x }}`). Le Studio préserve `options.proxy` verbatim (aucune régression à l'édition).
+  Exemple exécutable `examples/vector/ip-echo-proxy.blueprint.json` (nécessite un proxy via `.env`).
+  Voir [docs/network.md](docs/network.md).
 - **Déploiement always-on (Jalon 1.5-F)** — recette 24/7 vérifiée de bout en bout pour héberger le
   daemon (et donc le scheduler) sur un hôte toujours allumé : VPS, Raspberry Pi, NAS. Les brouillons
   `deploy/` sont finalisés : image Docker multi-stage (wheel construit à part, image finale sans

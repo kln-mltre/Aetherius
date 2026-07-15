@@ -119,3 +119,28 @@ def test_run_with_wrong_path_raises() -> None:
 
     with pytest.raises(BlueprintLoadError):
         aetherius.Aetherius().run("/nonexistent/file.json")
+
+
+def test_proxy_option_routes_the_vector_client(examples_dir: Path) -> None:
+    """A Blueprint's options.proxy (rendered from a secret) reaches httpx.Client as proxy=."""
+    example = examples_dir / "vector" / "ip-echo-proxy.blueprint.json"
+    captured: dict[str, Any] = {}
+    real_client = httpx.Client
+
+    def spy(**kwargs: Any) -> httpx.Client:
+        captured.update(kwargs)
+        handler = lambda r: httpx.Response(200, json={"ip": "203.0.113.7"})  # noqa: E731
+        return real_client(
+            transport=httpx.MockTransport(handler),
+            timeout=kwargs.get("timeout"),
+            follow_redirects=bool(kwargs.get("follow_redirects", True)),
+        )
+
+    with patch("httpx.Client", side_effect=spy):
+        result = aetherius.Aetherius().run(
+            str(example), secrets={"proxy_url": "http://user:pass@proxy.example:8080"}
+        )
+
+    assert result.status == RunStatus.SUCCESS
+    assert captured.get("proxy") == "http://user:pass@proxy.example:8080"
+    assert result.outputs["exit_ip"] == "203.0.113.7"

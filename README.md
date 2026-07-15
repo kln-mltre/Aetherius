@@ -587,9 +587,14 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   vit sous `AETHERIUS_DATA_DIR` et survit aux redémarrages ; sécurité par défaut : loopback, et
   exposer exige token + reverse proxy TLS. [docs/deployment.md](docs/deployment.md),
   [docs/phase-1.5/f-deployment.md](docs/phase-1.5/f-deployment.md).
-- [ ] **Identité réseau** : proxy (Vector et Continuum, HTTP/HTTPS/SOCKS5), rotation d'IP, prévention
-  de la fuite WebRTC, cohérence géo (timezone/locale alignés sur l'IP) et impersonation TLS — pour
-  être invisible aussi au niveau réseau. [docs/phase-1.5/g-network.md](docs/phase-1.5/g-network.md).
+- [x] **Identité réseau** : option `options.proxy` de premier niveau atteignant les **deux** moteurs
+  (Vector httpx/curl_cffi, Continuum Playwright ; HTTP/HTTPS/SOCKS5). Rotation de l'IP par run
+  (`per_run`/`round_robin`/`random`/`sticky`, pool inline ou défaut d'environnement `AETHERIUS_PROXY_*`),
+  prévention de la fuite WebRTC (flag de lancement + init-script, liée au proxy), cohérence géo
+  (timezone/locale/langues alignés sur le pays de l'IP, écrasant le profil d'empreinte) et
+  impersonation TLS (JA3/JA4) pour Vector via l'extra `[network]`. Identifiants jamais stockés
+  (`{{ secrets.x }}`). Exemple : `examples/vector/ip-echo-proxy.blueprint.json` (nécessite un proxy).
+  [docs/network.md](docs/network.md), [docs/phase-1.5/g-network.md](docs/phase-1.5/g-network.md).
 - [ ] **Durcissement de l'empreinte** : fermer les signaux restants (canvas, audio, polices, client
   hints, écran, WebGL2), cohérents avec le profil, et donner une identité d'en-têtes à Vector.
   [docs/phase-1.5/h-fingerprint.md](docs/phase-1.5/h-fingerprint.md).

@@ -1,0 +1,28 @@
+{
+  "aetherius": "1.0",
+  "name": "network.ip-echo-proxy",
+  "description": "Jalon G : prouve que le trafic sort par le proxy. Interroge un service d'echo d'IP (api.ipify.org) a travers options.proxy defini en {{ secrets.proxy_url }}. NECESSITE UN PROXY : renseigner AETHERIUS_SECRET_PROXY_URL dans .env (ex. http://user:pass@host:port ou socks5://host:1080, SOCKS5 exige l'extra [network]). L'IP retournee doit etre celle du proxy, pas la reelle. Sans proxy configure, le run echoue proprement (secret manquant).",
+  "act": "vector",
+  "secrets": ["proxy_url"],
+  "vars": {
+    "echo_url": "https://api.ipify.org?format=json"
+  },
+  "options": {
+    "proxy": "{{ secrets.proxy_url }}"
+  },
+  "steps": [
+    {
+      "id": "whoami",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.echo_url }}",
+      "expect": { "status": 200 },
+      "extract": {
+        "ip": { "from": "json", "path": "$.ip" }
+      }
+    }
+  ],
+  "outputs": {
+    "exit_ip": "{{ steps.whoami.ip | first }}"
+  }
+}

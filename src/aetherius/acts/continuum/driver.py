@@ -12,10 +12,12 @@ from typing import Any, Callable
 from .._shared import SharedActionsMixin
 from ...core.actions.registry import find_handler
 from ...core.blueprint.models import StepModel
+from ...core.blueprint.template import render_value
 from ...core.errors import ActionError
 from ...core.events.bus import EventBus
 from ...core.events.models import EventType, RunEvent
 from ...core.runtime.context import RunContext
+from ...network import resolve_identity
 from ...stealth.policy import StealthPolicy, build_policy
 from ...stealth.session.store import resolve_profile_dir, run_dir
 from .actions import PAGE_ACTIONS, _locator
@@ -40,11 +42,19 @@ class ContinuumDriver(SharedActionsMixin):
             profile_dir = resolve_profile_dir(session_opts.profile)
         self._policy = build_policy(opts.stealth)
         self._humanized = humanized_actions(self._policy)
+
+        # Network identity (Jalon G): options.proxy may carry {{ secrets.x }}, so render it first. The
+        # session binds the proxy at launch, forces proxied-only WebRTC, and aligns the fingerprint's
+        # geography with the exit IP.
+        proxy_opt = render_value(opts.proxy, ctx.template_ctx()) if opts.proxy is not None else None
+        identity = resolve_identity(proxy_opt, run_key=ctx.blueprint.name)
+
         self._session = BrowserSession(
             debug=opts.debug,
             timeout_ms=opts.timeout_ms or 30_000,
             profile_dir=profile_dir,
             stealth=self._policy,
+            identity=identity,
         )
         self._session.start()
 

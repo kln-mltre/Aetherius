@@ -46,6 +46,9 @@ class OptionsEditor(Vertical):
         # An inline stealth object (not a preset name) we cannot render in the Select; kept to avoid
         # dropping it on save when the user leaves the Select untouched.
         self._stealth_obj: dict[str, Any] | None = None
+        # options.proxy (Jalon G) has no widget yet: preserve it verbatim so editing a proxy-bearing
+        # Blueprint in the Studio never silently strips it. Edit the proxy in the JSON or via .env.
+        self._proxy: Any = None
 
     def compose(self) -> ComposeResult:
         with Horizontal(classes="opt-row"):
@@ -105,6 +108,9 @@ class OptionsEditor(Vertical):
             if persist:
                 session["persist"] = True
             options["session"] = session
+
+        if self._proxy is not None:
+            options["proxy"] = self._proxy  # preserve verbatim (no widget yet)
         return options
 
     def load(self, options: dict[str, Any]) -> None:
@@ -130,3 +136,5 @@ class OptionsEditor(Vertical):
         session = options.get("session") or {}
         self.query_one("#opt-session-profile", Input).value = str(session.get("profile", "") or "")
         self.query_one("#opt-session-persist", Switch).value = bool(session.get("persist", False))
+
+        self._proxy = options.get("proxy")  # preserved verbatim across an edit/save round trip

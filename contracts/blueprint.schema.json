@@ -106,8 +106,37 @@
             "max": { "type": "integer", "minimum": 0 },
             "backoff": { "enum": ["none", "linear", "exponential"] }
           }
-        }
+        },
+        "proxy": { "$ref": "#/$defs/proxy" }
       }
+    },
+    "proxy": {
+      "description": "Network identity (Jalon G). Routes both engines through a proxy, rotates the exit IP, prevents the WebRTC leak, and keeps the fingerprint's geography coherent. Credentials are never stored: pass them via {{ secrets.x }}.",
+      "oneOf": [
+        { "type": "string", "description": "A proxy URL (scheme://[user:pass@]host:port) or a {{ secrets.x }} that renders one." },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url": { "type": "string", "description": "A single proxy (or rotating gateway) URL." },
+            "pool": {
+              "type": "array",
+              "description": "Proxy URLs to rotate over.",
+              "items": { "type": "string" },
+              "minItems": 1
+            },
+            "rotate": {
+              "enum": ["per_run", "round_robin", "random", "sticky"],
+              "description": "Rotation strategy across runs. Default per_run."
+            },
+            "geo": { "type": "string", "description": "Exit-IP country (ISO 3166-1 alpha-2, e.g. FR) to align timezone/locale/languages with." },
+            "impersonate": {
+              "description": "TLS impersonation target for Vector (JA3/JA4), e.g. \"chrome\"; true means chrome. Requires the [network] extra.",
+              "oneOf": [{ "type": "string" }, { "type": "boolean" }]
+            }
+          }
+        }
+      ]
     },
     "stealth": {
       "description": "Modular discretion. Off by default; a preset name; or an inline configuration.",

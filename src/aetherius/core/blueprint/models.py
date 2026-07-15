@@ -42,6 +42,10 @@ class Options(BaseModel):
     retries: RetriesOptions = Field(default_factory=RetriesOptions)
     stealth: Any = None
     session: SessionOptions | None = None
+    # Network identity (Jalon G): a proxy URL/secret, or an object {url|pool, rotate, geo, impersonate}.
+    # Loosely typed on purpose — decoded by aetherius.network.resolve_identity, the JSON Schema owns
+    # the shape.
+    proxy: Any = None
 
 
 class StepModel(BaseModel):

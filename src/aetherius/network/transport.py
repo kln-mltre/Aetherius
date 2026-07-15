@@ -9,18 +9,25 @@ TLS handshake is genuine Chromium.
 
 from __future__ import annotations
 
+import importlib.util
 from typing import Any
 
+from ..core.errors import DependencyError
 from .identity import NetworkIdentity
 
-_PENDING = "Jalon 1.5-G (network): transport selection not implemented yet."
+_NETWORK_EXTRA_HINT = 'SOCKS5 proxying requires the [network] extra. Install it with:\n    pip install "aetherius[network]"'
 
 
 def httpx_proxy_kwargs(identity: NetworkIdentity) -> dict[str, Any]:
     """Keyword arguments for ``httpx.Client(...)`` implementing *identity*'s proxy (``{}`` if none)."""
-    raise NotImplementedError(_PENDING)
+    proxy = identity.proxy
+    if proxy is None:
+        return {}
+    if proxy.scheme == "socks5" and importlib.util.find_spec("socksio") is None:
+        raise DependencyError(_NETWORK_EXTRA_HINT, extra="network")
+    return {"proxy": proxy.for_httpx()}
 
 
 def impersonation_available() -> bool:
     """Whether the optional TLS-impersonation backend (``curl_cffi``) is importable."""
-    raise NotImplementedError(_PENDING)
+    return importlib.util.find_spec("curl_cffi") is not None

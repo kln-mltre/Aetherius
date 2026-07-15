@@ -14,6 +14,8 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ..network.pool import RotationStrategy
+
 
 def _default_data_dir() -> Path:
     """Base directory for Aetherius state, resolved once from the home directory."""
@@ -26,6 +28,12 @@ class AetheriusSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AETHERIUS_", extra="ignore")
 
     data_dir: Path = Field(default_factory=_default_data_dir)
+
+    # Network identity (Jalon G): a default proxy/pool routes any Blueprint without editing it.
+    # ``AETHERIUS_PROXY_POOL`` takes a JSON list; a lone ``AETHERIUS_PROXY_URL`` is a pool of one.
+    proxy_url: str | None = None
+    proxy_pool: list[str] = Field(default_factory=list)
+    proxy_rotate: RotationStrategy = "per_run"
 
     @property
     def profiles_dir(self) -> Path:

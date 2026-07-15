@@ -1,9 +1,9 @@
 # Jalon G — Identité réseau (proxy & rotation)
 
-**Statut : jalon en attente.** Le squelette existe dans [`src/aetherius/network/`](../../src/aetherius/network/)
-et [`stealth/fingerprint/webrtc.py`](../../src/aetherius/stealth/fingerprint/webrtc.py) ; toute
-opération lève un `NotImplementedError` « Jalon 1.5-G ». Ce document décrit ce qu'il reste à
-implémenter.
+**Statut : livré.** L'option `options.proxy` route les deux moteurs (Vector httpx/curl_cffi, Continuum
+Playwright), avec rotation d'IP par run, anti-fuite WebRTC, cohérence géo et impersonation TLS.
+Documentation de référence : [docs/network.md](../network.md). Ce document conserve la spécification
+d'origine (objectif, périmètre, décisions de conception) pour la traçabilité.
 
 ## Objectif
 

@@ -91,6 +91,7 @@ files = ["src/aetherius"]
 module = [
   "jsonpath_ng.*", "jsonschema.*", "yaml.*", "parsel.*", "tenacity.*", "playwright.*",
   "croniter.*",  # no upstream stubs; the scheduler wraps it behind typed helpers
+  "curl_cffi.*",  # Jalon G: optional [network] extra, imported lazily for TLS impersonation
 ]
 ignore_missing_imports = true
 

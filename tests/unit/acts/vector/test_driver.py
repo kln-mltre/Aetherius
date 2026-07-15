@@ -94,6 +94,7 @@ def test_http_request_extracts_filtered_events(simple_blueprint: Blueprint) -> N
     driver._client._auth = __import__("aetherius.acts.vector.auth", fromlist=["NoAuth"]).NoAuth()
     driver._client._retry_decorator = None
     driver._client._impersonate_client = None
+    driver._client._default_headers = {}
 
     step = simple_blueprint.steps[0]
 

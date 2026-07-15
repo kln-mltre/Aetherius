@@ -49,6 +49,51 @@ Le driver route alors les actions interactives (`click`/`hover`/`fill`/`type`/`s
 (inchangées). La sélection est décidée une fois par
 [`humanized_actions(policy)`](../src/aetherius/acts/continuum/human_actions.py).
 
+## Durcissement de l'empreinte (Jalon 1.5-H)
+
+Le profil de base couvre UA / viewport / locale / timezone / platform / cœurs / mémoire / WebGL1 /
+langues. Le durcissement ferme les signaux **à forte valeur** que les systèmes anti-bot recoupent, et
+qui restaient à découvert — **tous dérivés du profil actif**, jamais ajoutés au hasard : un signal
+masqué mais incohérent (canvas parfaitement propre, UA-CH qui contredit l'UA) est un tell *pire* que
+l'absence de masque.
+
+Côté navigateur, [`fingerprint/hardening.py`](../src/aetherius/stealth/fingerprint/hardening.py)
+produit un init script injecté **après** le script de cohérence du profil (il s'appuie sur la même
+identité de base), qui masque :
+
+- **Canvas** (`toDataURL` / `toBlob` / `getImageData`) et **AudioContext**
+  (`AudioBuffer.getChannelData`, `AnalyserNode.getFloatFrequencyData`) : un bruit **déterministe par
+  profil**, pas aléatoire à chaque appel. Un seed entier est calculé côté Python (`hashlib` sur des
+  champs du profil) et alimente une fonction de hachage JS : deux lectures du même canvas dans un run
+  renvoient les mêmes octets (un fingerprint qui change à chaque lecture est lui-même détectable),
+  tandis que deux profils diffèrent. Le bruit est lu depuis une copie offscreen des pixels d'origine,
+  pour ne jamais s'accumuler entre deux lectures.
+- **Polices** (`CanvasRenderingContext2D.measureText`) : décalage sous-pixel déterministe sur la
+  largeur — le vecteur principal d'énumération de polices.
+- **Client hints** : `navigator.userAgentData` (`brands` / `mobile` / `platform` /
+  `getHighEntropyValues`), dérivés de la **même version d'UA** que le profil.
+- **Écran** : `screen.width/height/availWidth/availHeight/colorDepth/pixelDepth` et
+  `devicePixelRatio`.
+- **WebGL2** : `WebGL2RenderingContext.getParameter` (vendor/renderer), là où le profil n'alignait
+  que WebGL1.
+
+Côté **Vector** (Act I), qui n'avait aucun traitement de discrétion,
+[`fingerprint/headers.py`](../src/aetherius/stealth/fingerprint/headers.py) donne une **identité
+d'en-têtes par défaut** (`User-Agent`, `Sec-CH-UA`/`-Mobile`/`-Platform`, `Accept`,
+`Accept-Language`) dérivée du profil, supprimant la signature « client HTTP nu ». C'est **opt-in** :
+les en-têtes ne sont injectés que lorsque `options.stealth` nomme un profil de fingerprint (un run
+sans stealth reste strictement inchangé). Les en-têtes explicites du Blueprint gardent toujours la
+priorité (fusion insensible à la casse). L'`Accept-Language` suit la cohérence géo du Jalon G quand un
+proxy porte un pays.
+
+```json
+"act": "vector",
+"options": { "stealth": { "fingerprint": "chrome-desktop" } }
+```
+
+La cohérence UA ↔ client hints est désormais garantie par construction (les deux dérivent du même
+profil) : l'ancienne limite « UA-CH drift » notée dans `profile.py` est levée.
+
 ## Composants
 
 - **[`policy.py`](../src/aetherius/stealth/policy.py)** — `StealthPolicy` + `build_policy` + presets
@@ -69,8 +114,10 @@ Le driver route alors les actions interactives (`click`/`hover`/`fill`/`type`/`s
 - **[`gestures/`](../src/aetherius/stealth/gestures/)** — `library.py` (`GestureLibrary` :
   chargement, downsampling, analyse distance/angle, `best_match`) **source-agnostique**, et
   `seed.py` (générateur déterministe du seed).
-- **[`fingerprint/`](../src/aetherius/stealth/fingerprint/)** — `patch.py` (masques d'automation) et
-  `profile.py` (profils cohérents ; `chrome-desktop` fourni).
+- **[`fingerprint/`](../src/aetherius/stealth/fingerprint/)** — `patch.py` (masques d'automation),
+  `profile.py` (profils cohérents ; `chrome-desktop` fourni), `hardening.py` (durcissement
+  Canvas/Audio/polices/UA-CH/écran/WebGL2, cohérent avec le profil) et `headers.py` (identité
+  d'en-têtes par défaut pour Vector). Le Jalon G ajoute aussi `webrtc.py` (anti-fuite lié au proxy).
 - **[`session/`](../src/aetherius/stealth/session/)** — `store.py` (profils persistants, déjà en
   place) et `warmup.py` (`plan_warmup`/`warmup_profile` : historique authentique avant automation).
 - **[`ml/`](../src/aetherius/stealth/ml/)** *(optionnel, roadmap)* — modèle de mouvement génératif et
@@ -106,8 +153,15 @@ ML (`stealth/ml/`) est un upgrade optionnel, pas un prérequis. Le cœur stealth
   traces humaines réelles. L'interface est identique ; les traces réelles se substituent au seed sans
   changement de code côté humanizer.
 - **Profils de fingerprint statiques.** `chrome-desktop` est un preset figé, pas un échantillon d'une
-  distribution matérielle réelle ; la version d'UA peut diverger du build Chromium sous-jacent (client
-  hints). Le modèle ML de fingerprints est l'upgrade prévu, derrière la même interface.
+  distribution matérielle réelle. (Les client hints — `Sec-CH-UA` / `navigator.userAgentData` — sont
+  désormais **dérivés** de la version d'UA du profil : ils ne divergent plus de l'UA.) Le modèle ML de
+  fingerprints est l'upgrade prévu, derrière la même interface.
+- **Durcissement lié à un profil.** Le durcissement de l'empreinte (Canvas/Audio/UA-CH/écran/WebGL2 en
+  navigateur, en-têtes en Vector) n'est actif que lorsque `options.stealth` nomme un profil de
+  fingerprint — il n'a rien à quoi rester cohérent sans lui.
+- **Impersonation TLS = ses propres en-têtes.** Sur le chemin `curl_cffi` de Vector
+  (`options.proxy.impersonate`), l'identité d'en-têtes par défaut n'est **pas** injectée : curl_cffi
+  porte déjà un jeu d'en-têtes cohérent avec sa cible, et le superposer créerait un mismatch UA ↔ TLS.
 - **Clic par coordonnées.** Le clic humanisé vise des coordonnées (après avoir amené la cible dans le
   viewport), non le retry auto-piloté de `locator.click()`. C'est le prix de la discrétion ; les
   cibles très mouvantes restent plus fiables sans `mouse: gestures`.
@@ -137,4 +191,10 @@ make test-browser       # intégration : run Chromium reel, fingerprint + entré
 Le cœur (`tests/unit/stealth/`) tourne **sans** navigateur (fake page). L'intégration
 ([`tests/integration/test_stealth_run.py`](../tests/integration/test_stealth_run.py), marker
 `browser`) exécute un vrai Chromium et vérifie que `navigator.webdriver` est masqué, que le profil de
-fingerprint est appliqué (`navigator.platform`), et que le flux `fill`/`click` humanisé aboutit.
+fingerprint est appliqué (`navigator.platform`), et que le flux `fill`/`click` humanisé aboutit. Le
+durcissement a sa propre intégration
+([`tests/integration/test_fingerprint_hardening.py`](../tests/integration/test_fingerprint_hardening.py)) :
+bruit Canvas **stable** entre deux lectures, `navigator.userAgentData.platform` / écran / renderer
+WebGL2 accordés au profil. Exemples exécutables : `examples/continuum/fingerprint-hardening.blueprint.json`
+(signaux navigateur) et `examples/vector/http-headers-identity.blueprint.json` (en-têtes Vector par
+défaut, via l'echo public httpbin.org).

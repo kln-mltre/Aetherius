@@ -1,0 +1,25 @@
+{
+  "aetherius": "1.0",
+  "name": "fingerprint.hardening",
+  "description": "Jalon H (durcissement de l'empreinte) : ouvre une page publique avec la discretion complete (fingerprint chrome-desktop), puis lit les signaux durcis via du JS injecte (evaluate). Prouve la COHERENCE (navigator.userAgentData.platform accorde a l'UA, renderer WebGL2 aligne, dimensions d'ecran du profil) et la STABILITE du bruit Canvas (canvas_a == canvas_b entre deux lectures du meme run). Zero config, executable tel quel depuis 'aetherius run' ou la Console.",
+  "act": "continuum",
+  "vars": { "domain": "https://example.com" },
+  "options": {
+    "timeout_ms": 15000,
+    "stealth": "human"
+  },
+  "steps": [
+    { "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "id": "probe",
+      "action": "evaluate",
+      "script": "() => { const draw = () => { const c = document.createElement('canvas'); c.width = 200; c.height = 50; const x = c.getContext('2d'); x.textBaseline = 'top'; x.font = '16px Arial'; x.fillStyle = '#f60'; x.fillRect(0, 0, 100, 25); x.fillStyle = '#069'; x.fillText('Aetherius', 4, 8); return c.toDataURL(); }; const gl = document.createElement('canvas').getContext('webgl2'); return { ua_platform: navigator.userAgentData ? navigator.userAgentData.platform : null, screen_width: screen.width, webgl2_renderer: gl ? gl.getParameter(37446) : null, canvas_a: draw(), canvas_b: draw() }; }"
+    }
+  ],
+  "outputs": {
+    "ua_platform": "{{ steps.probe.result.ua_platform }}",
+    "screen_width": "{{ steps.probe.result.screen_width }}",
+    "webgl2_renderer": "{{ steps.probe.result.webgl2_renderer }}",
+    "canvas_stable": "{{ steps.probe.result.canvas_a == steps.probe.result.canvas_b }}"
+  }
+}

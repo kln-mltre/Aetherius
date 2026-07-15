@@ -95,6 +95,25 @@ def test_proxy_is_passed_to_httpx_client(monkeypatch: pytest.MonkeyPatch) -> Non
     client.close()
 
 
+def test_default_headers_are_sent_and_overridable() -> None:
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.update(request.headers)
+        return httpx.Response(200, json={})
+
+    client = VectorClient(
+        default_headers={"User-Agent": "prof-ua", "Sec-CH-UA": '"Chromium";v="126"'}
+    )
+    client._client = httpx.Client(transport=httpx.MockTransport(handler))
+    client._retry_decorator = None
+    # A default header is sent; an explicit request header wins regardless of case.
+    client.request("GET", "https://example.com/", headers={"user-agent": "explicit"})
+    assert seen["sec-ch-ua"] == '"Chromium";v="126"'
+    assert seen["user-agent"] == "explicit"
+    client.close()
+
+
 def test_impersonation_without_extra_raises_dependency_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

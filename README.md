@@ -595,8 +595,15 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   impersonation TLS (JA3/JA4) pour Vector via l'extra `[network]`. Identifiants jamais stockés
   (`{{ secrets.x }}`). Exemple : `examples/vector/ip-echo-proxy.blueprint.json` (nécessite un proxy).
   [docs/network.md](docs/network.md), [docs/phase-1.5/g-network.md](docs/phase-1.5/g-network.md).
-- [ ] **Durcissement de l'empreinte** : fermer les signaux restants (canvas, audio, polices, client
-  hints, écran, WebGL2), cohérents avec le profil, et donner une identité d'en-têtes à Vector.
+- [x] **Durcissement de l'empreinte** : les signaux restants sont fermés **de façon cohérente avec le
+  profil** — Canvas et AudioContext (bruit déterministe par profil, stable entre deux lectures),
+  énumération des polices (`measureText`), client hints (`Sec-CH-UA` / `navigator.userAgentData`
+  dérivés de l'UA du profil, la limite « UA-CH drift » est levée), dimensions d'écran /
+  `devicePixelRatio` et WebGL2. Vector (Act I) gagne une **identité d'en-têtes par défaut** (UA +
+  client hints + `Accept-Language` alignés) quand `options.stealth` nomme un profil, sans écraser les
+  en-têtes explicites du Blueprint ni rien changer aux runs sans stealth. Exemples zéro config :
+  `examples/continuum/fingerprint-hardening.blueprint.json` et
+  `examples/vector/http-headers-identity.blueprint.json`. [docs/stealth.md](docs/stealth.md),
   [docs/phase-1.5/h-fingerprint.md](docs/phase-1.5/h-fingerprint.md).
 
 ### Phase 2 — les Acts autonomes (à venir)

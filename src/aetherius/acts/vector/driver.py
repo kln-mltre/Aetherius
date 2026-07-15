@@ -13,7 +13,10 @@ from ...core.events.bus import EventBus
 from ...core.extraction.html_extractor import HtmlExtractSpec, extract_html
 from ...core.extraction.json_extractor import ExtractSpec, extract_json
 from ...core.runtime.context import RunContext
-from ...network import httpx_proxy_kwargs, resolve_identity
+from ...network import NetworkIdentity, httpx_proxy_kwargs, resolve_identity
+from ...stealth.fingerprint.headers import http_headers
+from ...stealth.fingerprint.profile import get_profile
+from ...stealth.policy import build_policy
 from .client import VectorClient
 
 
@@ -31,7 +34,8 @@ class VectorDriver(SharedActionsMixin):
         identity = resolve_identity(proxy_opt, run_key=ctx.blueprint.name)
 
         if identity.impersonate is not None:
-            # curl_cffi handles its own proxying (including SOCKS5) — hand it the raw proxy URL.
+            # curl_cffi handles its own proxying (including SOCKS5) and carries a coherent header set
+            # for its impersonation target — so the fingerprint default headers stay off this path.
             proxy = identity.proxy.for_httpx() if identity.proxy is not None else None
             self._client = VectorClient(
                 timeout_ms=timeout_ms,
@@ -44,8 +48,24 @@ class VectorDriver(SharedActionsMixin):
             self._client = VectorClient(
                 timeout_ms=timeout_ms,
                 retries=opts.retries,
+                default_headers=self._identity_headers(opts.stealth, identity),
                 **httpx_proxy_kwargs(identity),
             )
+
+    def _identity_headers(self, stealth: Any, identity: NetworkIdentity) -> dict[str, str] | None:
+        """Default request headers when ``options.stealth`` names a fingerprint profile (Jalon H).
+
+        Off by default, so a run without stealth is byte-for-byte unchanged. When a profile is worn,
+        Vector sheds the "bare HTTP client" signature and wears the same identity as the browser,
+        with ``Accept-Language`` aligned to the exit-IP geography for coherence.
+        """
+        profile_name = build_policy(stealth).fingerprint
+        if profile_name is None:
+            return None
+        profile = get_profile(profile_name)
+        if identity.geo is not None:
+            profile = profile.geo_aligned(identity.geo)
+        return http_headers(profile)
 
     def teardown(self, ctx: RunContext) -> None:
         self._client.close()

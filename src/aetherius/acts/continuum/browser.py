@@ -8,12 +8,12 @@ lazily so ``import aetherius`` never pulls it in; a missing extra surfaces as a 
 from __future__ import annotations
 
 import time
-from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from ...core.errors import DependencyError
 from ...network.identity import NetworkIdentity
+from ...stealth.fingerprint.hardening import hardening_init_script
 from ...stealth.fingerprint.patch import FINGERPRINT_PATCH_JS
 from ...stealth.fingerprint.profile import FingerprintProfile, get_profile
 from ...stealth.fingerprint.webrtc import WEBRTC_LAUNCH_FLAGS, webrtc_leak_patch
@@ -187,14 +187,7 @@ class BrowserSession:
             return None
         profile = get_profile(self._stealth.fingerprint)
         geo = self._identity.geo if self._identity is not None else None
-        if geo is not None:
-            profile = replace(
-                profile,
-                timezone_id=geo.timezone_id,
-                locale=geo.locale,
-                languages=geo.languages,
-            )
-        return profile
+        return profile.geo_aligned(geo) if geo is not None else profile
 
     def _context_options(self) -> dict[str, Any]:
         """Playwright context options for the fingerprint profile and/or the exit-IP geo (empty when
@@ -216,6 +209,9 @@ class BrowserSession:
         profile = self._effective_profile()
         if profile is not None:
             self._context.add_init_script(profile.init_script())
+            # Harden the remaining high-signal surfaces (Canvas/Audio/fonts/UA-CH/screen/WebGL2),
+            # after the profile so the patches build on the same base identity (Jalon H).
+            self._context.add_init_script(hardening_init_script(profile))
         if humanized_actions(self._stealth):
             self._human = HumanInput(self._page, self._stealth)
 

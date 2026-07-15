@@ -11,6 +11,26 @@ Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la do
 cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
 
 ### Ajouté
+- **Durcissement de l'empreinte (Jalon 1.5-H)** — les signaux à forte valeur que le profil laissait à
+  découvert sont fermés **de façon cohérente avec le profil actif** (un signal masqué mais incohérent
+  est un tell pire que l'absence de masque). Côté navigateur,
+  [`stealth/fingerprint/hardening.py`](src/aetherius/stealth/fingerprint/hardening.py) injecte, après
+  le script de cohérence du profil, un init script masquant : **Canvas** (`toDataURL`/`toBlob`/
+  `getImageData`) et **AudioContext** avec un bruit **déterministe par profil** (seed calculé côté
+  Python, hachage JS — stable entre deux lectures d'un même run, différent d'un profil à l'autre, lu
+  depuis une copie offscreen pour ne pas s'accumuler), **polices** (`measureText`), **client hints**
+  (`navigator.userAgentData`), **écran** (`screen.*` + `devicePixelRatio`) et **WebGL2**
+  (`getParameter`). Côté **Vector** (Act I, sans discrétion jusqu'ici),
+  [`stealth/fingerprint/headers.py`](src/aetherius/stealth/fingerprint/headers.py) donne une identité
+  d'en-têtes par défaut (`User-Agent`, `Sec-CH-UA`/`-Mobile`/`-Platform`, `Accept`, `Accept-Language`
+  aligné sur la géo) supprimant la signature « client HTTP nu » — **opt-in** (injectée seulement quand
+  `options.stealth` nomme un profil, un run sans stealth reste inchangé), les en-têtes explicites du
+  Blueprint gardant la priorité (fusion insensible à la casse) ; l'impersonation TLS `curl_cffi` garde
+  ses propres en-têtes. Le `FingerprintProfile` gagne les champs `screen`/`device_pixel_ratio`/
+  `ua_platform`/`ua_full_version` et dérive `Sec-CH-UA` de sa propre version d'UA : la limite « UA-CH
+  drift » est **levée**. Exemples exécutables zéro config
+  `examples/continuum/fingerprint-hardening.blueprint.json` et
+  `examples/vector/http-headers-identity.blueprint.json`. Voir [docs/stealth.md](docs/stealth.md).
 - **Identité réseau (Jalon 1.5-G)** — option `options.proxy` de premier niveau qui rend le bot
   invisible **au niveau réseau**, pour les **deux** moteurs (la couche stealth ne touche que le
   navigateur). Le module `aetherius.network` est activé : `parse_proxy`/`ProxySpec` (rendu httpx et

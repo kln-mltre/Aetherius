@@ -1,10 +1,11 @@
 # Jalon H — Durcissement de l'empreinte
 
-**Statut : jalon en attente.** Le squelette existe dans
-[`stealth/fingerprint/hardening.py`](../../src/aetherius/stealth/fingerprint/hardening.py) et
-[`stealth/fingerprint/headers.py`](../../src/aetherius/stealth/fingerprint/headers.py) ; toute
-opération lève un `NotImplementedError` « Jalon 1.5-H ». Ce document décrit ce qu'il reste à
-implémenter.
+**Statut : livré.** [`hardening.py`](../../src/aetherius/stealth/fingerprint/hardening.py) durcit
+Canvas/Audio/polices/UA-CH/écran/WebGL2 (init script injecté après le profil dans Continuum) et
+[`headers.py`](../../src/aetherius/stealth/fingerprint/headers.py) donne à Vector une identité
+d'en-têtes par défaut ; le tout dérivé du `FingerprintProfile` actif. Documentation de référence :
+[docs/stealth.md](../stealth.md). Ce document conserve la spécification d'origine (objectif, périmètre,
+décisions de conception) pour la traçabilité.
 
 ## Objectif
 

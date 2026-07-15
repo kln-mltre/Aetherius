@@ -69,11 +69,15 @@ class VectorClient:
         auth: AuthStrategy | None = None,
         proxy: str | None = None,
         impersonate: str | None = None,
+        default_headers: dict[str, str] | None = None,
     ) -> None:
         self._timeout = timeout_ms / 1000
         self._retries = retries or RetriesOptions()
         self._auth: AuthStrategy = auth or NoAuth()
         self._impersonate_client: Any = None
+        # Fingerprint header identity (Jalon H): merged under the request's explicit headers on the
+        # httpx path. The impersonation path skips them — curl_cffi already carries a coherent set.
+        self._default_headers = default_headers or {}
 
         if impersonate is not None:
             # Impersonation replaces the httpx transport entirely (curl_cffi carries its own TLS and
@@ -144,10 +148,14 @@ class VectorClient:
         form: dict[str, str] | None,
         params: dict[str, str] | None,
     ) -> httpx.Response:
+        # Defaults first, then the Blueprint's explicit headers on top: httpx.Headers is
+        # case-insensitive, so an explicit "user-agent" overrides the default "User-Agent" cleanly.
+        merged = httpx.Headers(self._default_headers)
+        merged.update(headers or {})
         req = httpx.Request(
             method=method.upper(),
             url=url,
-            headers=headers or {},
+            headers=merged,
             params=params,
             json=json,
             data=form,

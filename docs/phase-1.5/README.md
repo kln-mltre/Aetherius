@@ -70,7 +70,7 @@ G. Identité réseau (proxy + rotation + anti-fuite)  ──►  H. Durcissement
 | E | [e-plugins.md](e-plugins.md) | après B, C | **Livré.** Actions et canaux tiers via entry-points — voir [docs/plugins.md](../plugins.md). |
 | F | [f-deployment.md](f-deployment.md) | D | **Livré.** Recette de déploiement always-on (Docker, systemd) — voir [docs/deployment.md](../deployment.md). |
 | G | [g-network.md](g-network.md) | — | **Livré.** Proxy (Vector + Continuum), rotation d'IP, anti-fuite WebRTC, cohérence géo, TLS impersonation — voir [docs/network.md](../network.md). |
-| H | [h-fingerprint.md](h-fingerprint.md) | G | Empreinte durcie (canvas/audio/UA-CH/écran/WebGL2) + identité d'en-têtes pour Vector. |
+| H | [h-fingerprint.md](h-fingerprint.md) | G | **Livré.** Empreinte durcie (canvas/audio/polices/UA-CH/écran/WebGL2, cohérente avec le profil) + identité d'en-têtes par défaut pour Vector — voir [docs/stealth.md](../stealth.md). |
 
 **Ordre recommandé :** A, puis B et C (parallélisables), puis D, puis E, puis F. G et H sont
 indépendants du reste : G puis H, à tout moment (G se marie au scheduler D pour la surveillance

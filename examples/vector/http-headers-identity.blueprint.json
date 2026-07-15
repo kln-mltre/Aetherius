@@ -1,0 +1,31 @@
+{
+  "aetherius": "1.0",
+  "name": "network.http-headers-identity",
+  "description": "Jalon H : donne a Vector (Act I) une identite d'en-tetes par defaut. Avec options.stealth nommant un profil de fingerprint, Vector envoie User-Agent + client hints (Sec-CH-UA) + Accept-Language coherents, au lieu de la signature 'client HTTP nu'. Interroge un echo public (httpbin.org) qui renvoie les en-tetes recus, et les extrait pour prouver qu'ils sont appliques. Les en-tetes explicites d'un Blueprint gardent la priorite. Zero config, executable tel quel.",
+  "act": "vector",
+  "vars": {
+    "echo_url": "https://httpbin.org/headers"
+  },
+  "options": {
+    "stealth": { "fingerprint": "chrome-desktop" }
+  },
+  "steps": [
+    {
+      "id": "echo",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.echo_url }}",
+      "expect": { "status": 200 },
+      "extract": {
+        "user_agent": { "from": "json", "path": "$.headers.'User-Agent'" },
+        "sec_ch_ua": { "from": "json", "path": "$.headers.'Sec-Ch-Ua'" },
+        "accept_language": { "from": "json", "path": "$.headers.'Accept-Language'" }
+      }
+    }
+  ],
+  "outputs": {
+    "user_agent": "{{ steps.echo.user_agent | first }}",
+    "sec_ch_ua": "{{ steps.echo.sec_ch_ua | first }}",
+    "accept_language": "{{ steps.echo.accept_language | first }}"
+  }
+}

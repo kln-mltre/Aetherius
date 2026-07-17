@@ -7,8 +7,10 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 
 ## [Non publié]
 
-Durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la documentation), et
-cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réactivité).
+## [0.3.0] - 2026-07-17
+
+Phase 1.5 : le socle devient **opérationnel** (planification, alertes, réactivité, furtivité réseau
+et empreinte), et durcissement du socle Phase 1 avant d'entamer la Phase 2 (audit croisé de la doc).
 
 ### Ajouté
 - **Durcissement de l'empreinte (Jalon 1.5-H)** — les signaux à forte valeur que le profil laissait à
@@ -129,6 +131,11 @@ cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réac
   Aucune capacité n'est encore activée (jalons en attente : l'action `notify` est déclarée mais
   marquée `PENDING`, les modules lèvent une erreur « jalon en attente ») ; `make check` reste vert.
   Nouvel extra optionnel `[network]` (SOCKS5 + `curl_cffi`). Voir [docs/phase-1.5/](docs/phase-1.5/README.md).
+- **Suivi des nouveaux onglets (Act II — Continuum)** : un clic ouvrant un onglet (`target="_blank"`,
+  `window.open`) rend la nouvelle page active pour les steps suivants, avec retombée sur une page
+  survivante si l'onglet actif se referme. Auparavant les steps restaient bloqués sur l'onglet initial.
+- **Recorder « Make input »** : le `type`/`format` de l'input produit est inféré du type HTML du champ
+  (`number`, `date`+`format`, `email`/`url`, …) au lieu d'un `string` générique.
 
 ### Sécurité
 - **Évaluateur `where` (Act I — Vector)** : rejet explicite des attributs magiques (`__class__`,
@@ -145,13 +152,6 @@ cadrage de la **Phase 1.5** (socle opérationnel : planification, alertes, réac
 - **Debug (Act II — Continuum)** : quand les entrées sont humanisées, `slow_mo` est à 0 et les actions
   brutes (`select`, `upload`, `navigate`, …) défilaient instantanément, illisibles en debug. Elles
   reçoivent maintenant un délai manuel équivalent.
-
-### Ajouté
-- **Suivi des nouveaux onglets (Act II — Continuum)** : un clic ouvrant un onglet (`target="_blank"`,
-  `window.open`) rend la nouvelle page active pour les steps suivants, avec retombée sur une page
-  survivante si l'onglet actif se referme. Auparavant les steps restaient bloqués sur l'onglet initial.
-- **Recorder « Make input »** : le `type`/`format` de l'input produit est inféré du type HTML du champ
-  (`number`, `date`+`format`, `email`/`url`, …) au lieu d'un `string` générique.
 
 ## [0.2.0] - 2026-07-10
 
@@ -184,5 +184,6 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.2.0...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.2.0

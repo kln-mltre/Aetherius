@@ -48,7 +48,7 @@ Blueprint choisit l'Act adapté à la tâche.
 |-----|-----|--------|------------------|
 | **I** | **Vector** | Requêtes HTTP/API | Les données sont derrière une API ou des endpoints stables. Le cas « axios ». Le plus rapide. |
 | **II** | **Continuum** | Navigateur scripté (Playwright) | Il faut un vrai navigateur : login, JS, session, DOM. Sélecteurs connus et stables. |
-| **III** | **Oracle** | Navigateur guidé par vision + discrétion | L'UI est fragile/obfusquée : Aetherius « voit » l'écran via un petit modèle entraîné et agit avec discrétion. |
+| **III** | **Oracle** | Navigateur guidé par vision + discrétion | L'UI est fragile/obfusquée : Aetherius « voit » l'écran via un modèle vision-langage (grounding VLM) et agit avec discrétion. |
 | **IV** | **Phantom** | Agent autonome | Objectif non scripté. Perçoit, raisonne, agit en boucle. Résilience maximale. Le plus lourd. |
 
 Plus l'Act est élevé, plus le Blueprint est **haut-niveau** (on décrit *quoi*, plus *comment*) et
@@ -67,10 +67,11 @@ exigent un navigateur : login, cookies de session, contenu rendu par JS. C'est l
 et réutilisable d'une « WebView cachée qui scrape ». Discrétion optionnelle.
 
 ### Act III — Oracle
-Quand les sélecteurs sont trop fragiles ou absents, Oracle **regarde l'écran**. Un petit modèle de
-vision entraîné spécifiquement pour la tâche (exporté en ONNX) localise les éléments cibles sur des
-captures d'écran ; Aetherius clique par coordonnées à travers la couche de discrétion. Idéal pour
-les interfaces qui changent souvent ou piègent les bots.
+Quand les sélecteurs sont trop fragiles ou absents, Oracle **regarde l'écran**. Un modèle
+vision-langage (VLM — Claude par défaut, un détecteur local reste une option) localise en langage
+naturel les éléments cibles sur des captures d'écran ; Aetherius clique par coordonnées à travers la
+couche de discrétion. Le flux reste scripté et déterministe (un appel de grounding par cible). Idéal
+pour les interfaces qui changent souvent ou piègent les bots.
 
 ### Act IV — Phantom
 Un agent décisionnel autonome. Boucle **percevoir → raisonner → agir** : il perçoit la page (vision
@@ -606,10 +607,22 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   `examples/vector/http-headers-identity.blueprint.json`. [docs/stealth.md](docs/stealth.md),
   [docs/phase-1.5/h-fingerprint.md](docs/phase-1.5/h-fingerprint.md).
 
-### Phase 2 — les Acts autonomes (à venir)
+### Phase 2 — Autonomie & Contrôle (à venir)
 
-- [ ] Act III — Oracle (vision + entraînement).
-- [ ] Act IV — Phantom (agent).
+Cadrage complet et **spécifications par jalon** : [docs/phase-2/](docs/phase-2/README.md). La phase
+livre les **Acts cognitifs** et rend le bot à la fois plus **autonome** (il gère les parties non
+scriptées, voit l'écran, s'auto-répare) et plus **pilotable** (il demande une confirmation humaine à
+distance). Oracle est **redéfini** : ciblage par **grounding VLM** (Claude par défaut, modèle local
+optionnel), sans entraînement obligatoire.
+
+- [ ] **2-A** — Substrat de perception & cognition (`CognitionProvider`, cible unifiée, clic par
+  coordonnées à travers le stealth). Fondation de 2-B et 2-C.
+- [ ] **2-B** — Act III Oracle (ciblage `{vision}` + extraction sémantique `read`).
+- [ ] **2-C** — Act IV Phantom (agent orienté objectif, planner Claude).
+- [ ] **2-D** — Composition multi-Act par step + self-healing (fallback II→III→IV, un seul navigateur
+  partagé).
+- [ ] **2-E** — Human-in-the-loop (action `confirm` : run garé jusqu'à décision humaine, via console /
+  API daemon / notification).
 
 ## Sources de référence
 

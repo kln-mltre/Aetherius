@@ -7,6 +7,26 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 
 ## [Non publié]
 
+### Ajouté
+- **Phase 2 — Autonomie & Contrôle : cadrage + squelette.** Directives et **spécifications par jalon**
+  ([docs/phase-2/](docs/phase-2/README.md), jalons 2-A à 2-E), plus les **stubs d'interface** du
+  substrat de cognition ([`acts/_cognition/`](src/aetherius/acts/_cognition/),
+  [`acts/_perception.py`](src/aetherius/acts/_perception.py),
+  [`core/runtime/selector.py`](src/aetherius/core/runtime/selector.py),
+  [`models/registry.py`](src/aetherius/models/registry.py)) et des Acts cognitifs (Oracle/Phantom).
+  Les Acts II/III/IV deviennent trois stratégies au-dessus d'un même substrat navigateur + stealth +
+  perception + cognition. La phase couvre aussi la composition multi-Act par step, le self-healing
+  (fallback d'Act) et le human-in-the-loop (action `confirm`). Aucun comportement runtime modifié
+  (`make check` vert, `import aetherius` reste léger).
+
+### Modifié
+- **Oracle (Act III) redéfini** : le ciblage se fait par **grounding VLM** (Claude par défaut, un
+  détecteur local restant une option branchable derrière la même interface) plutôt que par un modèle
+  ONNX entraîné par tâche ; l'entraînement local devient une piste **optionnelle/avancée**. Fiches
+  [docs/acts/oracle.md](docs/acts/oracle.md) et [docs/acts/phantom.md](docs/acts/phantom.md)
+  réécrites (définition cible), [training/README.md](training/README.md) requalifié, section
+  « Phase 2 » et descriptions Oracle du README harmonisées.
+
 ## [0.3.0] - 2026-07-17
 
 Phase 1.5 : le socle devient **opérationnel** (planification, alertes, réactivité, furtivité réseau

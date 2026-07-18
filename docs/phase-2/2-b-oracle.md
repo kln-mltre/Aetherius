@@ -4,8 +4,10 @@
 `oracle` est runnable — un **flux scripté** (comme Continuum) où les cibles sont des **descriptions
 en langage naturel** résolues par le Grounder (`OracleDriver` étend le driver Continuum : même
 navigateur, même discrétion), plus l'**extraction sémantique** `read`. Seuil de confiance et point
-off-center dans `oracle/locator.py` ; `wait_for` par vision sonde l'écran ; exemple zéro config
-`examples/oracle/quotes-vision-demo.blueprint.json` vérifié en réel (Claude + Chromium).
+off-center dans `oracle/locator.py` ; les cibles hors viewport sont trouvées par **recherche par
+défilement** (`oracle/scan.py`, bornée) ; `wait_for` par vision sonde l'écran ; exemples zéro
+config `examples/oracle/quotes-vision-demo.blueprint.json` et `books-scan-below-fold.blueprint.json`
+vérifiés en réel (Claude + Chromium).
 
 ## Objectif
 

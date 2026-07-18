@@ -57,9 +57,27 @@ la sonde continue. Un step peut l'ajuster : `{"action": "click", "target": {"vis
 Chaque grounding réussi émet un événement `progress` (niveau debug) portant la boîte résolue —
 utile pour comprendre *où* Oracle a vu la cible.
 
-**Coût et cadence.** Un step ciblé = **un** appel modèle. Exception : `wait_for` par vision sonde
-toutes les ~2,5 s, soit un appel de grounding **par sonde** — dimensionner `timeout_ms` en
-conséquence (préférer un `wait_for` à sélecteur quand le DOM est fiable, il est gratuit).
+### Recherche par défilement (scan)
+
+Par défaut, une cible vision qui n'est pas vue dans le viewport courant déclenche un **scan** :
+Oracle fait défiler la page viewport par viewport (scroll humanisé si la discrétion est active,
+molette brute sinon) et re-grounde à chaque coup d'œil — le réflexe d'une personne qui cherche un
+élément. Un run parti en milieu de page remonte en haut une fois le bas atteint, pour couvrir
+toute la page. Chaque coup d'œil coûte **un appel de grounding**, plafonné à **8** au total ;
+l'échec final indique le nombre de coups d'œil et la meilleure confiance observée. Une cible
+visible d'emblée coûte exactement un appel, comme sans scan. `"scan": false` épingle le step au
+viewport courant (un seul appel, aucun défilement) — pour forcer l'économie ou quand la cible est
+garantie visible.
+
+`wait_for` (vision) et `read` restent bornés au **viewport courant** : `wait_for` attend une
+*apparition* (par définition à l'écran, et le scan multiplierait le coût de chaque sonde), et
+`read` n'a pas de signal « non trouvé » qui dirait quand défiler — placer un `scroll` explicite
+avant si la donnée vit plus bas.
+
+**Coût et cadence.** Un step ciblé visible = **un** appel modèle ; un scan = un appel par coup
+d'œil (borné à 8). `wait_for` par vision sonde toutes les ~2,5 s, soit un appel de grounding
+**par sonde** — dimensionner `timeout_ms` en conséquence (préférer un `wait_for` à sélecteur
+quand le DOM est fiable, il est gratuit).
 
 ## L'action `read` (extraction sémantique)
 
@@ -110,7 +128,7 @@ Le grounder local optionnel (`[vision]`) reste une interface sans inférence à 
 [`src/aetherius/acts/oracle/`](../../src/aetherius/acts/oracle/) — `driver.py` (`OracleDriver`,
 étend le driver Continuum : intercepte les cibles vision et `read`, délègue tout le reste),
 `locator.py` (`Target` vision → `Box` : seuil de confiance + choix du point off-center),
-`perception.py`/`model.py` (seams du substrat). Le substrat partagé vit dans
+`scan.py` (recherche par défilement bornée), `perception.py`/`model.py` (seams du substrat). Le substrat partagé vit dans
 [`acts/_cognition/`](../../src/aetherius/acts/_cognition/) et
 [`acts/_perception.py`](../../src/aetherius/acts/_perception.py).
 
@@ -122,6 +140,8 @@ Le grounder local optionnel (`[vision]`) reste une interface sans inférence à 
   valeur arrive sous `data`.
 - **`fill` ne prend pas de cible vision** (il exige l'effacement préalable du champ, sémantique de
   locator) : utiliser `type` pour saisir au point groundé, ou `fill` à sélecteur.
+- **`wait_for` et `read` ne scannent pas** : bornés au viewport courant (voir « Recherche par
+  défilement ») — un `scroll` explicite les précède si nécessaire.
 - **Grounder local** : interface en place (`vision.provider: "local"`), inférence non implémentée —
   le chemin par défaut est Claude ; l'entraînement custom reste la piste avancée de `training/`.
 - **Une capture par grounding** : la perception n'est pas mise en cache entre deux steps (la page
@@ -145,25 +165,34 @@ décrire la cible, laisser le VLM la localiser — branchée comme un backend re
 
 ## Tester Act III
 
-Exemple réel, zéro config (page publique autorisée), exécutable dès que `ANTHROPIC_API_KEY` est
-posée (env ou `.env`) :
+Exemples réels, zéro config (pages publiques autorisées), exécutables dès que `ANTHROPIC_API_KEY`
+est posée (env ou `.env`) :
 
 ```bash
 pip install -e ".[cognition,browser]" && playwright install chromium
-aetherius run examples/oracle/quotes-vision-demo.blueprint.json
+aetherius run examples/oracle/quotes-vision-demo.blueprint.json      # clic + wait_for + read par vision
+aetherius run examples/oracle/books-scan-below-fold.blueprint.json   # cible hors viewport -> scan
 ```
 
-… ou depuis la Console (`aetherius` → Library → Run). Le run clique le lien « Login » désigné en
-langage naturel, attend le formulaire par vision, puis `read` les labels du formulaire en sortie
-structurée. Le gabarit TikTok (`examples/oracle/tiktok-upload.blueprint.json`) reste **non
-exécutable** tel quel (compte/secrets requis) : c'est la référence de format du cas fondateur.
+… ou depuis la Console (`aetherius` → Library → Run). Le premier clique le lien « Login » désigné
+en langage naturel, attend le formulaire par vision, puis `read` les labels en sortie structurée.
+Le second cible un livre **sous la ligne de flottaison** : Oracle défile pour le trouver. Le
+gabarit TikTok (`examples/oracle/tiktok-upload.blueprint.json`) reste **non exécutable** tel quel
+(compte/secrets requis) : c'est la référence de format du cas fondateur.
+
+Sondes réalistes jouées à la livraison (voir
+[docs/testing.md](../testing.md#sondes-réalistes)) : désambiguïsation d'une couverture précise
+parmi la grille dense de `books.toscrape.com` (succès, données du bon produit relues en aval) ;
+cible réelle hors viewport (échec **propre** `confidence 0.00 < 0.50` avant le scan — c'est cette
+sonde qui a motivé la recherche par défilement, qui la fait désormais réussir).
 
 Suite automatisée :
 
 ```bash
-pytest tests/unit/acts/oracle                       # mapping vision, fakes, sans navigateur (CI de base)
-pytest tests/integration/test_oracle_run.py        # run complet sur vrai Chromium, provider fake (marker browser)
+pytest tests/unit/acts/oracle                       # mapping vision + boucle de scan, fakes, sans navigateur (CI de base)
+pytest tests/integration/test_oracle_run.py        # runs complets sur vrai Chromium, provider fake (marker browser)
 ```
 
 Le premier niveau tourne sans aucun extra ; le second exige `[browser]` mais **pas** `[cognition]`
-(le provider est fake : c'est le câblage moteur → driver → navigateur qui est prouvé, sans réseau).
+(le provider est fake : c'est le câblage moteur → driver → navigateur — scan compris — qui est
+prouvé, sans réseau).

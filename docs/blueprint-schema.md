@@ -43,7 +43,9 @@ Continuum), soit une **description en langage naturel** résolue par grounding V
 
 La forme imbriquée `target: {selector, selector_type}` est aussi acceptée. Un step qui porte à la
 fois un sélecteur **et** une description vision est rejeté (cible ambiguë). Les steps ciblés par
-vision acceptent `min_confidence` (défaut 0.5). Sémantique complète, seuil et coût :
+vision acceptent `min_confidence` (défaut 0.5) et `scan` (défaut `true` : une cible hors du
+viewport est cherchée en défilant la page, viewport par viewport et à coût borné ; `false` épingle
+le step au viewport courant). Sémantique complète, seuil et coût :
 [docs/acts/oracle.md](acts/oracle.md).
 
 ### `read` (extraction sémantique, Act III+)

@@ -108,7 +108,9 @@ def _run(
 
 @pytest.fixture(autouse=True)
 def _fake_capture(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Both the driver (read, scan: false path) and the scan loop hold their own capture ref.
     monkeypatch.setattr("aetherius.acts.oracle.driver.capture", lambda page: _PERCEPTION)
+    monkeypatch.setattr("aetherius.acts.oracle.scan.capture", lambda page: _PERCEPTION)
 
 
 # ── Vision-targeted interactions ─────────────────────────────────────────────
@@ -190,9 +192,37 @@ def test_grounding_emits_a_debug_progress_event_with_the_box() -> None:
 
 
 def test_low_confidence_grounding_fails_the_step() -> None:
+    # scan: false pins the step to the current viewport: one look, then the typed failure.
     driver, _ = _driver(_FakeProvider([GroundResult(box=_BOX, confidence=0.3)]))
     with pytest.raises(CognitionError, match="not confident"):
-        _run(driver, {"action": "click", "target": {"vision": "a ghost"}})
+        _run(driver, {"action": "click", "target": {"vision": "a ghost"}, "scan": False})
+
+
+def test_scan_is_the_default_path_for_vision_targets(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, Any] = {}
+
+    def fake_scan(page: Any, human: Any, grounder: Any, description: str, **kwargs: Any) -> Box:
+        seen["description"] = description
+        return _BOX
+
+    monkeypatch.setattr("aetherius.acts.oracle.driver.ground_scanning", fake_scan)
+    driver, _ = _driver(human=MagicMock())
+
+    _run(driver, {"action": "click", "target": {"vision": "a target below the fold"}})
+
+    assert seen["description"] == "a target below the fold"
+
+
+def test_scan_false_never_scrolls(monkeypatch: pytest.MonkeyPatch) -> None:
+    def exploding_scan(*args: Any, **kwargs: Any) -> Box:
+        raise AssertionError("ground_scanning must not run when scan is disabled")
+
+    monkeypatch.setattr("aetherius.acts.oracle.driver.ground_scanning", exploding_scan)
+    driver, _ = _driver(human=MagicMock())
+
+    result = _run(driver, {"action": "click", "target": {"vision": "the button"}, "scan": False})
+
+    assert result == {}
 
 
 def test_min_confidence_param_overrides_the_floor() -> None:

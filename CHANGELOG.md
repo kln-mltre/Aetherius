@@ -22,6 +22,14 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
   ciblés par vision. Exemple zéro config : `examples/oracle/quotes-vision-demo.blueprint.json`.
 - **Action `wait` : plage aléatoire** — sans `ms`, `min_ms`/`max_ms` tirent une durée uniforme
   dans l'intervalle (act-agnostique) ; le gabarit fondateur `tiktok-upload` devient exact.
+- **Oracle : recherche par défilement (scan)** — une cible vision hors du viewport est trouvée en
+  défilant la page viewport par viewport (scroll humanisé sous discrétion, remontée en haut pour
+  un départ en milieu de page), à coût borné : 8 coups d'œil maximum, un appel de grounding
+  chacun ; `scan: false` épingle le step au viewport courant. Exemple zéro config :
+  `examples/oracle/books-scan-below-fold.blueprint.json`.
+- **Contribution : sondes réalistes** — la « Définition de terminé » exige désormais, en plus du
+  flux nominal vérifié à la main, une ou deux sondes réalistes « dures » (dont un cas conçu pour
+  échouer), consignées dans la doc de la capacité ([docs/testing.md](docs/testing.md)).
 - **Jalon 2-A — Substrat de perception & cognition** ([docs/cognition.md](docs/cognition.md)) : la
   fondation partagée des Acts cognitifs. `ClaudeProvider` implémente le **grounding** (`locate` :
   description → `Box` + confiance) et l'**extraction sémantique** (`read`, schéma optionnel) par

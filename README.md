@@ -632,15 +632,16 @@ optionnel), sans entraînement obligatoire.
   naturel (`target: {vision}`) sur `click`/`type`/`upload`/`hover`/`wait_for` : capture en pixels
   CSS → grounding (un appel par cible, seuil de confiance 0.5, `min_confidence` par step) → action
   par coordonnées **off-center (bande 30–70 %) à travers le stealth** (`hover_at` rejoint la façade
-  `HumanInput`) ; `wait_for` par vision sonde l'écran (un grounding par sonde), `upload` alimente le
-  file chooser ouvert par le clic. Action **`read`** (extraction sémantique) : `vision` + `schema`
+  `HumanInput`) ; une cible hors viewport est trouvée par **recherche par défilement** (scan borné
+  à 8 coups d'œil, scroll humanisé, opt-out `scan: false`) ; `wait_for` par vision sonde l'écran
+  (un grounding par sonde), `upload` alimente le file chooser ouvert par le clic. Action **`read`** (extraction sémantique) : `vision` + `schema`
   objet → les champs deviennent les sorties du step, sans schéma → valeur sous `data`.
   `OracleDriver` **étend** le driver Continuum — un seul navigateur, une seule discrétion, steps à
   sélecteur inchangés. Capability `read` (specs `core/actions/vision.py`, hint « requires
   act='oracle' »), et l'action `wait` gagne `min_ms`/`max_ms` (durée aléatoire uniforme,
-  act-agnostique). Exemple zéro config : `examples/oracle/quotes-vision-demo.blueprint.json`
-  (vérifié en réel, Claude + Chromium). [docs/acts/oracle.md](docs/acts/oracle.md),
-  [docs/phase-2/2-b-oracle.md](docs/phase-2/2-b-oracle.md).
+  act-agnostique). Exemples zéro config : `examples/oracle/quotes-vision-demo.blueprint.json` et
+  `books-scan-below-fold.blueprint.json` (vérifiés en réel, Claude + Chromium).
+  [docs/acts/oracle.md](docs/acts/oracle.md), [docs/phase-2/2-b-oracle.md](docs/phase-2/2-b-oracle.md).
 - [ ] **2-C** — Act IV Phantom (agent orienté objectif, planner Claude).
 - [ ] **2-D** — Composition multi-Act par step + self-healing (fallback II→III→IV, un seul navigateur
   partagé).

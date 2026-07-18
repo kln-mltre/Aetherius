@@ -43,7 +43,11 @@ est vrai. On ne saute pas une étape en attendant qu'on la réclame :
 3. **Doc à jour** dans le même changement — voir [Documentation](#documentation).
 4. **`make check` vert.**
 5. **Flux vérifié à la main** au moins une fois : le vrai `run`, pas seulement les tests (chaque
-   doc d'Act a une section « Tester … » pour ça).
+   doc d'Act a une section « Tester … » pour ça). En plus du chemin nominal, jouer **une ou deux
+   sondes réalistes « dures »** — un scénario réel plus exigeant que l'exemple zéro config, dont si
+   possible un cas conçu pour faire échouer la capacité. Un échec **propre et explicable** est un
+   résultat valide ; un comportement surprenant est un correctif ou une limite à documenter avant
+   de clore. Voir [docs/testing.md](docs/testing.md#sondes-réalistes).
 6. **Prise en main UI** pour une capacité **liée à l'UI et non triviale** (nouvel écran ou
    interaction non évidente de la Console) : un walkthrough orienté UI dans la doc **et** des captures
    SVG générées (`make screenshots`) — voir [Documentation](#documentation). Exception : une

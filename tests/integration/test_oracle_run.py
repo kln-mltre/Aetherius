@@ -57,6 +57,68 @@ class _FakeProvider:
         return "clicked"
 
 
+# A page taller than the viewport, whose only control sits far below the fold: reaching it
+# requires the scroll-scan. The button is deliberately tall so the click stays inside it even if
+# the wheel lands a few pixels off the expected offset.
+_TALL_PAGE_HTML = """<!doctype html>
+<html><body style="margin:0;height:2400px">
+  <button style="position:absolute;left:0;top:1000px;width:100%;height:700px"
+          onclick="document.getElementById('out').textContent = 'clicked'">Deep</button>
+  <div id="out"></div>
+</body></html>"""
+_TALL_PAGE_URL = "data:text/html," + urllib.parse.quote(_TALL_PAGE_HTML)
+
+
+class _ScanProvider:
+    """Sees nothing in the first viewport; reports the button once the page has scrolled."""
+
+    name = "fake"
+
+    def __init__(self) -> None:
+        self.locate_calls = 0
+
+    def locate(self, perception: Perception, description: str) -> GroundResult:
+        self.locate_calls += 1
+        if self.locate_calls == 1:
+            return GroundResult(box=Box(x=0, y=0, width=1, height=1), confidence=0.0)
+        # After one 576px scan step (0.8 * 720 viewport) the button spans viewport y=424..720.
+        return GroundResult(box=Box(x=0, y=424, width=1280, height=296), confidence=0.99)
+
+
+def test_oracle_run_scrolls_to_find_a_below_fold_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = _ScanProvider()
+    monkeypatch.setattr("aetherius.acts.oracle.driver.resolve_provider", lambda vision: provider)
+
+    blueprint = Blueprint.model_validate(
+        {
+            "aetherius": "1.0",
+            "name": "t.oracle.scan",
+            "act": "oracle",
+            "options": {"timeout_ms": 8000},
+            "steps": [
+                {"id": "open", "action": "navigate", "url": _TALL_PAGE_URL},
+                {"id": "deep", "action": "click", "target": {"vision": "the Deep button"}},
+                {
+                    "id": "checked",
+                    "action": "extract",
+                    "outputs": {"out": {"selector": "#out", "as": "text"}},
+                },
+            ],
+            "outputs": {"out": "{{ steps.checked.out }}"},
+        }
+    )
+
+    result = RunEngine().run(blueprint)
+
+    assert result.status is RunStatus.SUCCESS
+    # The click landed inside a button that is unreachable without scrolling (doc y=1000+,
+    # viewport height 720), so the scan really moved the page before acting.
+    assert result.outputs == {"out": "clicked"}
+    assert provider.locate_calls == 2
+
+
 def test_oracle_run_clicks_types_and_reads_through_vision(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

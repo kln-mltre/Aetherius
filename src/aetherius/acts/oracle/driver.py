@@ -28,6 +28,7 @@ from ..continuum.bridge import failure_code
 from ..continuum.browser import BrowserSession
 from ..continuum.driver import ContinuumDriver
 from .locator import DEFAULT_MIN_CONFIDENCE, locate, point_in_box
+from .scan import ground_scanning
 
 if TYPE_CHECKING:
     from .._cognition.provider import CognitionProvider
@@ -93,12 +94,23 @@ class OracleDriver(ContinuumDriver):
         if step.action == "wait_for":
             return self._wait_for_vision(step, ctx, bus, renderer, description, min_confidence)
 
-        box = locate(
-            provider,
-            capture(session.page),
-            Target(vision=description),
-            min_confidence=min_confidence,
-        )
+        # Scan by default: a target below the fold is found by scrolling, like a person would.
+        # `scan: false` pins the step to the current viewport (one grounding call, no scroll).
+        if bool(renderer(params.get("scan", True))):
+            box = ground_scanning(
+                session.page,
+                session.human,
+                provider,
+                description,
+                min_confidence=min_confidence,
+            )
+        else:
+            box = locate(
+                provider,
+                capture(session.page),
+                Target(vision=description),
+                min_confidence=min_confidence,
+            )
         self._emit_grounded(ctx, bus, step, description, box)
         point = point_in_box(box, self._rng)
         human = self._human_input()

@@ -75,6 +75,24 @@ Résultat : la suite reste verte sans dépendances lourdes. La CI n'installe que
 `browser` / `cognition` / `vision` sont donc skippés. Un job dédié (installant l'extra + `playwright
 install`) pourra les activer plus tard sans rien changer d'autre.
 
+## Sondes réalistes
+
+En complément de la suite automatisée et de l'exemple zéro config, chaque capacité livrée est
+éprouvée à la main sur **une ou deux sondes réalistes plus dures** que le chemin nominal : un cas
+dense ou ambigu (ex. désambiguïser une cible parmi vingt semblables), et si possible un cas
+**conçu pour échouer** (cible absente, hors viewport, données piégées). L'objectif est d'éprouver
+le comportement réel de fond en comble, pas seulement le contrat.
+
+Règles :
+
+- les sondes s'écrivent comme des Blueprints jetables (répertoire temporaire), sur des endpoints
+  publics autorisés ; elles ne rejoignent `examples/` que si elles restent zéro config et stables ;
+- un échec **propre** (erreur typée, message actionnable) est un résultat attendu, à consigner
+  comme tel ; un comportement surprenant devient un correctif ou une « limite connue » documentée
+  avant de clore le jalon ;
+- le résultat des sondes (succès **et** échecs) se consigne dans la section « Tester … » de la doc
+  de la capacité.
+
 ## Couverture
 
 La couverture est **rapportée, pas bloquante** : tant que le cœur est au stade squelette, un seuil

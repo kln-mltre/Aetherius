@@ -1,0 +1,41 @@
+{
+  "aetherius": "1.0",
+  "name": "books.oracle.scan-below-fold",
+  "description": "Act III (Oracle) : recherche par defilement (scan) — la cible est reelle mais hors viewport au chargement, Oracle scrolle pour la trouver comme le ferait un humain. Zero config (extras [cognition]+[browser], cle moteur ANTHROPIC_API_KEY). Cout : un appel de grounding par coup d'oeil (typiquement 3 a 4 ici).",
+  "act": "oracle",
+  "vars": { "domain": "https://books.toscrape.com" },
+  "options": { "timeout_ms": 45000 },
+  "steps": [
+    { "id": "home", "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "id": "open_book",
+      "action": "click",
+      "target": { "vision": "the cover image of the book titled 'Olio'" }
+    },
+    {
+      "id": "product",
+      "action": "wait_for",
+      "target": { "vision": "the product page main heading that reads 'Olio'" },
+      "timeout_ms": 25000,
+      "on_timeout": "fail:WRONG_PAGE"
+    },
+    {
+      "id": "facts",
+      "action": "read",
+      "vision": "the price and the availability text of this product",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "price": { "type": "string" },
+          "availability": { "type": "string" }
+        },
+        "required": ["price", "availability"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "outputs": {
+    "price": "{{ steps.facts.price }}",
+    "availability": "{{ steps.facts.availability }}"
+  }
+}

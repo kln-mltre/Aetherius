@@ -170,6 +170,12 @@ ML (`stealth/ml/`) est un upgrade optionnel, pas un prérequis. Le cœur stealth
   cibles très mouvantes restent plus fiables sans `mouse: gestures`.
 - **Warmup minimal.** `warmup_profile` visite une liste d'URLs avec dwell ; il ne simule pas encore
   d'interactions pendant les visites.
+- **Efficacité anti-bot réelle non encore éprouvée (À FAIRE).** Le mécanisme est testé (unit + vrai
+  Chromium : flags, canvas/audio/WebGL, UA-CH cohérents), mais « est-ce que ça passe un vrai système
+  anti-bot » (Cloudflare, DataDome, TikTok…) ne se prouve que **contre la vraie cible**, à faire au
+  moment d'attaquer le cas réel. Ce shakedown furtif (empreinte + volet réseau, voir
+  [docs/network.md](network.md#tester-lidentité-réseau)) est délibérément différé, sans bloquer les
+  Acts cognitifs qui ne dépendent que du mécanisme, pas de sa qualité.
 
 ## Tester la discrétion
 

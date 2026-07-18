@@ -131,6 +131,10 @@ SOCKS5 est intégré.
   depuis les Blueprints aujourd'hui) ; utiliser des en-têtes explicites si besoin.
 - **SOCKS5 avec authentification** n'est pas supporté côté Playwright (limitation Playwright) ; il
   l'est côté Vector.
+- **Vérification bout-en-bout encore à jouer (À FAIRE).** Le mécanisme est couvert par les tests
+  unitaires, mais le run réel avec un vrai proxy (routage, absence de fuite WebRTC, cohérence géo,
+  impersonation TLS) n'a pas encore été fait faute de proxy. À réaliser avant de s'appuyer sur cette
+  couche sur une cible réelle — checklist ci-dessous (« Tester l'identité réseau »).
 
 ## Tester l'identité réseau
 

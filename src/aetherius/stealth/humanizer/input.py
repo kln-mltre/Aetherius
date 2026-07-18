@@ -55,6 +55,22 @@ class HumanInput:
         else:
             locator.hover()
 
+    def click_at(self, x: float, y: float) -> None:
+        """Click the viewport point ``(x, y)`` — the coordinate path the cognitive Acts drive.
+
+        With the mouse humanizer on, the cursor travels a replayed gesture and clicks with human
+        timing; off, it degrades to a plain ``page.mouse.click`` like every other feature here.
+        """
+        if self._mouse is not None:
+            self._mouse.click_at(x, y)
+        else:
+            self.page.mouse.click(x, y)
+
+    def type_at(self, x: float, y: float, text: str) -> None:
+        """Click ``(x, y)`` to focus whatever lives there, then enter *text* without clearing."""
+        self.click_at(x, y)
+        self._enter_text(text)
+
     def fill(self, locator: Any, value: str) -> None:
         """Focus the field, clear it, then enter *value* (humanized if the keyboard feature is on)."""
         self._focus(locator)

@@ -1,8 +1,11 @@
 # Jalon 2-A — Substrat de perception & cognition
 
-**Statut : à venir.** Fondation de la Phase 2 : l'interface partagée que consomment Oracle (2-B) et
-Phantom (2-C). N'apporte **aucune capacité utilisateur seule** (comme le store 1.5-A) ; c'est la
-brique sans laquelle les deux Acts cognitifs dupliqueraient tout.
+**Statut : livré.** Doc définitive : [docs/cognition.md](../cognition.md). Grounding et extraction
+sémantique Claude réels (tool use forcé, mockés en CI), perception en pixels CSS,
+`Target.from_step`, `HumanInput.click_at`/`type_at` vérifiés sur Chromium réel, extras
+`[cognition]`/`[vision]` refondus. Fondation de la Phase 2 : l'interface partagée que consomment
+Oracle (2-B) et Phantom (2-C). N'apporte **aucune capacité utilisateur seule** (comme le store
+1.5-A) ; c'est la brique sans laquelle les deux Acts cognitifs dupliqueraient tout.
 
 ## Objectif
 

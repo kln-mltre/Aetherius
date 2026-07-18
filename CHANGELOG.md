@@ -8,6 +8,18 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 2-A — Substrat de perception & cognition** ([docs/cognition.md](docs/cognition.md)) : la
+  fondation partagée des Acts cognitifs. `ClaudeProvider` implémente le **grounding** (`locate` :
+  description → `Box` + confiance) et l'**extraction sémantique** (`read`, schéma optionnel) par
+  tool use forcé — réponse structurée, un appel par cible, modèle par défaut `claude-opus-4-8`
+  écrasé par `vision.model`, clé via `ANTHROPIC_API_KEY` (`.env` supporté) ; `resolve_provider`
+  résout `vision.provider` (`claude` défaut / `local`) ; `LocalGrounder` reste l'option locale
+  derrière la même interface (rôles non portés en `CognitionError` typée). Perception de page en
+  **pixels CSS** (`capture` : screenshot `scale="css"` + DOM optionnel, réduction 2576 px avec
+  remise à l'échelle des boîtes), cible unifiée `Target.from_step` (sélecteur ou
+  `target: {vision}`, ambiguïté rejetée), et **clic par coordonnées à travers le stealth**
+  (`HumanInput.click_at`/`type_at`, gestes rejoués + timing humain, intégration Chromium réelle).
+  Nouvelle erreur `CognitionError`. `import aetherius` reste léger (SDK importés paresseusement).
 - **Phase 2 — Autonomie & Contrôle : cadrage + squelette.** Directives et **spécifications par jalon**
   ([docs/phase-2/](docs/phase-2/README.md), jalons 2-A à 2-E), plus les **stubs d'interface** du
   substrat de cognition ([`acts/_cognition/`](src/aetherius/acts/_cognition/),
@@ -20,6 +32,10 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
   (`make check` vert, `import aetherius` reste léger).
 
 ### Modifié
+- **Extras refondus (Jalon 2-A)** : nouvel extra `[cognition]` (`anthropic`, `pillow`) — le défaut
+  partagé Oracle+Phantom, qui **absorbe l'ancien `[agent]`** (supprimé) ; `[vision]` repositionné
+  en **grounder local optionnel** ; `[all]` et les markers pytest alignés (`cognition` remplace
+  `agent`).
 - **Oracle (Act III) redéfini** : le ciblage se fait par **grounding VLM** (Claude par défaut, un
   détecteur local restant une option branchable derrière la même interface) plutôt que par un modèle
   ONNX entraîné par tâche ; l'entraînement local devient une piste **optionnelle/avancée**. Fiches

@@ -93,7 +93,7 @@ son exemple exécutable.
 
 | Jalon | Spécification | Dépend de | Résumé |
 |-------|---------------|-----------|--------|
-| 2-A | [2-a-cognition.md](2-a-cognition.md) | — (Act II) | **À venir.** Substrat perception + cognition (`CognitionProvider`, `Target` unifié, `HumanInput.click_at`, résolution de provider). Fondation de 2-B et 2-C. |
+| 2-A | [2-a-cognition.md](2-a-cognition.md) | — (Act II) | **Livré.** Substrat perception + cognition (`CognitionProvider`, `Target` unifié, `HumanInput.click_at`, résolution de provider). Fondation de 2-B et 2-C. Doc : [docs/cognition.md](../cognition.md). |
 | 2-B | [2-b-oracle.md](2-b-oracle.md) | 2-A | **À venir.** Act III Oracle : ciblage `{vision}` + action `read` (extraction sémantique), réutilise le navigateur + stealth de Continuum. |
 | 2-C | [2-c-phantom.md](2-c-phantom.md) | 2-A | **À venir.** Act IV Phantom : agent orienté objectif (`goal`/`constraints`), boucle percevoir→raisonner→agir, planner Claude. |
 | 2-D | [2-d-composition.md](2-d-composition.md) | 2-B, 2-C | **À venir.** `act` par step + self-healing (fallback II→III→IV), un seul navigateur partagé. |
@@ -106,8 +106,8 @@ Phase 1.5 (store, notify) et du daemon.
 
 ## Extras & dépendances
 
-Le chemin par défaut (Claude) et le chemin local optionnel sont deux extras distincts (finalisés au
-Jalon 2-A) :
+Le chemin par défaut (Claude) et le chemin local optionnel sont deux extras distincts (en place
+depuis le Jalon 2-A) :
 
 - `[cognition]` = `anthropic`, `pillow` — **le défaut** partagé Oracle+Phantom (screenshots + appel
   VLM/planner). Absorbe l'ancien extra `[agent]`.

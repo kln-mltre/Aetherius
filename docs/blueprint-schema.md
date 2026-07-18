@@ -15,8 +15,20 @@ Exemples exécutables : [`examples/`](../examples/).
 | `vars` | object | Constantes locales. |
 | `options` | object | `debug`, `stealth`, `session`, `timeout_ms`, `retries`. |
 | `steps` | array | Le dictionnaire d'actions (ordonné). |
+| `vision` | object | Configuration de cognition pour Oracle/Phantom (voir ci-dessous). |
 | `goal` / `constraints` | string / string[] | Alternative haut-niveau pour Phantom. |
 | `outputs` | object | Forme des données retournées via `{{ }}`. |
+
+### `vision`
+
+Configure le fournisseur de cognition des Acts cognitifs (le schéma accepte ces sous-champs via
+`additionalProperties: true` — aucun changement de contrat) :
+
+- `provider` : le backend — `claude` (défaut, extra `[cognition]`) ou `local` (extra `[vision]`,
+  détecteur sur la machine) ;
+- `model` : le modèle — id Anthropic (défaut `claude-opus-4-8`) ou nom d'asset local `nom@version`.
+
+Détails et résolution : [docs/cognition.md](cognition.md).
 
 ## Interpolation
 

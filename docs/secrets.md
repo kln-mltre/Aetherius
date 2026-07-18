@@ -31,6 +31,10 @@ Entourer de guillemets simples les valeurs contenant `#`, `!`, `$` ou des espace
 depuis la racine du dépôt pour que `.env` soit trouvé (sinon exporter les variables, ou passer
 `--secret`).
 
+Le `.env` peut aussi porter des **clés du moteur** — variables sans préfixe `AETHERIUS_SECRET_*`,
+jamais référencées dans un Blueprint. Cas actuel : `ANTHROPIC_API_KEY` pour le fournisseur de
+cognition Claude (Acts III/IV), voir [docs/cognition.md](cognition.md).
+
 ## Console
 
 Dans l'écran Runs, un secret déjà résolvable depuis l'environnement est affiché « loaded from .env »

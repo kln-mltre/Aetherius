@@ -6,14 +6,17 @@ coordinates). ``Target`` is the single shape both Acts share, so the same action
 ``type``, ``wait_for``) reads identically regardless of who resolves it — the seam the multi-Act
 composition (Jalon 2-E) and Oracle (2-B) build on.
 
-Skeleton for Phase 2 (Jalon 2-A): the parsing/validation of a step's target lands there; the data
-shapes below are the contract.
+The parsing rules mirror the Blueprint surface: Continuum steps carry a top-level ``selector``
+(plus optional ``selector_type``), Oracle steps carry ``target: {vision: ...}`` — and a nested
+``target: {selector: ...}`` is accepted so the unified form also works for DOM targets.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Mapping
+from typing import Any, Literal, Mapping, get_args
+
+from ..errors import ActionError
 
 SelectorType = Literal["css", "xpath", "text"]
 
@@ -48,6 +51,27 @@ class Target:
     def from_step(cls, params: Mapping[str, Any]) -> "Target":
         """Read a step's ``selector``/``selector_type`` or ``target: {vision: ...}`` into a Target.
 
-        Implemented in Jalon 2-A (docs/phase-2/2-a-cognition.md).
+        Raises :class:`ActionError` when the step is ambiguous (both a selector and a vision
+        description) or targets nothing — the caller only asks for a Target when the action
+        needs one, so both cases are authoring mistakes worth a clear message.
         """
-        raise NotImplementedError
+        raw_target = params.get("target")
+        nested: Mapping[str, Any] = raw_target if isinstance(raw_target, Mapping) else {}
+
+        selector = params.get("selector", nested.get("selector"))
+        vision = nested.get("vision")
+        if selector is not None and vision is not None:
+            raise ActionError(
+                "Ambiguous target: a step must aim at a selector or a vision description, not both."
+            )
+        if selector is None and vision is None:
+            raise ActionError(
+                "Missing target: expected a 'selector' or a 'target: {vision: ...}' on the step."
+            )
+
+        selector_type = params.get("selector_type", nested.get("selector_type", "css"))
+        if selector_type not in get_args(SelectorType):
+            raise ActionError(
+                f"Unknown selector_type {selector_type!r}; expected one of {get_args(SelectorType)}."
+            )
+        return cls(selector=selector, selector_type=selector_type, vision=vision)

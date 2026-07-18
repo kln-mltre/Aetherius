@@ -52,8 +52,8 @@ Déclarés dans `pyproject.toml` et imposés par `--strict-markers` (un marker i
 | `integration` | traverse plusieurs modules ou le daemon                           |
 | `contracts`   | valide les contrats (`contracts/*.json`, `openapi.yaml`)          |
 | `browser`     | nécessite l'extra `[browser]` (Playwright)                        |
-| `vision`      | nécessite l'extra `[vision]` (onnxruntime, opencv)                |
-| `agent`       | nécessite l'extra `[agent]` (anthropic)                           |
+| `cognition`   | nécessite l'extra `[cognition]` (anthropic, pillow)               |
+| `vision`      | nécessite l'extra `[vision]` (grounder local optionnel : onnxruntime, opencv) |
 | `slow`        | test lent, exclu des exécutions rapides                           |
 
 Appliquer un marker au niveau module : `pytestmark = pytest.mark.unit`.
@@ -72,7 +72,7 @@ playwright = pytest.importorskip("playwright")  # skip si l'extra [browser] n'es
 ```
 
 Résultat : la suite reste verte sans dépendances lourdes. La CI n'installe que `.[dev]` ; les tests
-`browser` / `vision` / `agent` sont donc skippés. Un job dédié (installant l'extra + `playwright
+`browser` / `cognition` / `vision` sont donc skippés. Un job dédié (installant l'extra + `playwright
 install`) pourra les activer plus tard sans rien changer d'autre.
 
 ## Couverture

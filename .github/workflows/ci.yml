@@ -30,7 +30,7 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       # Base install stays light; heavy Act extras are not needed, tests marked
-      # browser/vision/agent skip themselves when their dependency is absent.
+      # browser/cognition/vision skip themselves when their dependency is absent.
       - run: python -m pip install -e ".[dev]"
       - run: make lint
       - run: make typecheck

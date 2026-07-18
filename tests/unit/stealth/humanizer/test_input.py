@@ -65,6 +65,36 @@ def test_scroll_by_drives_the_wheel() -> None:
     assert page.mouse.wheel.called
 
 
+def test_click_at_uses_gesture_mouse_when_enabled() -> None:
+    human, page = _human(StealthPolicy(mouse="gestures"))
+    human.click_at(50.0, 60.0)
+    assert page.mouse.move.called  # travelled a replayed gesture to the point
+    page.mouse.down.assert_called_once()
+    page.mouse.click.assert_not_called()
+
+
+def test_click_at_falls_back_to_plain_mouse_click_when_mouse_off() -> None:
+    human, page = _human(StealthPolicy(keyboard="human"))
+    human.click_at(50.0, 60.0)
+    page.mouse.click.assert_called_once_with(50.0, 60.0)
+    page.mouse.down.assert_not_called()
+
+
+def test_type_at_clicks_then_types_humanly() -> None:
+    human, page = _human(StealthPolicy(mouse="gestures", keyboard="human"))
+    human.type_at(50.0, 60.0, "ab")
+    page.mouse.down.assert_called_once()  # focused the point through the humanized click
+    typed = [c.args[0] for c in page.keyboard.type.call_args_list]
+    assert typed == ["a", "b"]  # keyboard humanizer types char by char
+
+
+def test_type_at_without_keyboard_feature_uses_plain_type() -> None:
+    human, page = _human(StealthPolicy())  # everything off
+    human.type_at(50.0, 60.0, "hi")
+    page.mouse.click.assert_called_once_with(50.0, 60.0)
+    page.keyboard.type.assert_called_once_with("hi")
+
+
 def test_park_is_noop_without_mouse() -> None:
     human, page = _human(StealthPolicy(keyboard="human"))  # mouse off
     human.park()

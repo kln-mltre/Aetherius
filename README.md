@@ -422,10 +422,10 @@ typées (jamais avalées) ; les Acts sont des drivers interchangeables derrière
 ## Installation (cible)
 
 ```bash
-pip install aetherius            # cœur + Act I (Vector) + daemon + Console
-pip install aetherius[browser]   # + Act II (Continuum)
-pip install aetherius[vision]    # + Act III (Oracle)
-pip install aetherius[agent]     # + Act IV (Phantom)
+pip install aetherius             # cœur + Act I (Vector) + daemon + Console
+pip install aetherius[browser]    # + Act II (Continuum)
+pip install aetherius[cognition]  # + Acts III/IV (Oracle, Phantom) : cognition Claude par défaut
+pip install aetherius[vision]     # optionnel : grounder local (ONNX/VLM) derrière la même interface
 pip install aetherius[all]
 ```
 
@@ -607,7 +607,7 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   `examples/vector/http-headers-identity.blueprint.json`. [docs/stealth.md](docs/stealth.md),
   [docs/phase-1.5/h-fingerprint.md](docs/phase-1.5/h-fingerprint.md).
 
-### Phase 2 — Autonomie & Contrôle (à venir)
+### Phase 2 — Autonomie & Contrôle (en cours)
 
 Cadrage complet et **spécifications par jalon** : [docs/phase-2/](docs/phase-2/README.md). La phase
 livre les **Acts cognitifs** et rend le bot à la fois plus **autonome** (il gère les parties non
@@ -615,8 +615,18 @@ scriptées, voit l'écran, s'auto-répare) et plus **pilotable** (il demande une
 distance). Oracle est **redéfini** : ciblage par **grounding VLM** (Claude par défaut, modèle local
 optionnel), sans entraînement obligatoire.
 
-- [ ] **2-A** — Substrat de perception & cognition (`CognitionProvider`, cible unifiée, clic par
-  coordonnées à travers le stealth). Fondation de 2-B et 2-C.
+- [x] **2-A** — Substrat de perception & cognition : la fondation partagée d'Oracle et Phantom.
+  Interface `CognitionProvider` ségrégée en trois rôles (`Grounder`/`Extractor`/`Planner`),
+  `ClaudeProvider` par défaut — grounding et extraction sémantique par **tool use forcé** (réponse
+  structurée, un appel par cible, `claude-opus-4-8` écrasé par `vision.model`) —, `LocalGrounder`
+  optionnel derrière la même interface, résolution `vision.provider` (`claude`/`local`).
+  Perception de page en **pixels CSS** (`capture` : screenshot `scale="css"`, DOM optionnel),
+  cible unifiée `Target` (sélecteur **ou** `{vision: "description"}`), et **clic par coordonnées à
+  travers le stealth** (`HumanInput.click_at`/`type_at`, gestes rejoués + timing humain, vérifié
+  sur Chromium réel). Extras refondus : `[cognition]` (anthropic + pillow, absorbe `[agent]`),
+  `[vision]` repositionné en grounder local. `import aetherius` reste léger.
+  [docs/cognition.md](docs/cognition.md),
+  [docs/phase-2/2-a-cognition.md](docs/phase-2/2-a-cognition.md).
 - [ ] **2-B** — Act III Oracle (ciblage `{vision}` + extraction sémantique `read`).
 - [ ] **2-C** — Act IV Phantom (agent orienté objectif, planner Claude).
 - [ ] **2-D** — Composition multi-Act par step + self-healing (fallback II→III→IV, un seul navigateur

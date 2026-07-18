@@ -31,7 +31,7 @@ test: ## Run the full Python test suite with coverage
 	pytest --cov=aetherius --cov-report=term-missing
 
 test-fast: ## Run only the fast tests (skip heavy extras and slow tests)
-	pytest -m "not browser and not vision and not agent and not slow"
+	pytest -m "not browser and not vision and not cognition and not slow"
 
 test-browser: ## Run the browser tests (Act II) against a real Chromium; needs the [browser] extra
 	pytest -m browser

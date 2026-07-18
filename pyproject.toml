@@ -41,15 +41,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-browser = ["playwright>=1.44"]                 # Act II - Continuum
-vision  = ["onnxruntime>=1.17", "pillow>=10.3", "opencv-python-headless>=4.9", "numpy>=1.26"]  # Act III - Oracle
-agent   = ["anthropic>=0.25"]                  # Act IV - Phantom (default planner)
-stealth = ["numpy>=1.26"]                      # gesture math
-network = ["socksio>=1.0", "curl_cffi>=0.6"]   # Jalon G: SOCKS5 proxies + browser-TLS impersonation (JA3/JA4)
-all     = [
+browser   = ["playwright>=1.44"]               # Act II - Continuum
+cognition = ["anthropic>=0.40", "pillow>=10.3"]  # Acts III/IV default path: Claude grounding/extraction/planner (absorbs the old [agent])
+vision    = ["onnxruntime>=1.17", "pillow>=10.3", "opencv-python-headless>=4.9", "numpy>=1.26"]  # optional local grounder (ONNX/VLM), advanced path
+stealth   = ["numpy>=1.26"]                    # gesture math
+network   = ["socksio>=1.0", "curl_cffi>=0.6"] # Jalon G: SOCKS5 proxies + browser-TLS impersonation (JA3/JA4)
+all       = [
   "playwright>=1.44",
-  "onnxruntime>=1.17", "pillow>=10.3", "opencv-python-headless>=4.9", "numpy>=1.26",
-  "anthropic>=0.25",
+  "anthropic>=0.40", "pillow>=10.3",
+  "onnxruntime>=1.17", "opencv-python-headless>=4.9", "numpy>=1.26",
   "socksio>=1.0", "curl_cffi>=0.6",
 ]
 dev = [
@@ -92,6 +92,7 @@ module = [
   "jsonpath_ng.*", "jsonschema.*", "yaml.*", "parsel.*", "tenacity.*", "playwright.*",
   "croniter.*",  # no upstream stubs; the scheduler wraps it behind typed helpers
   "curl_cffi.*",  # Jalon G: optional [network] extra, imported lazily for TLS impersonation
+  "anthropic.*", "PIL.*",  # Jalon 2-A: optional [cognition] extra, imported lazily by ClaudeProvider
 ]
 ignore_missing_imports = true
 
@@ -106,8 +107,8 @@ markers = [
   "integration: spans several modules or the daemon",
   "contracts: guards the language-agnostic contracts (JSON Schema, OpenAPI, events)",
   "browser: requires the [browser] extra (Playwright)",
-  "vision: requires the [vision] extra (onnxruntime, opencv)",
-  "agent: requires the [agent] extra (anthropic)",
+  "cognition: requires the [cognition] extra (anthropic, pillow)",
+  "vision: requires the [vision] extra (onnxruntime, opencv - optional local grounder)",
   "slow: long-running test, excluded from fast runs",
 ]
 

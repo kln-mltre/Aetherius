@@ -110,7 +110,10 @@ profil) : l'ancienne limite « UA-CH drift » notée dans `profile.py` est levé
     point par point, clic off-center, micro-pauses, `park` du curseur vers le bas pendant les
     attentes) ;
   - `input.py` : façade `HumanInput` (click/hover/fill/type/scroll), l'unique objet manipulé par
-    l'Act. Chaque méthode dégrade par feature (souris off → clic Playwright brut, etc.).
+    l'Act. Chaque méthode dégrade par feature (souris off → clic Playwright brut, etc.). Depuis le
+    Jalon 2-A, la façade porte aussi le **chemin coordonnées** des Acts cognitifs — `click_at(x, y)`
+    et `type_at(x, y, text)` : mêmes gestes rejoués et même timing d'appui que le clic par locator,
+    dégradation en `page.mouse.click` sinon (voir [docs/cognition.md](cognition.md)).
 - **[`gestures/`](../src/aetherius/stealth/gestures/)** — `library.py` (`GestureLibrary` :
   chargement, downsampling, analyse distance/angle, `best_match`) **source-agnostique**, et
   `seed.py` (générateur déterministe du seed).

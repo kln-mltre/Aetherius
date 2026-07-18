@@ -108,6 +108,17 @@ class DependencyError(AetheriusError):
         self.extra = extra
 
 
+# ── Cognition ─────────────────────────────────────────────────────────────────
+
+
+class CognitionError(AetheriusError):
+    """Cognition-provider failure: unknown provider name, unsupported role, unusable model reply.
+
+    Raised by ``models.registry.resolve_provider`` and the concrete providers. A missing optional
+    dependency raises ``DependencyError`` instead, so the fix (install the extra) stays explicit.
+    """
+
+
 # ── Notifications ─────────────────────────────────────────────────────────────
 
 

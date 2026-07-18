@@ -129,13 +129,28 @@ class HumanMouse:
             box["y"] + box["height"] * self._rng.uniform(*_CLICK_BAND),
         )
 
-    def click(self, locator: Any) -> None:
-        """Move to *locator* and click it with randomized reaction and hold timing."""
-        self.move_to_locator(locator)
+    def _press(self) -> None:
+        """Press-and-release at the current position with randomized reaction and hold timing."""
         self._sleep(self._rng.uniform(0.05, 0.1))  # reaction time after arrival
         self._page.mouse.down()
         self._sleep(self._rng.uniform(0.05, 0.1))  # natural press-hold variance
         self._page.mouse.up()
+
+    def click(self, locator: Any) -> None:
+        """Move to *locator* and click it with randomized reaction and hold timing."""
+        self.move_to_locator(locator)
+        self._press()
+
+    def click_at(self, x: float, y: float) -> None:
+        """Move to ``(x, y)`` along a replayed gesture and click there.
+
+        The coordinate-based entry point for the cognitive Acts: a grounder resolves a described
+        element to a viewport point, and this clicks it with the same human motion and timing as
+        a locator click. Off-center placement within the element is the caller's job — it knows
+        the box, this method only knows the point.
+        """
+        self.move_to(x, y)
+        self._press()
 
     def park(self) -> None:
         """Idle the cursor near the bottom of the viewport, away from interactive elements.

@@ -18,12 +18,12 @@ from ..runtime.result import Result, RunStatus, StepResult
 from ..runtime.steps import run_steps
 
 
-IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector", "continuum"})
+IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector", "continuum", "oracle"})
 
 
 def _make_driver(act: str) -> Any:
     # Drivers are imported lazily so `import aetherius` never pulls in an Act's heavy
-    # dependencies (Playwright, ONNX, ...). Each driver defers its own extra to runtime.
+    # dependencies (Playwright, Anthropic, ...). Each driver defers its own extra to runtime.
     if act == "vector":
         from ...acts.vector.driver import VectorDriver
 
@@ -32,6 +32,10 @@ def _make_driver(act: str) -> Any:
         from ...acts.continuum.driver import ContinuumDriver
 
         return ContinuumDriver()
+    if act == "oracle":
+        from ...acts.oracle.driver import OracleDriver
+
+        return OracleDriver()
     raise ActionError(f"Act {act!r} is not implemented yet. Available: {sorted(IMPLEMENTED_ACTS)}.")
 
 

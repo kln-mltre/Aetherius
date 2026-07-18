@@ -42,7 +42,7 @@ navigable.
 
 Library reflète cet état réel via [`library_scan.py::entry_status`](../src/aetherius/console/screens/library_scan.py) :
 **ready** (schéma valide et Act runnable), **act pending** (bien formé mais Act sans driver, ex.
-Oracle) ou **invalid** (erreur de schéma ou d'action). Les badges d'Act suivent la même logique
+Phantom) ou **invalid** (erreur de schéma ou d'action). Les badges d'Act suivent la même logique
 (`theme.act_color`) : un Act runnable porte sa couleur, un Act en attente reste gris — dérivé de
 `IMPLEMENTED_ACTS`, donc jamais à re-maintenir à la main. Côté Runs, un secret déjà présent dans
 `.env` s'affiche « loaded from .env » et peut être laissé vide (voir [docs/secrets.md](secrets.md)).

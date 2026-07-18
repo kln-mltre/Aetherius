@@ -30,6 +30,34 @@ Configure le fournisseur de cognition des Acts cognitifs (le schéma accepte ces
 
 Détails et résolution : [docs/cognition.md](cognition.md).
 
+## Ciblage : `selector` ou `target: {vision}`
+
+Les actions interactives (`click`, `type`, `upload`, `hover`, `wait_for`) visent soit un
+**sélecteur DOM** (`selector` + `selector_type` optionnel : `css`/`xpath`/`text` — résolu par
+Continuum), soit une **description en langage naturel** résolue par grounding VLM (Act III+) :
+
+```json
+{ "action": "click", "selector": "#submit" }
+{ "action": "click", "target": { "vision": "the Post button" } }
+```
+
+La forme imbriquée `target: {selector, selector_type}` est aussi acceptée. Un step qui porte à la
+fois un sélecteur **et** une description vision est rejeté (cible ambiguë). Les steps ciblés par
+vision acceptent `min_confidence` (défaut 0.5). Sémantique complète, seuil et coût :
+[docs/acts/oracle.md](acts/oracle.md).
+
+### `read` (extraction sémantique, Act III+)
+
+`{"action": "read", "vision": "<description>", "schema": {...}}` lit l'écran et rend des données
+structurées : avec `schema` (objet JSON Schema), les champs deviennent les sorties du step
+(`{{ steps.x.<champ> }}`) ; sans, la valeur libre arrive sous `{{ steps.x.data }}`.
+
+### `wait`
+
+`{"action": "wait", "ms": 1000}` pour une pause fixe, ou `{"min_ms": 2000, "max_ms": 4500}` (sans
+`ms`) pour une durée **aléatoire uniforme** dans l'intervalle — la pause non déterministe des
+Blueprints furtifs, disponible sur tous les Acts.
+
 ## Interpolation
 
 La syntaxe `{{ ... }}` résout, au runtime, `inputs.*`, `secrets.*`, `vars.*`, `env.*` et les sorties

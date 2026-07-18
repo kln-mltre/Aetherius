@@ -33,7 +33,7 @@ def test_actions_for_vector_cover_its_capabilities() -> None:
 
 
 def test_actions_for_a_pending_act_are_all_unrunnable() -> None:
-    assert all(not i.runnable for i in actions_for_act("oracle"))
+    assert all(not i.runnable for i in actions_for_act("phantom"))
 
 
 def test_unknown_act_raises() -> None:

@@ -8,6 +8,20 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 2-B — Act III Oracle** ([docs/acts/oracle.md](docs/acts/oracle.md)) : `act: "oracle"` est
+  **runnable**. `OracleDriver` **étend** le driver Continuum (un seul navigateur, une seule
+  discrétion, steps à sélecteur inchangés) et route les cibles vision : `click`/`type`/`upload`/
+  `hover`/`wait_for` acceptent `target: {vision: "description"}` — capture en pixels CSS →
+  grounding (un appel par cible, seuil de confiance 0.5 ajustable par `min_confidence`) → action
+  par coordonnées off-center (bande 30–70 %) via la façade stealth (`HumanInput` gagne
+  `hover_at`). `wait_for` par vision sonde l'écran (un grounding par sonde, `on_timeout:
+  "fail:CODE"` honoré) ; `upload` alimente le file chooser ouvert par le clic. Nouvelle action
+  **`read`** (extraction sémantique, capability + spec `core/actions/vision.py`) : avec `schema`
+  les champs deviennent les sorties du step, sans schéma la valeur arrive sous `data`. Contrat
+  documenté sans changement structurel (`target`, `vision.provider`) ; le Studio accepte les steps
+  ciblés par vision. Exemple zéro config : `examples/oracle/quotes-vision-demo.blueprint.json`.
+- **Action `wait` : plage aléatoire** — sans `ms`, `min_ms`/`max_ms` tirent une durée uniforme
+  dans l'intervalle (act-agnostique) ; le gabarit fondateur `tiktok-upload` devient exact.
 - **Jalon 2-A — Substrat de perception & cognition** ([docs/cognition.md](docs/cognition.md)) : la
   fondation partagée des Acts cognitifs. `ClaudeProvider` implémente le **grounding** (`locate` :
   description → `Box` + confiance) et l'**extraction sémantique** (`read`, schéma optionnel) par

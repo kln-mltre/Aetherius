@@ -108,8 +108,9 @@ que les Acts cognitifs pilotent :
   le clavier l'est).
 
 Le placement **off-center** dans l'élément reste la responsabilité de l'appelant : lui connaît la
-`Box`, `click_at` ne connaît que le point (Oracle choisira un point dans la bande 30–70 % de la
-boîte groundée, Jalon 2-B).
+`Box`, `click_at` ne connaît que le point (Oracle choisit un point dans la bande 30–70 % de la
+boîte groundée — `oracle/locator.py::point_in_box`). La façade offre aussi `hover_at(x, y)`
+(survol par coordonnées, même dégradation par feature).
 
 ## Extras
 
@@ -123,11 +124,11 @@ providers, jamais au chargement (gardé par `tests/unit/test_public_api.py`).
 
 ## Limites connues (voulues)
 
-- **Aucune capacité utilisateur seule** : le ciblage `{vision}` et l'action `read` ne sont câblés
-  dans le dictionnaire d'actions et un driver qu'au Jalon 2-B ; le `plan` de Claude arrive avec
-  Phantom (2-C/2-D).
-- **Grounder local** : interface en place, inférence différée (2-B+) ; `models/store/` est réservé
-  à ses assets.
+- **Le ciblage `{vision}` et l'action `read` sont câblés depuis le Jalon 2-B** : Oracle (Act III)
+  les consomme — seuil de confiance, point off-center et sémantique des sorties sont documentés
+  dans [docs/acts/oracle.md](acts/oracle.md). Le `plan` de Claude arrive avec Phantom (2-C/2-D).
+- **Grounder local** : interface en place (`vision.provider: "local"`), inférence différée ;
+  `models/store/` est réservé à ses assets.
 - **`read` avec schéma** : le schéma doit décrire un objet JSON (c'est l'`input_schema` d'un tool).
 
 ## Tester le substrat

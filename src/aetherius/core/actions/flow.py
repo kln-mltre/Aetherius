@@ -14,8 +14,20 @@ from .spec import ActionSpec, ParamSpec
 SPECS: Final[tuple[ActionSpec, ...]] = (
     ActionSpec(
         "wait",
-        "Pause for a fixed number of milliseconds.",
-        params=(ParamSpec("ms", "number", help="Milliseconds to wait.", placeholder="1000"),),
+        "Pause for a fixed duration, or a random one drawn from a range.",
+        params=(
+            ParamSpec("ms", "number", help="Milliseconds to wait.", placeholder="1000"),
+            ParamSpec(
+                "min_ms",
+                "number",
+                help="With max_ms and no ms: lower bound of a uniform random wait.",
+            ),
+            ParamSpec(
+                "max_ms",
+                "number",
+                help="With min_ms and no ms: upper bound of a uniform random wait.",
+            ),
+        ),
     ),
     ActionSpec(
         "wait_for",

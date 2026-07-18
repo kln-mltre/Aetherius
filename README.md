@@ -254,8 +254,9 @@ aetherius            # ouvre la Console
 > **État actuel** : la Console est navigable de bout en bout. Library, Runs, **Schedules** (runs
 > récurrents : liste, tir manuel, historique, création guidée), Catalog, le **Recorder**, le
 > **Blueprint Studio** et **Settings** (démarrer/arrêter le daemon) sont pleinement fonctionnels
-> pour Act I (Vector) et Act II (Continuum, avec l'extra `[browser]`) ; seul **Sessions** affiche
-> honnêtement son jalon en attente (stealth/session). Détails : [docs/console.md](docs/console.md).
+> pour Act I (Vector), Act II (Continuum, extra `[browser]`) et Act III (Oracle, extras
+> `[cognition]`+`[browser]`) ; seul **Sessions** affiche honnêtement son jalon en attente
+> (stealth/session). Détails : [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
 - **Créer et éditer des Blueprints** via le **Blueprint Studio** (voir plus bas).
@@ -627,7 +628,19 @@ optionnel), sans entraînement obligatoire.
   `[vision]` repositionné en grounder local. `import aetherius` reste léger.
   [docs/cognition.md](docs/cognition.md),
   [docs/phase-2/2-a-cognition.md](docs/phase-2/2-a-cognition.md).
-- [ ] **2-B** — Act III Oracle (ciblage `{vision}` + extraction sémantique `read`).
+- [x] **2-B** — Act III Oracle : `oracle` est **runnable**. Ciblage par description en langage
+  naturel (`target: {vision}`) sur `click`/`type`/`upload`/`hover`/`wait_for` : capture en pixels
+  CSS → grounding (un appel par cible, seuil de confiance 0.5, `min_confidence` par step) → action
+  par coordonnées **off-center (bande 30–70 %) à travers le stealth** (`hover_at` rejoint la façade
+  `HumanInput`) ; `wait_for` par vision sonde l'écran (un grounding par sonde), `upload` alimente le
+  file chooser ouvert par le clic. Action **`read`** (extraction sémantique) : `vision` + `schema`
+  objet → les champs deviennent les sorties du step, sans schéma → valeur sous `data`.
+  `OracleDriver` **étend** le driver Continuum — un seul navigateur, une seule discrétion, steps à
+  sélecteur inchangés. Capability `read` (specs `core/actions/vision.py`, hint « requires
+  act='oracle' »), et l'action `wait` gagne `min_ms`/`max_ms` (durée aléatoire uniforme,
+  act-agnostique). Exemple zéro config : `examples/oracle/quotes-vision-demo.blueprint.json`
+  (vérifié en réel, Claude + Chromium). [docs/acts/oracle.md](docs/acts/oracle.md),
+  [docs/phase-2/2-b-oracle.md](docs/phase-2/2-b-oracle.md).
 - [ ] **2-C** — Act IV Phantom (agent orienté objectif, planner Claude).
 - [ ] **2-D** — Composition multi-Act par step + self-healing (fallback II→III→IV, un seul navigateur
   partagé).

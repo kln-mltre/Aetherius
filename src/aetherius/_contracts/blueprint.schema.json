@@ -40,8 +40,17 @@
     "options": { "$ref": "#/$defs/options" },
     "vision": {
       "type": "object",
-      "description": "Vision configuration for Oracle/Phantom.",
-      "properties": { "model": { "type": "string" } },
+      "description": "Cognition configuration for Oracle/Phantom (see docs/cognition.md).",
+      "properties": {
+        "provider": {
+          "enum": ["claude", "local"],
+          "description": "Cognition backend: claude (default, [cognition] extra) or local ([vision] extra, on-device grounder)."
+        },
+        "model": {
+          "type": "string",
+          "description": "Model name, not backend: an Anthropic model id for claude, a local asset name@version for local."
+        }
+      },
       "additionalProperties": true
     },
     "goal": {
@@ -161,13 +170,28 @@
     },
     "step": {
       "type": "object",
-      "description": "A single action. Parameters depend on the action; extra properties are allowed and validated per-action by the engine.",
+      "description": "A single action. Parameters depend on the action; extra properties are allowed and validated per-action by the engine. Act III+ adds 'read' (semantic extraction: 'vision' description plus optional 'schema' object shaping the reply).",
       "properties": {
         "id": { "type": "string" },
         "action": { "type": "string" },
         "when": {
           "type": "string",
           "description": "Guard expression rendered before dispatch; the step is skipped unless it yields true/1/yes."
+        },
+        "target": {
+          "description": "Unified target of an interactive action. Either the drop selector of drag (string), or an object aiming at a DOM selector ({selector, selector_type}) or, on Act III+, at a natural-language description resolved by vision grounding ({vision}). Top-level 'selector' and 'target' are mutually exclusive on a step.",
+          "oneOf": [
+            { "type": "string", "description": "drag only: selector to drop onto." },
+            {
+              "type": "object",
+              "properties": {
+                "vision": { "type": "string", "description": "Natural-language description of the on-screen element (Act III+)." },
+                "selector": { "type": "string", "description": "DOM selector (nested form of the top-level 'selector')." },
+                "selector_type": { "enum": ["css", "xpath", "text"] }
+              },
+              "additionalProperties": true
+            }
+          ]
         },
         "then": {
           "type": "array",

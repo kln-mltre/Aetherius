@@ -66,6 +66,16 @@ class HumanInput:
         else:
             self.page.mouse.click(x, y)
 
+    def hover_at(self, x: float, y: float) -> None:
+        """Move the pointer to the viewport point ``(x, y)`` without clicking.
+
+        Humanized mouse on: the cursor travels a replayed gesture; off: a plain ``page.mouse.move``.
+        """
+        if self._mouse is not None:
+            self._mouse.move_to(x, y)
+        else:
+            self.page.mouse.move(x, y)
+
     def type_at(self, x: float, y: float, text: str) -> None:
         """Click ``(x, y)`` to focus whatever lives there, then enter *text* without clearing."""
         self.click_at(x, y)

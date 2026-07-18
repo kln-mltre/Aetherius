@@ -31,6 +31,7 @@ _CAPABILITY_ORIGIN: dict[str, str] = {
     "screenshot": "continuum",
     "evaluate": "continuum",
     "wait_for": "continuum",
+    "read": "oracle",
 }
 
 # Step fields holding nested step lists, per flow action.

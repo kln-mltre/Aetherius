@@ -44,6 +44,11 @@ class Capability(str, Enum):
     # See docs/notifications.md.
     NOTIFY = "notify"
 
+    # ── Vision (Act III+) ────────────────────────────────────────────────────
+    # Semantic extraction: read data off the screen described in natural language.
+    # See docs/acts/oracle.md.
+    READ = "read"
+
 
 _VECTOR_CAPS: frozenset[Capability] = frozenset(
     {
@@ -81,12 +86,16 @@ _CONTINUUM_CAPS: frozenset[Capability] = _VECTOR_CAPS | frozenset(
     }
 )
 
+# Oracle adds the vision capabilities on top of the full Continuum set: the same actions
+# (click/type/upload/hover/wait_for) accept a vision target, and `read` extracts semantically.
+_ORACLE_CAPS: frozenset[Capability] = _CONTINUUM_CAPS | frozenset({Capability.READ})
+
 ACT_CAPABILITIES: dict[str, frozenset[Capability]] = {
     "vector": _VECTOR_CAPS,
     "continuum": _CONTINUUM_CAPS,
-    # Oracle and Phantom inherit all Continuum capabilities plus vision-specific ones.
-    "oracle": _CONTINUUM_CAPS,
-    "phantom": _CONTINUUM_CAPS,
+    "oracle": _ORACLE_CAPS,
+    # Phantom is a superset of Oracle (goal-driven on the same substrate); refined in Jalon 2-C.
+    "phantom": _ORACLE_CAPS,
 }
 
 
@@ -108,4 +117,6 @@ FLOW_ACTIONS: frozenset[Capability] = frozenset(
 PENDING_ACTIONS: dict[str, frozenset[Capability]] = {
     "vector": frozenset({Capability.EXTRACT}),
     "continuum": frozenset({Capability.HTTP_REQUEST}),
+    # Inherited from the Continuum set; still not dispatched by any browser driver.
+    "oracle": frozenset({Capability.HTTP_REQUEST}),
 }

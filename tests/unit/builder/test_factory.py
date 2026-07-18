@@ -92,6 +92,16 @@ def test_valid_draft_has_no_issues() -> None:
     assert validate_draft(draft) == []
 
 
+def test_vision_targeted_step_satisfies_the_required_selector() -> None:
+    # An Oracle step aiming via target: {vision} carries no top-level selector; the Studio must
+    # not flag the spec's required 'selector' as missing (docs/acts/oracle.md).
+    draft = BlueprintDraft(name="t.vision", act="oracle")
+    draft.steps.append(
+        StepDraft(action="click", id="go", params={"target": {"vision": "the Login link"}})
+    )
+    assert validate_draft(draft) == []
+
+
 def test_build_blueprint_raises_on_invalid() -> None:
     with pytest.raises(BlueprintSchemaError):
         build_blueprint(BlueprintDraft())

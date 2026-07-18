@@ -94,10 +94,10 @@ def builtin_action_specs() -> dict[str, ActionSpec]:
     """
     global _builtin_specs
     if _builtin_specs is None:
-        from . import data, flow, interaction, navigation, notification
+        from . import data, flow, interaction, navigation, notification, vision
 
         collected: dict[str, ActionSpec] = {}
-        for module in (navigation, interaction, data, flow, notification):
+        for module in (navigation, interaction, data, flow, notification, vision):
             for spec in module.SPECS:
                 collected[spec.name] = spec
         _builtin_specs = collected

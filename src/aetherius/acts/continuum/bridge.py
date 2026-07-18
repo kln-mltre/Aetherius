@@ -26,8 +26,11 @@ def _is_timeout(exc: Exception) -> bool:
     return type(exc).__name__ == "TimeoutError"
 
 
-def _failure_code(on_timeout: Any) -> str | None:
-    """Parse ``"fail:CODE"`` into ``CODE``; anything else yields no code."""
+def failure_code(on_timeout: Any) -> str | None:
+    """Parse ``"fail:CODE"`` into ``CODE``; anything else yields no code.
+
+    Public: the Oracle driver reuses it for the vision form of ``wait_for``.
+    """
     if isinstance(on_timeout, str) and on_timeout.startswith("fail:"):
         return on_timeout.split(":", 1)[1] or None
     return None
@@ -142,7 +145,7 @@ def wait_for(page: Any, params: Mapping[str, Any], render: Renderer) -> dict[str
         page.locator(selector).first.wait_for(**kwargs)
     except Exception as exc:
         if _is_timeout(exc):
-            code = _failure_code(render(params.get("on_timeout")))
+            code = failure_code(render(params.get("on_timeout")))
             raise StepTimeoutError(
                 f"wait_for timed out for selector {selector!r}", code=code
             ) from exc

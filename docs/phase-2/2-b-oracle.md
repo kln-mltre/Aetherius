@@ -1,9 +1,11 @@
 # Jalon 2-B — Act III Oracle (ciblage vision + extraction sémantique)
 
-**Statut : à venir.** Premier Act cognitif. Exécute un Blueprint `oracle` : un **flux scripté** (comme
-Continuum) où les cibles sont des **descriptions en langage naturel** résolues par le Grounder, plus
-une **extraction sémantique** (lire des données en décrivant ce qu'on veut). Réutilise intégralement
-le navigateur + la discrétion de Continuum.
+**Statut : livré.** Doc définitive : [docs/acts/oracle.md](../acts/oracle.md). Premier Act cognitif :
+`oracle` est runnable — un **flux scripté** (comme Continuum) où les cibles sont des **descriptions
+en langage naturel** résolues par le Grounder (`OracleDriver` étend le driver Continuum : même
+navigateur, même discrétion), plus l'**extraction sémantique** `read`. Seuil de confiance et point
+off-center dans `oracle/locator.py` ; `wait_for` par vision sonde l'écran ; exemple zéro config
+`examples/oracle/quotes-vision-demo.blueprint.json` vérifié en réel (Claude + Chromium).
 
 ## Objectif
 

@@ -36,7 +36,7 @@ Architecture ([`recorder/`](../src/aetherius/recorder/)) :
 |-----|----------|---------|------|
 | **I — Vector** | ✅ | appels réseau (fetch/XHR/doc JSON) | `http.request` + extraction JSONPath |
 | **II — Continuum** | ✅ | interactions DOM + picks overlay | `navigate`/`click`/`fill`/… + `extract` |
-| **III — Oracle** | *(à venir)* | **annotation visuelle** (encadrer les cibles sur des captures) → alimente [`training/`](../training/) | cibles `vision` |
+| **III — Oracle** | *(à venir)* | **désignation en langage naturel** (décrire la cible, le VLM la localise — cf. [docs/acts/oracle.md](acts/oracle.md)) | cibles `target: {vision}` |
 | **IV — Phantom** | *(à venir)* | démonstration → `goal` | `goal`/`constraints` |
 
 Choix de l'Act **à la main** : `aetherius record … --act vector` (défaut `continuum`), ou le sélecteur

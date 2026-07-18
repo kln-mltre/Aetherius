@@ -9,7 +9,7 @@ import pytest
 from aetherius.acts.vector.client import VectorClient
 from aetherius.acts.vector.driver import VectorDriver
 from aetherius.core.blueprint.models import Blueprint
-from aetherius.core.errors import StatusAssertionError
+from aetherius.core.errors import ActionError, StatusAssertionError
 from aetherius.core.events.bus import EventBus
 from aetherius.core.events.sinks import NullSink
 from aetherius.core.runtime.context import RunContext
@@ -171,3 +171,35 @@ def test_wait_executes_without_sleeping(monkeypatch: pytest.MonkeyPatch) -> None
     step = bp.steps[0]
     driver.run_step(step, ctx, bus, lambda v: v)
     assert calls == [0.1]
+
+
+def test_wait_draws_a_random_duration_from_a_range(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Without 'ms', the duration is drawn uniformly from [min_ms, max_ms] (stealth-style pauses).
+    calls: list[float] = []
+    monkeypatch.setattr("aetherius.acts._shared.time.sleep", lambda s: calls.append(s))
+    monkeypatch.setattr("aetherius.acts._shared.random.uniform", lambda a, b: (a + b) / 2)
+    bp = Blueprint.model_validate(
+        {
+            "aetherius": "1.0",
+            "name": "t",
+            "act": "vector",
+            "steps": [{"action": "wait", "min_ms": 100, "max_ms": 300}],
+        }
+    )
+    driver = VectorDriver()
+    driver.run_step(bp.steps[0], _make_ctx(bp), _make_bus(), lambda v: v)
+    assert calls == [0.2]
+
+
+def test_wait_rejects_an_inverted_range() -> None:
+    bp = Blueprint.model_validate(
+        {
+            "aetherius": "1.0",
+            "name": "t",
+            "act": "vector",
+            "steps": [{"action": "wait", "min_ms": 300, "max_ms": 100}],
+        }
+    )
+    driver = VectorDriver()
+    with pytest.raises(ActionError, match="max_ms"):
+        driver.run_step(bp.steps[0], _make_ctx(bp), _make_bus(), lambda v: v)

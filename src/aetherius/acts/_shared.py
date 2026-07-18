@@ -8,6 +8,7 @@ duplicating it. Drivers dispatch to these from their own ``run_step`` ``match`` 
 
 from __future__ import annotations
 
+import random
 import time
 from typing import Any, Callable
 
@@ -58,7 +59,16 @@ class SharedActionsMixin:
 
     def _wait(self, step: StepModel, renderer: Callable[[Any], Any]) -> dict[str, Any]:
         p = step.extra_fields
-        ms: float = float(renderer(p.get("ms", 0)))
+        if "ms" in p:
+            ms: float = float(renderer(p.get("ms", 0)))
+        else:
+            # No fixed duration: draw uniformly from [min_ms, max_ms], the non-deterministic
+            # pause the stealth-minded Blueprints use (a fixed inter-step delay is a tell).
+            low = float(renderer(p.get("min_ms", 0)) or 0)
+            high = float(renderer(p.get("max_ms", low)) or low)
+            if high < low:
+                raise ActionError(f"wait: max_ms ({high:g}) must be >= min_ms ({low:g}).")
+            ms = random.uniform(low, high)
         if ms > 0:
             time.sleep(ms / 1000)
         return {}

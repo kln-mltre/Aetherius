@@ -40,6 +40,16 @@ def test_continuum_allows_navigate() -> None:
     validate_for_act(_make("continuum", ["navigate", "click", "http.request"]))
 
 
+def test_oracle_allows_read_and_the_continuum_set() -> None:
+    validate_for_act(_make("oracle", ["read", "navigate", "click", "wait_for"]))
+
+
+def test_read_below_oracle_is_rejected_with_a_hint() -> None:
+    for act in ("vector", "continuum"):
+        with pytest.raises(BlueprintValidationError, match="oracle"):
+            validate_for_act(_make(act, ["read"]))
+
+
 def test_error_names_the_step_and_act() -> None:
     bp = _make("vector", ["click"])
     with pytest.raises(BlueprintValidationError) as exc_info:

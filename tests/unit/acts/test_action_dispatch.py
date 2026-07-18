@@ -17,6 +17,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from aetherius.acts.continuum.driver import ContinuumDriver
+from aetherius.acts.oracle.driver import OracleDriver
 from aetherius.acts.vector.driver import VectorDriver
 from aetherius.core.actions.base import ACT_CAPABILITIES, FLOW_ACTIONS, PENDING_ACTIONS, Capability
 from aetherius.core.blueprint.models import Blueprint, StepModel
@@ -64,6 +65,23 @@ def _continuum_driver() -> ContinuumDriver:
     return driver
 
 
+def _oracle_driver() -> OracleDriver:
+    driver = OracleDriver()
+    session = MagicMock()
+    session.human = None
+    driver._session = session
+    driver._humanized = frozenset()
+    driver._provider = MagicMock()
+    return driver
+
+
+_DRIVER_FACTORIES: dict[str, Any] = {
+    "vector": _vector_driver,
+    "continuum": _continuum_driver,
+    "oracle": _oracle_driver,
+}
+
+
 def _unsupported_reason(driver: Any, action: str, ctx: RunContext) -> str | None:
     """Run a bare step; return the message iff the driver reported the action as unsupported."""
     try:
@@ -75,12 +93,12 @@ def _unsupported_reason(driver: Any, action: str, ctx: RunContext) -> str | None
     return None
 
 
-@pytest.mark.parametrize("act", ["vector", "continuum"])
+@pytest.mark.parametrize("act", ["vector", "continuum", "oracle"])
 def test_capabilities_dispatch_unless_pending(act: str, monkeypatch, tmp_path: Path) -> None:
     # Keep screenshot's artifact write inside the test's tmp dir, not the real data dir.
     monkeypatch.setattr("aetherius.acts.continuum.driver.run_dir", lambda run_id: tmp_path)
 
-    driver = _vector_driver() if act == "vector" else _continuum_driver()
+    driver = _DRIVER_FACTORIES[act]()
     ctx = _ctx(act)
     pending = PENDING_ACTIONS.get(act, frozenset())
 

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # Acts that are real Aetherius Acts but whose recorder is a later milestone (documented in
 # docs/recorder.md). Kept distinct from a plainly unknown act so the message can be specific.
 _PENDING_RECORDERS: dict[str, str] = {
-    "oracle": "visual annotation (bounding boxes on screenshots) feeding training/",
+    "oracle": "natural-language target designation (describe the element, the VLM grounds it)",
     "phantom": "goal-based demonstration",
 }
 

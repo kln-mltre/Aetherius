@@ -1,0 +1,41 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.oracle.vision-demo",
+  "description": "Act III (Oracle) : cibler par description en langage naturel et lire l'ecran semantiquement. Zero config sur une page publique autorisee ; requiert les extras [cognition]+[browser] et la cle moteur ANTHROPIC_API_KEY (env ou .env, jamais un secret de Blueprint).",
+  "act": "oracle",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": { "timeout_ms": 30000 },
+  "steps": [
+    { "id": "home", "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "id": "goto_login",
+      "action": "click",
+      "target": { "vision": "the Login link in the top navigation bar" }
+    },
+    {
+      "id": "login_form",
+      "action": "wait_for",
+      "target": { "vision": "the username input field of the login form" },
+      "timeout_ms": 25000,
+      "on_timeout": "fail:LOGIN_FORM_NOT_SEEN"
+    },
+    {
+      "id": "form",
+      "action": "read",
+      "vision": "the labels of the login form fields and the text of the submit button",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "field_labels": { "type": "array", "items": { "type": "string" } },
+          "submit_text": { "type": "string" }
+        },
+        "required": ["field_labels", "submit_text"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "outputs": {
+    "field_labels": "{{ steps.form.field_labels }}",
+    "submit_text": "{{ steps.form.submit_text }}"
+  }
+}

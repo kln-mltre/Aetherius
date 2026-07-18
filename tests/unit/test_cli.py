@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -44,7 +45,6 @@ def test_validate_accepts_a_well_formed_vector_blueprint(examples_dir: Path) -> 
 
 
 def test_validate_accepts_a_well_formed_oracle_blueprint(examples_dir: Path) -> None:
-    # act=oracle is structurally valid even though it is not runnable yet.
     result = runner.invoke(
         app, ["validate", str(examples_dir / "oracle" / "tiktok-upload.blueprint.json")]
     )
@@ -86,9 +86,14 @@ def test_run_rejects_malformed_input_pair(examples_dir: Path) -> None:
     assert result.exit_code != 0
 
 
-def test_run_reports_unimplemented_act_cleanly(examples_dir: Path) -> None:
-    # act=oracle has no driver yet: the engine must reject it cleanly (Continuum, act=II, now runs).
-    blueprint = examples_dir / "oracle" / "tiktok-upload.blueprint.json"
+def test_run_reports_unimplemented_act_cleanly(tmp_path: Path) -> None:
+    # act=phantom has no driver yet (Jalon 2-C): the engine must reject it cleanly.
+    blueprint = tmp_path / "goal.blueprint.json"
+    blueprint.write_text(
+        json.dumps(
+            {"aetherius": "1.0", "name": "t.phantom", "act": "phantom", "goal": "do something"}
+        )
+    )
 
     result = runner.invoke(app, ["run", str(blueprint)])
 

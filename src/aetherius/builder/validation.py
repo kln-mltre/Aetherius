@@ -58,6 +58,13 @@ def _missing(value: Any) -> bool:
     return False
 
 
+def _has_unified_target(params: dict[str, Any]) -> bool:
+    """True when the step aims via the unified ``target`` object (vision description or nested
+    selector), which satisfies a spec's required ``selector`` (see core/runtime/selector.py)."""
+    target = params.get("target")
+    return isinstance(target, dict) and ("vision" in target or "selector" in target)
+
+
 def _semantic_issues(draft: "BlueprintDraft") -> list[ValidationIssue]:
     """Act/action rules the JSON Schema deliberately leaves open (steps are additionalProperties)."""
     issues: list[ValidationIssue] = []
@@ -94,6 +101,8 @@ def _semantic_issues(draft: "BlueprintDraft") -> list[ValidationIssue]:
                 )
                 continue
         for param in specs[action].required_params():
+            if param.name == "selector" and _has_unified_target(step.params):
+                continue
             if _missing(step.params.get(param.name)):
                 issues.append(
                     ValidationIssue("error", f"{base}.{param.name}", f"'{param.name}' is required.")

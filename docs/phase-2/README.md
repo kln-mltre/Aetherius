@@ -94,7 +94,7 @@ son exemple exécutable.
 | Jalon | Spécification | Dépend de | Résumé |
 |-------|---------------|-----------|--------|
 | 2-A | [2-a-cognition.md](2-a-cognition.md) | — (Act II) | **Livré.** Substrat perception + cognition (`CognitionProvider`, `Target` unifié, `HumanInput.click_at`, résolution de provider). Fondation de 2-B et 2-C. Doc : [docs/cognition.md](../cognition.md). |
-| 2-B | [2-b-oracle.md](2-b-oracle.md) | 2-A | **À venir.** Act III Oracle : ciblage `{vision}` + action `read` (extraction sémantique), réutilise le navigateur + stealth de Continuum. |
+| 2-B | [2-b-oracle.md](2-b-oracle.md) | 2-A | **Livré.** Act III Oracle runnable : ciblage `{vision}` sur click/type/upload/hover/wait_for + action `read` (extraction sémantique) ; `OracleDriver` étend Continuum (un seul navigateur, une seule discrétion). Doc : [docs/acts/oracle.md](../acts/oracle.md). |
 | 2-C | [2-c-phantom.md](2-c-phantom.md) | 2-A | **À venir.** Act IV Phantom : agent orienté objectif (`goal`/`constraints`), boucle percevoir→raisonner→agir, planner Claude. |
 | 2-D | [2-d-composition.md](2-d-composition.md) | 2-B, 2-C | **À venir.** `act` par step + self-healing (fallback II→III→IV), un seul navigateur partagé. |
 | 2-E | [2-e-human-in-loop.md](2-e-human-in-loop.md) | 1.5-A, 1.5-C, daemon | **À venir.** Action `confirm` : run garé jusqu'à décision humaine (console / API / notification), timeout + `on_timeout`. Orthogonal aux Acts. |

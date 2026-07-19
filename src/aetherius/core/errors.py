@@ -119,6 +119,18 @@ class CognitionError(AetheriusError):
     """
 
 
+# ── Agent (Phantom) ───────────────────────────────────────────────────────────
+
+
+class AgentError(AetheriusError):
+    """The Phantom agent stopped without reaching its goal.
+
+    Raised by the perceive->reason->act loop when the planner aborts (goal impossible or a
+    constraint forbids continuing) or the step budget is exhausted. Being an ``AetheriusError``,
+    the engine records it as a clean run failure with the explanation, never a traceback.
+    """
+
+
 # ── Notifications ─────────────────────────────────────────────────────────────
 
 

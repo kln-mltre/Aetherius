@@ -9,7 +9,8 @@ tels quels, sans identifiant réel.
 examples/
   vector/       Act I  — HTTP/API (le plus rapide, pas de navigateur)
   continuum/    Act II — navigateur scripté (Playwright)
-  oracle/       Act III — vision + discrétion (jalon à venir)
+  oracle/       Act III — vision + discrétion (ciblage {vision} + read)
+  phantom/      Act IV — agent autonome orienté objectif (goal/constraints)
   plugins/      Extension par paquet tiers : action + canal custom (Jalon 1.5-E)
 ```
 
@@ -57,9 +58,24 @@ formulaire) l'emporte toujours sur l'environnement.
 
 ## Act III — Oracle
 
+Requiert les extras `[cognition]`+`[browser]` et la clé moteur `ANTHROPIC_API_KEY` (env ou `.env`,
+jamais un secret de Blueprint). Voir [docs/acts/oracle.md](../docs/acts/oracle.md).
+
 | Fichier | Ce qu'il montre |
 |---------|-----------------|
-| [`oracle/tiktok-upload.blueprint.json`](oracle/tiktok-upload.blueprint.json) | Cibles par vision + discrétion. Non exécutable tant qu'Oracle n'est pas implémenté ; sert de référence de format. |
+| [`oracle/quotes-vision-demo.blueprint.json`](oracle/quotes-vision-demo.blueprint.json) | Ciblage `{vision}` (`click`/`wait_for`) + action `read` avec `schema`. Zéro config sur quotes.toscrape.com. |
+| [`oracle/books-scan-below-fold.blueprint.json`](oracle/books-scan-below-fold.blueprint.json) | Recherche par défilement : une cible vision hors du viewport est trouvée en scrollant. Zéro config sur books.toscrape.com. |
+| [`oracle/tiktok-upload.blueprint.json`](oracle/tiktok-upload.blueprint.json) | Gabarit de référence (service privé) : `upload`/`type` ciblés par vision + discrétion. Non exécutable tel quel. |
+
+## Act IV — Phantom
+
+Agent autonome orienté **objectif** : le Blueprint déclare un `goal` et des `constraints` (pas de
+`steps`), et l'agent boucle percevoir → raisonner → agir. Mêmes extras et clé moteur qu'Oracle.
+Voir [docs/acts/phantom.md](../docs/acts/phantom.md).
+
+| Fichier | Ce qu'il montre |
+|---------|-----------------|
+| [`phantom/quotes-find-author.blueprint.json`](phantom/quotes-find-author.blueprint.json) | Objectif « trouve la première citation de l'auteur X » sur quotes.toscrape.com, borné par `options.agent.max_steps`. Sans `outputs` déclarés : le résultat de l'agent est renvoyé tel quel. Zéro config (`--input author=...` pour changer d'auteur). |
 
 ## Plugins
 

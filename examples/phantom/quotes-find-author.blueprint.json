@@ -1,0 +1,18 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.phantom.find-author",
+  "description": "Act IV (Phantom) : agent autonome oriente objectif. Sans steps, il percoit -> raisonne -> agit en boucle jusqu'a trouver la premiere citation d'un auteur. Zero config sur une page publique autorisee ; requiert les extras [cognition]+[browser] et la cle moteur ANTHROPIC_API_KEY (env ou .env, jamais un secret de Blueprint).",
+  "act": "phantom",
+  "inputs": {
+    "author": { "type": "string", "required": true, "default": "Albert Einstein" }
+  },
+  "goal": "On the website https://quotes.toscrape.com, find the first quote attributed to {{ inputs.author }}. Read the quote text and the author's name, then finish with an object shaped as {\"quote\": <the quote text>, \"author\": <the author name>}.",
+  "constraints": [
+    "Stay on the quotes.toscrape.com domain.",
+    "Do not log in or submit any form."
+  ],
+  "options": {
+    "timeout_ms": 30000,
+    "agent": { "max_steps": 12 }
+  }
+}

@@ -18,7 +18,7 @@ from ..runtime.result import Result, RunStatus, StepResult
 from ..runtime.steps import run_steps
 
 
-IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector", "continuum", "oracle"})
+IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector", "continuum", "oracle", "phantom"})
 
 
 def _make_driver(act: str) -> Any:
@@ -36,6 +36,10 @@ def _make_driver(act: str) -> Any:
         from ...acts.oracle.driver import OracleDriver
 
         return OracleDriver()
+    if act == "phantom":
+        from ...acts.phantom.driver import PhantomDriver
+
+        return PhantomDriver()
     raise ActionError(f"Act {act!r} is not implemented yet. Available: {sorted(IMPLEMENTED_ACTS)}.")
 
 
@@ -100,7 +104,12 @@ class RunEngine:
         run_error: str | None = None
 
         try:
-            run_steps(blueprint.steps, ctx, bus, driver, step_results)
+            if blueprint.steps:
+                run_steps(blueprint.steps, ctx, bus, driver, step_results)
+            else:
+                # Goal-only Blueprint (Phantom): the agent loop replaces the step pipeline. The
+                # model guarantees a goal is present when steps is empty (_require_steps_or_goal).
+                driver.run_goal(ctx, bus, step_results)
 
         except AetheriusError as exc:
             final_status = RunStatus.FAILED
@@ -116,8 +125,13 @@ class RunEngine:
 
         # Render the outputs dict through the template engine.
         final_outputs: dict[str, Any] = {}
-        if final_status == RunStatus.SUCCESS and blueprint.outputs:
-            final_outputs = render_value(blueprint.outputs, ctx.template_ctx())
+        if final_status == RunStatus.SUCCESS:
+            if blueprint.outputs:
+                final_outputs = render_value(blueprint.outputs, ctx.template_ctx())
+            elif not blueprint.steps and isinstance(ctx.step_outputs.get("agent"), dict):
+                # A goal-only run with no declared outputs returns the agent outcome directly, so
+                # `client.run(...).outputs` is useful without boilerplate.
+                final_outputs = ctx.step_outputs["agent"]
 
         finished_at = datetime.now(timezone.utc)
         bus.emit(

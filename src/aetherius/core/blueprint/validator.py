@@ -47,6 +47,13 @@ def validate_for_act(blueprint: Blueprint) -> None:
 
     This is a semantic check complementing the JSON Schema structural validation.
     """
+    # A goal-only Blueprint (no steps) is the Phantom contract: the agent decides its own steps.
+    # Any other Act declaring a goal without steps is an authoring mistake — steps are its surface.
+    if not blueprint.steps and blueprint.act != "phantom":
+        raise BlueprintValidationError(
+            f"A goal-only Blueprint (no 'steps') requires act='phantom', got act={blueprint.act!r}."
+        )
+
     supported = ACT_CAPABILITIES.get(blueprint.act, frozenset())
     # Plugin actions are act-agnostic by design (docs/plugins.md): registered = accepted on every
     # Act. They must be loaded before validation — the engine, the CLI and the daemon all call

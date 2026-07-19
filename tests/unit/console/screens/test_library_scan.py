@@ -83,14 +83,16 @@ def _entry(act: str | None, error: str | None) -> BlueprintEntry:
 
 
 def test_entry_status_ready_for_implemented_act() -> None:
-    # vector, continuum and oracle have drivers today.
+    # All four Acts have drivers today (phantom landed in Jalon 2-C).
     assert entry_status(_entry("vector", None)) is EntryStatus.READY
     assert entry_status(_entry("continuum", None)) is EntryStatus.READY
     assert entry_status(_entry("oracle", None)) is EntryStatus.READY
+    assert entry_status(_entry("phantom", None)) is EntryStatus.READY
 
 
 def test_entry_status_pending_for_unimplemented_act() -> None:
-    assert entry_status(_entry("phantom", None)) is EntryStatus.ACT_PENDING
+    # No real Act is pending anymore; the classification still holds for any future, undriven Act.
+    assert entry_status(_entry("some-future-act", None)) is EntryStatus.ACT_PENDING
 
 
 def test_entry_status_invalid_when_error_present() -> None:

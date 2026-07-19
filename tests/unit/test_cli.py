@@ -86,13 +86,13 @@ def test_run_rejects_malformed_input_pair(examples_dir: Path) -> None:
     assert result.exit_code != 0
 
 
-def test_run_reports_unimplemented_act_cleanly(tmp_path: Path) -> None:
-    # act=phantom has no driver yet (Jalon 2-C): the engine must reject it cleanly.
+def test_run_reports_invalid_blueprint_cleanly(tmp_path: Path) -> None:
+    # A goal-only Blueprint requires act='phantom' (the agent decides its own steps); any other
+    # Act is an authoring mistake the validator must reject cleanly — no traceback, exit 1. Offline:
+    # validation fails before any driver setup.
     blueprint = tmp_path / "goal.blueprint.json"
     blueprint.write_text(
-        json.dumps(
-            {"aetherius": "1.0", "name": "t.phantom", "act": "phantom", "goal": "do something"}
-        )
+        json.dumps({"aetherius": "1.0", "name": "t.bad", "act": "vector", "goal": "do something"})
     )
 
     result = runner.invoke(app, ["run", str(blueprint)])

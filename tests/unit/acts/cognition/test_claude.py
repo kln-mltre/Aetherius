@@ -22,6 +22,7 @@ from PIL import Image  # noqa: E402
 
 from aetherius.acts._cognition.claude import ClaudeProvider, _png_size  # noqa: E402
 from aetherius.acts._perception import Perception  # noqa: E402
+from aetherius.acts.phantom.memory import AgentMemory  # noqa: E402
 from aetherius.core.errors import CognitionError  # noqa: E402
 
 
@@ -153,3 +154,78 @@ def test_vision_model_overrides_the_default(monkeypatch: pytest.MonkeyPatch) -> 
     )
     provider.locate(_perception(), "x")
     assert client.calls[0]["model"] == "claude-sonnet-5"
+
+
+# ── Planning (Phantom, Jalon 2-C) ─────────────────────────────────────────────
+
+
+def _plan_response(name: str, tool_input: dict[str, Any]) -> Any:
+    return SimpleNamespace(
+        content=[SimpleNamespace(type="tool_use", name=name, input=tool_input)],
+        stop_reason="tool_use",
+    )
+
+
+def _memory() -> AgentMemory:
+    memory = AgentMemory(goal="find the first quote by Ada")
+    memory.record({"action": "navigate", "url": "https://quotes.toscrape.com"}, {})
+    return memory
+
+
+def test_plan_forces_a_tool_and_offers_the_planner_vocabulary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider, client = _provider(monkeypatch, _plan_response("click", {"target": "the Login link"}))
+
+    action = provider.plan(
+        "find the first quote by Ada", ["stay on the domain"], _perception(), _memory()
+    )
+
+    assert action == {"action": "click", "target": {"vision": "the Login link"}}
+    call = client.calls[0]
+    assert call["tool_choice"] == {"type": "any"}
+    names = {t["name"] for t in call["tools"]}
+    assert {"navigate", "click", "type", "read", "finish", "abort"} <= names
+    assert "find the first quote by Ada" in call["system"]
+    assert "stay on the domain" in call["system"]
+    # The current perception (screenshot) and the memory transcript are both in the user turn.
+    content = call["messages"][0]["content"]
+    assert any(block.get("type") == "image" for block in content)
+    assert any("quotes.toscrape.com" in block.get("text", "") for block in content)
+
+
+def test_plan_maps_the_finish_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider, _ = _provider(
+        monkeypatch, _plan_response("finish", {"result": {"quote": "hi", "author": "Ada"}})
+    )
+    action = provider.plan("g", [], _perception(), _memory())
+    assert action == {"action": "finish", "result": {"quote": "hi", "author": "Ada"}}
+
+
+def test_plan_maps_the_abort_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider, _ = _provider(monkeypatch, _plan_response("abort", {"reason": "captcha"}))
+    action = provider.plan("g", [], _perception(), _memory())
+    assert action == {"action": "abort", "reason": "captcha"}
+
+
+def test_plan_maps_a_typed_action_with_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider, _ = _provider(
+        monkeypatch, _plan_response("type", {"target": "the search box", "text": "Ada"})
+    )
+    action = provider.plan("g", [], _perception(), _memory())
+    assert action == {"action": "type", "target": {"vision": "the search box"}, "text": "Ada"}
+
+
+def test_plan_without_tool_use_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    refusal = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text="I refuse")], stop_reason="end_turn"
+    )
+    provider, _ = _provider(monkeypatch, refusal)
+    with pytest.raises(CognitionError, match="no tool call"):
+        provider.plan("g", [], _perception(), _memory())
+
+
+def test_plan_uses_the_configured_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider, client = _provider(monkeypatch, _plan_response("back", {}), model="claude-fable-5")
+    provider.plan("g", [], _perception(), _memory())
+    assert client.calls[0]["model"] == "claude-fable-5"

@@ -116,7 +116,20 @@
             "backoff": { "enum": ["none", "linear", "exponential"] }
           }
         },
-        "proxy": { "$ref": "#/$defs/proxy" }
+        "proxy": { "$ref": "#/$defs/proxy" },
+        "agent": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Phantom (Act IV) guardrails; ignored by the other Acts.",
+          "properties": {
+            "max_steps": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 40,
+              "description": "Upper bound on the perceive->reason->act loop: the agent fails cleanly if the goal is not reached within this many steps."
+            }
+          }
+        }
       }
     },
     "proxy": {

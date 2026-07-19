@@ -157,7 +157,13 @@ class ClaudeProvider:
         perception: "Perception",
         memory: Any,
     ) -> dict[str, Any] | None:
-        raise NotImplementedError("Claude planner lands with Phantom (Jalon 2-C/2-D).")
+        # The planner tool table and message shaping live in planning.py (imported lazily so it
+        # only loads on the Phantom path). It reuses this provider's client and model, so
+        # vision.model selects the planner model too.
+        from .planning import plan_once
+
+        transcript = memory.transcript() if memory is not None else ""
+        return plan_once(self._get_client(), self._model, goal, constraints, perception, transcript)
 
     def _get_client(self) -> Any:
         if self._client is None:

@@ -1,9 +1,25 @@
 # Jalon 2-C — Act IV Phantom (agent autonome)
 
-**Statut : à venir.** Le plus lourd. Un agent décisionnel orienté **objectif** : plutôt qu'une
-séquence de steps, le Blueprint décrit un `goal` et des `constraints`, et Phantom boucle
-**percevoir → raisonner → agir** jusqu'à l'atteindre. Pour les objectifs non scriptés et la
-résilience maximale.
+**Statut : livré.** Doc définitive et « Tester Act IV » : [docs/acts/phantom.md](../acts/phantom.md).
+Le plus lourd. Un agent décisionnel orienté **objectif** : plutôt qu'une séquence de steps, le
+Blueprint décrit un `goal` et des `constraints`, et Phantom boucle **percevoir → raisonner → agir**
+jusqu'à l'atteindre. Pour les objectifs non scriptés et la résilience maximale.
+
+## Ce qui a été livré (résumé)
+
+- `PhantomDriver(OracleDriver)` (`acts/phantom/`) : un seul navigateur/discrétion/provider hérités ;
+  ajoute la boucle (`loop.py`), la mémoire (`memory.py`), l'adaptateur planner (`planner.py`).
+- Seam moteur goal-only : `RunEngine.run` invoque `driver.run_goal(...)` quand `steps` est vide ;
+  `phantom` dans `IMPLEMENTED_ACTS` + `_make_driver`.
+- Planner Claude : `acts/_cognition/planning.py` (vocabulaire d'outils restreint, tool use forcé,
+  `finish`/`abort`), branché via `ClaudeProvider.plan`.
+- Contrat : `options.agent.max_steps` (modèle + schéma), garde validator « goal-only ⇒ phantom ».
+  Observabilité par réutilisation de `progress`/`step_started`/`step_finished` (`step_id` `agent[N]`),
+  **aucun nouvel `EventType`**.
+- Exemple zéro config : `examples/phantom/quotes-find-author.blueprint.json`. Tests miroir (unités
+  + intégration Chromium avec provider fake).
+
+Le reste du document décrit la conception d'origine du jalon (conservée pour référence).
 
 ## Objectif
 

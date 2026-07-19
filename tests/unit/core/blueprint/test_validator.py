@@ -58,6 +58,22 @@ def test_error_names_the_step_and_act() -> None:
     assert "click" in str(exc_info.value)
 
 
+def _goal_only(act: str) -> Blueprint:
+    return Blueprint.model_validate(
+        {"aetherius": "1.0", "name": "test", "act": act, "goal": "do a thing"}
+    )
+
+
+def test_goal_only_is_allowed_for_phantom() -> None:
+    validate_for_act(_goal_only("phantom"))
+
+
+def test_goal_only_below_phantom_is_rejected() -> None:
+    for act in ("vector", "continuum", "oracle"):
+        with pytest.raises(BlueprintValidationError, match="phantom"):
+            validate_for_act(_goal_only(act))
+
+
 def _make_nested(act: str, step: dict) -> Blueprint:
     return Blueprint.model_validate(
         {"aetherius": "1.0", "name": "test", "act": act, "steps": [step]}

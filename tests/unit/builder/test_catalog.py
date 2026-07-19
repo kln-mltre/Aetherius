@@ -32,8 +32,13 @@ def test_actions_for_vector_cover_its_capabilities() -> None:
     assert runnable["for_each"] is True
 
 
-def test_actions_for_a_pending_act_are_all_unrunnable() -> None:
-    assert all(not i.runnable for i in actions_for_act("phantom"))
+def test_actions_for_phantom_mirror_its_runnable_status() -> None:
+    # Phantom is runnable (Jalon 2-C): its actions follow the same rule as any implemented Act —
+    # runnable unless listed in that Act's PENDING_ACTIONS (http.request is inherited but undriven).
+    runnable = {i.spec.name: i.runnable for i in actions_for_act("phantom")}
+    assert runnable["read"] is True
+    assert runnable["click"] is True
+    assert runnable["http.request"] is False
 
 
 def test_unknown_act_raises() -> None:

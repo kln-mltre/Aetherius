@@ -8,6 +8,24 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 2-C — Act IV Phantom** ([docs/acts/phantom.md](docs/acts/phantom.md)) : `act: "phantom"`
+  est **runnable**. Un Blueprint **sans `steps`** déclare un `goal` et des `constraints` ; le moteur
+  route vers `driver.run_goal` (seam goal-only dans `RunEngine.run`) qui lance la boucle
+  **percevoir → raisonner → agir**. Le **planner** (Claude par défaut, rôle `Planner` du substrat de
+  cognition, `acts/_cognition/planning.py`) choisit chaque action par **tool use forcé**
+  (`tool_choice: any`) sur un vocabulaire restreint — ciblage **vision uniquement**, plus les outils
+  terminaux `finish` (objectif atteint → sortie) et `abort` (impossible / contrainte violée → échec
+  propre). L'action est jouée par le ciblage vision d'Oracle à travers la discrétion.
+  `PhantomDriver` **étend** `OracleDriver` (un seul navigateur, une seule discrétion, provider et
+  dispatch hérités) — un Blueprint `phantom` avec `steps` tourne déjà en mode scripté (socle 2-D).
+  Garde-fou : budget `options.agent.max_steps` (défaut 40, nouveau modèle `AgentOptions` + schéma) ;
+  un échec d'action est une **observation** mémorisée (résilience), jamais fatal — seuls `abort`, une
+  réponse de planner inutilisable ou le budget épuisé arrêtent le run. Observabilité par réutilisation
+  de `progress`/`step_started`/`step_finished` (`step_id` `agent[N]`, un `StepResult` par action),
+  **aucun nouvel `EventType`**. Sorties : `finish` exposé sous `{{ steps.agent.* }}`, ou l'issue de
+  l'agent (`{result, steps_taken}`) renvoyée telle quelle sans `outputs` déclarés. Garde validator
+  « goal-only ⇒ act phantom ». Exemple zéro config :
+  `examples/phantom/quotes-find-author.blueprint.json`.
 - **Jalon 2-B — Act III Oracle** ([docs/acts/oracle.md](docs/acts/oracle.md)) : `act: "oracle"` est
   **runnable**. `OracleDriver` **étend** le driver Continuum (un seul navigateur, une seule
   discrétion, steps à sélecteur inchangés) et route les cibles vision : `click`/`type`/`upload`/

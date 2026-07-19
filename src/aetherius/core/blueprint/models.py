@@ -34,6 +34,14 @@ class SessionOptions(BaseModel):
     persist: bool = False
 
 
+class AgentOptions(BaseModel):
+    """Phantom (Act IV) guardrails. ``max_steps`` bounds the perceive->reason->act loop."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_steps: int = Field(default=40, ge=1)
+
+
 class Options(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -46,6 +54,8 @@ class Options(BaseModel):
     # Loosely typed on purpose — decoded by aetherius.network.resolve_identity, the JSON Schema owns
     # the shape.
     proxy: Any = None
+    # Phantom (Jalon 2-C) agent guardrails; ignored by the other Acts.
+    agent: AgentOptions = Field(default_factory=AgentOptions)
 
 
 class StepModel(BaseModel):

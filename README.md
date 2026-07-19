@@ -254,8 +254,8 @@ aetherius            # ouvre la Console
 > **État actuel** : la Console est navigable de bout en bout. Library, Runs, **Schedules** (runs
 > récurrents : liste, tir manuel, historique, création guidée), Catalog, le **Recorder**, le
 > **Blueprint Studio** et **Settings** (démarrer/arrêter le daemon) sont pleinement fonctionnels
-> pour Act I (Vector), Act II (Continuum, extra `[browser]`) et Act III (Oracle, extras
-> `[cognition]`+`[browser]`) ; seul **Sessions** affiche honnêtement son jalon en attente
+> pour Act I (Vector), Act II (Continuum, extra `[browser]`), Act III (Oracle) et Act IV (Phantom)
+> (extras `[cognition]`+`[browser]`) ; seul **Sessions** affiche honnêtement son jalon en attente
 > (stealth/session). Détails : [docs/console.md](docs/console.md).
 
 Depuis la Console, sans écrire de JSON à la main :
@@ -642,7 +642,19 @@ optionnel), sans entraînement obligatoire.
   act-agnostique). Exemples zéro config : `examples/oracle/quotes-vision-demo.blueprint.json` et
   `books-scan-below-fold.blueprint.json` (vérifiés en réel, Claude + Chromium).
   [docs/acts/oracle.md](docs/acts/oracle.md), [docs/phase-2/2-b-oracle.md](docs/phase-2/2-b-oracle.md).
-- [ ] **2-C** — Act IV Phantom (agent orienté objectif, planner Claude).
+- [x] **2-C** — Act IV Phantom : `act: "phantom"` est **runnable**. Un Blueprint sans `steps`
+  déclare un `goal` et des `constraints` ; le moteur invoque la boucle **percevoir → raisonner →
+  agir** (`RunEngine` route vers `driver.run_goal` quand `steps` est vide). Le **planner** (Claude
+  par défaut, rôle `Planner` du substrat) choisit chaque action via un vocabulaire d'outils
+  restreint (tool use forcé, ciblage **vision uniquement**, plus `finish`/`abort`) ; l'action est
+  jouée par le ciblage vision d'Oracle à travers la discrétion. `PhantomDriver` **étend**
+  `OracleDriver` (un seul navigateur, une seule discrétion). Garde-fou : budget
+  `options.agent.max_steps` (défaut 40) ; un échec d'action est une **observation** (résilience),
+  pas la mort du run. Observabilité par `progress`/`step_started`/`step_finished` (`step_id`
+  `agent[N]`), sans nouvel événement. Sorties : `finish` sous `{{ steps.agent.* }}`, ou l'issue de
+  l'agent renvoyée telle quelle sans `outputs`. Exemple zéro config :
+  `examples/phantom/quotes-find-author.blueprint.json`. [docs/acts/phantom.md](docs/acts/phantom.md),
+  [docs/phase-2/2-c-phantom.md](docs/phase-2/2-c-phantom.md).
 - [ ] **2-D** — Composition multi-Act par step + self-healing (fallback II→III→IV, un seul navigateur
   partagé).
 - [ ] **2-E** — Human-in-the-loop (action `confirm` : run garé jusqu'à décision humaine, via console /

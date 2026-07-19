@@ -94,7 +94,9 @@ ACT_CAPABILITIES: dict[str, frozenset[Capability]] = {
     "vector": _VECTOR_CAPS,
     "continuum": _CONTINUUM_CAPS,
     "oracle": _ORACLE_CAPS,
-    # Phantom is a superset of Oracle (goal-driven on the same substrate); refined in Jalon 2-C.
+    # Phantom drives the same substrate as Oracle (its driver extends OracleDriver): a scripted
+    # Phantom step (Jalon 2-D) reuses the whole Oracle action set. The goal-only path decides its
+    # own actions from a narrower planner vocabulary (see acts/_cognition/planning.py).
     "phantom": _ORACLE_CAPS,
 }
 
@@ -119,4 +121,5 @@ PENDING_ACTIONS: dict[str, frozenset[Capability]] = {
     "continuum": frozenset({Capability.HTTP_REQUEST}),
     # Inherited from the Continuum set; still not dispatched by any browser driver.
     "oracle": frozenset({Capability.HTTP_REQUEST}),
+    "phantom": frozenset({Capability.HTTP_REQUEST}),
 }

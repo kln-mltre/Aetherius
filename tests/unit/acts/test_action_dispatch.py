@@ -18,6 +18,7 @@ import pytest
 
 from aetherius.acts.continuum.driver import ContinuumDriver
 from aetherius.acts.oracle.driver import OracleDriver
+from aetherius.acts.phantom.driver import PhantomDriver
 from aetherius.acts.vector.driver import VectorDriver
 from aetherius.core.actions.base import ACT_CAPABILITIES, FLOW_ACTIONS, PENDING_ACTIONS, Capability
 from aetherius.core.blueprint.models import Blueprint, StepModel
@@ -75,10 +76,22 @@ def _oracle_driver() -> OracleDriver:
     return driver
 
 
+def _phantom_driver() -> PhantomDriver:
+    # Phantom inherits Oracle's run_step wholesale (scripted-step path); the goal loop is separate.
+    driver = PhantomDriver()
+    session = MagicMock()
+    session.human = None
+    driver._session = session
+    driver._humanized = frozenset()
+    driver._provider = MagicMock()
+    return driver
+
+
 _DRIVER_FACTORIES: dict[str, Any] = {
     "vector": _vector_driver,
     "continuum": _continuum_driver,
     "oracle": _oracle_driver,
+    "phantom": _phantom_driver,
 }
 
 
@@ -93,7 +106,7 @@ def _unsupported_reason(driver: Any, action: str, ctx: RunContext) -> str | None
     return None
 
 
-@pytest.mark.parametrize("act", ["vector", "continuum", "oracle"])
+@pytest.mark.parametrize("act", ["vector", "continuum", "oracle", "phantom"])
 def test_capabilities_dispatch_unless_pending(act: str, monkeypatch, tmp_path: Path) -> None:
     # Keep screenshot's artifact write inside the test's tmp dir, not the real data dir.
     monkeypatch.setattr("aetherius.acts.continuum.driver.run_dir", lambda run_id: tmp_path)

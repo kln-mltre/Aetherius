@@ -20,7 +20,7 @@ méthode fourre-tout, pour qu'un provider partiel reste possible :
 | Rôle | Méthode | Qui le consomme |
 |------|---------|-----------------|
 | `Grounder` | `locate(perception, description) -> GroundResult` | Oracle (ciblage `{vision}`), Phantom |
-| `Extractor` | `read(perception, description, schema=...) -> Any` | Oracle (action `read`, extraction sémantique) |
+| `Extractor` | `read(perception, description, schema=...) -> Any` | Oracle (action `read`, extraction sémantique), Phantom |
 | `Planner` | `plan(goal, constraints, perception, memory)` | Phantom (boucle percevoir→raisonner→agir) |
 
 `GroundResult` = une `Box` (rectangle dans le viewport) + une `confidence` (0..1).
@@ -46,6 +46,12 @@ explicite (décision de conception : `resolve_provider` renvoie toujours un `Cog
 complet au sens du typage, les rôles non portés échouent en erreur typée plutôt qu'en
 `AttributeError`). Son inférence réelle et le cache d'assets sous `models/store/` arrivent avec le
 chemin local (Jalon 2-B+) ; l'entraînement reste une piste avancée (`training/`).
+
+Le rôle `Planner` est porté par le `ClaudeProvider` depuis le Jalon 2-C : `plan` délègue à
+[`planning.py`](../src/aetherius/acts/_cognition/planning.py), qui expose au modèle un vocabulaire
+d'outils restreint (tool use forcé `tool_choice: any`, ciblage vision uniquement, plus `finish`/
+`abort`) et renvoie un step concret ou un marqueur terminal. Détails et table des outils :
+[docs/acts/phantom.md](acts/phantom.md).
 
 ### Clé API (chemin Claude)
 
@@ -126,7 +132,8 @@ providers, jamais au chargement (gardé par `tests/unit/test_public_api.py`).
 
 - **Le ciblage `{vision}` et l'action `read` sont câblés depuis le Jalon 2-B** : Oracle (Act III)
   les consomme — seuil de confiance, point off-center et sémantique des sorties sont documentés
-  dans [docs/acts/oracle.md](acts/oracle.md). Le `plan` de Claude arrive avec Phantom (2-C/2-D).
+  dans [docs/acts/oracle.md](acts/oracle.md). Le `plan` de Claude est livré au Jalon 2-C et
+  consommé par Phantom (Act IV) — voir [docs/acts/phantom.md](acts/phantom.md).
 - **Grounder local** : interface en place (`vision.provider: "local"`), inférence différée ;
   `models/store/` est réservé à ses assets.
 - **`read` avec schéma** : le schéma doit décrire un objet JSON (c'est l'`input_schema` d'un tool).

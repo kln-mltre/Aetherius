@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from aetherius.core.blueprint.models import Blueprint
 from aetherius.core.blueprint.validator import validate_for_act
@@ -141,3 +142,101 @@ def test_plugin_actions_are_accepted_inside_flow_branches(plugin_action: str) ->
 def test_unregistered_actions_stay_rejected() -> None:
     with pytest.raises(BlueprintValidationError, match="does.not.exist"):
         validate_for_act(_make("vector", ["does.not.exist"]))
+
+
+# ── Per-step act (Jalon 2-D) ──────────────────────────────────────────────────
+
+
+def test_step_act_override_allows_a_higher_act_action() -> None:
+    validate_for_act(_make_nested("continuum", {"action": "read", "act": "oracle", "vision": "x"}))
+
+
+def test_step_without_override_keeps_the_blueprint_act_rule() -> None:
+    with pytest.raises(BlueprintValidationError, match="on this step"):
+        validate_for_act(_make("continuum", ["read"]))
+
+
+def test_step_act_can_also_lower_the_act() -> None:
+    # A vector step inside a browser Blueprint is legal: the frontier is documented as a
+    # driver boundary, not a validation error.
+    validate_for_act(
+        _make_nested("oracle", {"action": "http.request", "act": "vector", "url": "http://x"})
+    )
+    with pytest.raises(BlueprintValidationError, match="navigate"):
+        validate_for_act(_make_nested("oracle", {"action": "navigate", "act": "vector"}))
+
+
+def test_nested_steps_inherit_the_enclosing_step_act() -> None:
+    validate_for_act(
+        _make_nested(
+            "continuum",
+            {
+                "action": "if",
+                "act": "oracle",
+                "condition": "x",
+                "then": [{"action": "read", "vision": "y"}],
+            },
+        )
+    )
+
+
+def test_nested_step_may_override_the_inherited_act() -> None:
+    bp = _make_nested(
+        "oracle",
+        {
+            "action": "if",
+            "condition": "x",
+            "then": [{"action": "read", "act": "continuum", "vision": "y"}],
+        },
+    )
+    with pytest.raises(BlueprintValidationError, match="read"):
+        validate_for_act(bp)
+
+
+def test_invalid_step_act_is_rejected_by_the_model() -> None:
+    with pytest.raises(ValidationError, match="act"):
+        Blueprint.model_validate(
+            {
+                "aetherius": "1.0",
+                "name": "test",
+                "act": "continuum",
+                "steps": [{"action": "click", "act": "wizard"}],
+            }
+        )
+
+
+# ── Self-healing chains (Jalon 2-D) ──────────────────────────────────────────
+
+
+def test_options_fallback_accepts_the_browser_escalation_acts() -> None:
+    bp = Blueprint.model_validate(
+        {
+            "aetherius": "1.0",
+            "name": "test",
+            "act": "continuum",
+            "options": {"fallback": ["oracle", "phantom"]},
+            "steps": [{"action": "click", "selector": "#x", "describe": "the button"}],
+        }
+    )
+    validate_for_act(bp)
+
+
+@pytest.mark.parametrize("entry", ["vector", "continuum", "wizard"])
+def test_options_fallback_rejects_non_escalation_acts(entry: str) -> None:
+    bp = Blueprint.model_validate(
+        {
+            "aetherius": "1.0",
+            "name": "test",
+            "act": "continuum",
+            "options": {"fallback": [entry]},
+            "steps": [{"action": "click", "selector": "#x"}],
+        }
+    )
+    with pytest.raises(BlueprintValidationError, match="options.fallback"):
+        validate_for_act(bp)
+
+
+def test_step_fallback_is_validated_with_its_path() -> None:
+    bp = _make_nested("continuum", {"action": "click", "selector": "#x", "fallback": ["vector"]})
+    with pytest.raises(BlueprintValidationError, match="steps\\[0\\].fallback"):
+        validate_for_act(bp)

@@ -527,14 +527,141 @@ def test_linear_blueprints_keep_their_historical_shape() -> None:
     assert [e.step_id for e in started] == ["a", None]
 
 
+# ── Per-step act routing (Jalon 2-D) ──────────────────────────────────────────
+
+
+class RoutingResolver:
+    """Serves one FakeDriver per act and records every resolution."""
+
+    def __init__(self, *acts: str) -> None:
+        self.drivers = {act: FakeDriver() for act in acts}
+        self.asked: list[str] = []
+
+    def resolve_driver(self, act: str, ctx: RunContext) -> FakeDriver:
+        self.asked.append(act)
+        return self.drivers[act]
+
+
+def _run_routed(
+    resolver: RoutingResolver, *raw: dict[str, Any], act: str = "continuum"
+) -> tuple[list[StepResult], RunContext]:
+    bp = Blueprint.model_validate(
+        {"aetherius": "1.0", "name": "t", "act": act, "steps": [{"action": "set"}]}
+    )
+    ctx = RunContext(run_id="r", blueprint=bp, inputs={}, secrets={})
+    bus = EventBus()
+    bus.register(ListSink())
+    results: list[StepResult] = []
+    run_steps(_steps(*raw), ctx, bus, resolver, results)
+    return results, ctx
+
+
+def test_steps_route_to_their_effective_act() -> None:
+    resolver = RoutingResolver("continuum", "oracle")
+    _run_routed(
+        resolver,
+        {"action": "navigate", "url": "x"},
+        {"action": "read", "act": "oracle", "vision": "y"},
+        {"action": "click", "selector": "#a"},
+    )
+    assert resolver.asked == ["continuum", "oracle", "continuum"]
+    assert resolver.drivers["continuum"].calls == [
+        ("navigate", {"url": "x"}),
+        ("click", {"selector": "#a"}),
+    ]
+    assert [a for a, _ in resolver.drivers["oracle"].calls] == ["read"]
+
+
+def test_flow_children_inherit_the_enclosing_step_act() -> None:
+    resolver = RoutingResolver("continuum", "oracle")
+    _run_routed(
+        resolver,
+        {
+            "action": "if",
+            "act": "oracle",
+            "condition": "true",
+            "then": [
+                {"action": "read", "vision": "y"},
+                {"action": "click", "act": "continuum", "selector": "#a"},
+            ],
+        },
+    )
+    assert resolver.asked == ["oracle", "continuum"]
+
+
+# ── Self-healing through the executor (Jalon 2-D) ────────────────────────────
+
+
+def _healing_run(
+    *raw: dict[str, Any], fallback: list[str] | None = None
+) -> tuple[list[StepResult], ListSink, RoutingResolver, RunContext]:
+    data: dict[str, Any] = {
+        "aetherius": "1.0",
+        "name": "t",
+        "act": "continuum",
+        "steps": [{"action": "set"}],
+    }
+    if fallback is not None:
+        data["options"] = {"fallback": fallback}
+    bp = Blueprint.model_validate(data)
+    ctx = RunContext(run_id="r", blueprint=bp, inputs={}, secrets={})
+    sink = ListSink()
+    bus = EventBus()
+    bus.register(sink)
+    resolver = RoutingResolver("continuum", "oracle")
+    results: list[StepResult] = []
+    run_steps(_steps(*raw), ctx, bus, resolver, results)
+    return results, sink, resolver, ctx
+
+
+def test_a_failed_step_healed_by_oracle_is_recorded_success() -> None:
+    results, sink, resolver, ctx = _healing_run(
+        {"id": "n", "action": "click", "selector": "#gone", "boom": True, "describe": "the link"},
+        {"id": "after", "action": "emit"},
+        fallback=["oracle"],
+    )
+    assert [(r.step_id, r.status) for r in results] == [
+        ("n", RunStatus.SUCCESS),
+        ("after", RunStatus.SUCCESS),
+    ]
+    assert results[0].healed_by == "oracle"
+    assert results[1].healed_by is None
+    # The replay went to the oracle driver as a vision step; the outputs are the replay's.
+    action, params = resolver.drivers["oracle"].calls[0]
+    assert action == "click"
+    assert params["target"] == {"vision": "the link"}
+    assert ctx.step_outputs["n"] == {"value": None}
+    # No ERROR event: the step never failed from the run's point of view.
+    assert _events(sink, EventType.ERROR) == []
+
+
+def test_without_fallback_the_failure_propagates_as_before() -> None:
+    with pytest.raises(StepFailed, match="boom"):
+        _healing_run(
+            {"id": "n", "action": "click", "selector": "#gone", "boom": True, "describe": "d"},
+        )
+
+
+def test_healing_the_next_step_goes_back_to_the_declared_act() -> None:
+    # Escalation is per-step, never sticky: the step after a healed one runs on its own act.
+    results, _, resolver, _ = _healing_run(
+        {"id": "n", "action": "click", "selector": "#gone", "boom": True, "describe": "the link"},
+        {"id": "after", "action": "click", "selector": "#ok"},
+        fallback=["oracle"],
+    )
+    assert results[1].healed_by is None
+    assert resolver.drivers["continuum"].calls[-1] == ("click", {"selector": "#ok"})
+
+
 # ── Through RunEngine ─────────────────────────────────────────────────────────
 
 
 def _engine_run(monkeypatch: pytest.MonkeyPatch, steps: list[dict[str, Any]]) -> Any:
+    from aetherius.core.runtime import drivers as drivers_mod
     from aetherius.core.runtime import engine as engine_mod
 
     driver = FakeDriver()
-    monkeypatch.setattr(engine_mod, "_make_driver", lambda act: driver)
+    monkeypatch.setattr(drivers_mod, "_make_driver", lambda act: driver)
     bp = Blueprint.model_validate(
         {"aetherius": "1.0", "name": "t.flow", "act": "vector", "steps": steps}
     )

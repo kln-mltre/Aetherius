@@ -23,6 +23,9 @@ class StepResult(BaseModel):
     status: RunStatus
     outputs: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
+    # Self-healing (Jalon 2-D): the Act that rescued this step after its own act failed, None on
+    # the normal path. A healed step reports SUCCESS; its duration covers every attempt.
+    healed_by: str | None = None
     duration_ms: float
 
 

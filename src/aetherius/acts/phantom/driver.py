@@ -4,8 +4,9 @@ Runs a Blueprint that declares a ``goal``/``constraints`` instead of ``steps``. 
 ``OracleDriver`` — so the browser, the stealth layer, the cognition provider resolution and the
 vision/selector dispatch are all inherited unchanged — and adds only the perceive->reason->act
 loop (``loop.py``) and its memory. The loop's policy is a cognition ``Planner`` (Claude by
-default); a Phantom step reached through the inherited ``run_step`` (a per-step ``act`` override or
-a self-healing escalation, Jalon 2-D) behaves exactly like Oracle.
+default). In multi-Act composition (Jalon 2-D) a scripted step with ``act: "phantom"`` goes
+through the inherited ``run_step`` and behaves exactly like Oracle; a self-healing escalation to
+phantom instead runs a tightly budgeted micro-goal loop (``run_micro_goal``).
 """
 
 from __future__ import annotations
@@ -58,3 +59,34 @@ class PhantomDriver(OracleDriver):
         # Publish under `steps.agent` so a Blueprint's `outputs` can reference `{{ steps.agent.* }}`.
         ctx.step_outputs["agent"] = outcome
         return outcome
+
+    def run_micro_goal(
+        self,
+        ctx: "RunContext",
+        bus: "EventBus",
+        results: list["StepResult"],
+        *,
+        goal: str,
+        constraints: list[str],
+        max_steps: int,
+        id_prefix: str,
+    ) -> dict[str, Any]:
+        """Drive a bounded agent loop toward a single-step intent (self-healing, Jalon 2-D).
+
+        Unlike ``run_goal`` this never publishes ``steps.agent``: the outcome belongs to the
+        healed step, not to the run's output surface.
+        """
+        if self._session is None or self._provider is None:
+            raise ActionError("PhantomDriver.run_micro_goal called before setup().")
+        return run_loop(
+            self,
+            self._provider,
+            self._session.page,
+            ctx,
+            bus,
+            results,
+            goal=goal,
+            constraints=constraints,
+            max_steps=max_steps,
+            id_prefix=id_prefix,
+        )

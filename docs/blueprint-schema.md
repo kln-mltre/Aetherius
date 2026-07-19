@@ -13,7 +13,7 @@ Exemples exécutables : [`examples/`](../examples/).
 | `inputs` | object | Paramètres typés (réutilisabilité). |
 | `secrets` | string[] | Noms des secrets injectés au runtime, jamais stockés. |
 | `vars` | object | Constantes locales. |
-| `options` | object | `debug`, `stealth`, `session`, `timeout_ms`, `retries`. |
+| `options` | object | `debug`, `stealth`, `session`, `timeout_ms`, `retries`, `fallback`. |
 | `steps` | array | Le dictionnaire d'actions (ordonné). |
 | `vision` | object | Configuration de cognition pour Oracle/Phantom (voir ci-dessous). |
 | `goal` / `constraints` | string / string[] | Alternative haut-niveau pour Phantom. |
@@ -60,6 +60,46 @@ structurées : avec `schema` (objet JSON Schema), les champs deviennent les sort
 `ms`) pour une durée **aléatoire uniforme** dans l'intervalle — la pause non déterministe des
 Blueprints furtifs, disponible sur tous les Acts.
 
+## `act` par step (composition multi-Act)
+
+L'`act` de l'enveloppe est le **défaut** du run ; tout step peut le surcharger avec son propre
+champ `act` — mélanger du Continuum scripté, du ciblage vision Oracle et un step Phantom dans un
+même run. Les steps imbriqués d'une action de flux **héritent** de l'act effectif du step
+englobant (surchargeable au même titre). Les Acts navigateur (II/III/IV) partagent **un seul
+navigateur** (même page, mêmes cookies, une seule discrétion) ; franchir la frontière
+Vector↔navigateur est permis mais démarre l'autre moteur (aucun état partagé). La validation
+vérifie chaque step contre son act **effectif**. Sémantique complète :
+[docs/composition.md](composition.md).
+
+```json
+{ "id": "dom",    "action": "extract", "outputs": { "quote": { "selector": ".quote", "as": "text" } } },
+{ "id": "screen", "act": "oracle", "action": "read", "vision": "the author of the first quote" }
+```
+
+## Self-healing : `describe` + `fallback`
+
+Un step navigateur qui échoue (sélecteur cassé, cible introuvable) peut être **rejoué sur un Act
+supérieur** au lieu d'avorter le run. Déclaratif et opt-in :
+
+- `options.fallback` : la chaîne d'escalade par défaut, ordonnée (`["oracle"]` ou
+  `["oracle", "phantom"]`) ;
+- `fallback` par step : surcharge la chaîne (`[]` la désactive pour ce step) ;
+- `describe` par step : l'**intention** en langage naturel, consommée par l'Act supérieur quand le
+  sélecteur lâche. Sans `describe` (ni cible vision), pas d'escalade — l'intention n'est jamais
+  devinée depuis un sélecteur cassé.
+
+```json
+"options": { "fallback": ["oracle"] },
+"steps": [
+  { "action": "click", "selector": "#next-btn", "describe": "the Next pagination link" }
+]
+```
+
+L'escalade est **ponctuelle** : seul le step en échec est rejoué ; le suivant repart sur son act
+déclaré (le chemin rapide). Un step guéri est un succès (`healed_by` dans son `StepResult`),
+raconté par des événements `progress` de niveau `warning`. Actions couvertes, coût et limites :
+[docs/composition.md](composition.md).
+
 ## Interpolation
 
 La syntaxe `{{ ... }}` résout, au runtime, `inputs.*`, `secrets.*`, `vars.*`, `env.*` et les sorties
@@ -102,4 +142,6 @@ de flux (un `when` faux saute le bloc entier).
 
 Deux niveaux : (1) schéma JSON (structure), (2) validation sémantique (`core/blueprint/validator.py`)
 qui vérifie **récursivement** (branches `then`/`else`/`steps` comprises) que chaque `action` est
-supportée par l'`act` choisi (modèle de capabilities) et propose un Act supérieur si besoin.
+supportée par l'act **effectif** du step (`step.act`, hérité dans les branches, sinon l'act de
+l'enveloppe — modèle de capabilities) et propose un Act supérieur si besoin. Les chaînes
+`fallback` n'acceptent que les Acts d'escalade (`oracle`, `phantom`).

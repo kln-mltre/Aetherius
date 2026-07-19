@@ -9,38 +9,15 @@ from typing import Any, Mapping
 from ..blueprint.models import Blueprint
 from ..blueprint.template import render_value
 from ..blueprint.validator import validate_for_act
-from ..errors import AetheriusError, ActionError, RunError
+from ..errors import AetheriusError, RunError
 from ..events.bus import EventBus
 from ..events.models import EventType, RunEvent
 from ..events.sinks import LogSink, NullSink, Sink
 from ..runtime.context import RunContext, resolve_inputs
+from ..runtime.drivers import IMPLEMENTED_ACTS as IMPLEMENTED_ACTS  # re-export (public surface)
+from ..runtime.drivers import DriverManager
 from ..runtime.result import Result, RunStatus, StepResult
 from ..runtime.steps import run_steps
-
-
-IMPLEMENTED_ACTS: frozenset[str] = frozenset({"vector", "continuum", "oracle", "phantom"})
-
-
-def _make_driver(act: str) -> Any:
-    # Drivers are imported lazily so `import aetherius` never pulls in an Act's heavy
-    # dependencies (Playwright, Anthropic, ...). Each driver defers its own extra to runtime.
-    if act == "vector":
-        from ...acts.vector.driver import VectorDriver
-
-        return VectorDriver()
-    if act == "continuum":
-        from ...acts.continuum.driver import ContinuumDriver
-
-        return ContinuumDriver()
-    if act == "oracle":
-        from ...acts.oracle.driver import OracleDriver
-
-        return OracleDriver()
-    if act == "phantom":
-        from ...acts.phantom.driver import PhantomDriver
-
-        return PhantomDriver()
-    raise ActionError(f"Act {act!r} is not implemented yet. Available: {sorted(IMPLEMENTED_ACTS)}.")
 
 
 class RunEngine:
@@ -87,8 +64,11 @@ class RunEngine:
             )
             bus.register(default_sink)
 
-        driver = _make_driver(blueprint.act)
-        driver.setup(ctx)
+        # Eager root bind: the Blueprint's own driver starts before the first step, exactly like
+        # the historical single-driver engine (mono-Act runs are untouched). Other Acts named by
+        # per-step overrides or fallback chains start lazily, at the first step that needs them.
+        manager = DriverManager(blueprint)
+        driver = manager.resolve_driver(blueprint.act, ctx)
 
         bus.emit(
             RunEvent(
@@ -105,7 +85,7 @@ class RunEngine:
 
         try:
             if blueprint.steps:
-                run_steps(blueprint.steps, ctx, bus, driver, step_results)
+                run_steps(blueprint.steps, ctx, bus, manager, step_results)
             else:
                 # Goal-only Blueprint (Phantom): the agent loop replaces the step pipeline. The
                 # model guarantees a goal is present when steps is empty (_require_steps_or_goal).
@@ -121,7 +101,7 @@ class RunEngine:
             raise RunError(f"Unexpected error during run {run_id}: {exc}", cause=exc) from exc
 
         finally:
-            driver.teardown(ctx)
+            manager.teardown_all(ctx)
 
         # Render the outputs dict through the template engine.
         final_outputs: dict[str, Any] = {}

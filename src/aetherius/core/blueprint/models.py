@@ -56,6 +56,9 @@ class Options(BaseModel):
     proxy: Any = None
     # Phantom (Jalon 2-C) agent guardrails; ignored by the other Acts.
     agent: AgentOptions = Field(default_factory=AgentOptions)
+    # Self-healing (Jalon 2-D): default escalation chain applied to every failing step that
+    # carries enough intent (see docs/composition.md). A step's own `fallback` overrides it.
+    fallback: list[str] = Field(default_factory=list)
 
 
 class StepModel(BaseModel):
@@ -66,6 +69,13 @@ class StepModel(BaseModel):
     action: str
     # Universal guard: the engine renders it before dispatch and skips the step when falsy.
     when: str | None = None
+    # Multi-Act composition (Jalon 2-D): overrides the Blueprint act for this step (nested flow
+    # steps inherit it). Browser Acts share a single browser within the run.
+    act: Literal["vector", "continuum", "oracle", "phantom"] | None = None
+    # Self-healing: natural-language intent replayed on a higher Act when the selector fails.
+    describe: str | None = None
+    # Per-step escalation chain; None defers to options.fallback, [] disables it.
+    fallback: list[str] | None = None
 
     @property
     def extra_fields(self) -> dict[str, Any]:

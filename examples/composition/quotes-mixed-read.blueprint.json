@@ -1,0 +1,40 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.composition.mixed-read",
+  "description": "Composition multi-Act (Jalon 2-D) : un run Continuum scripte (navigate + extract DOM) dont le dernier step passe act: oracle pour une extraction semantique (read) — un seul navigateur pour les deux Acts. Zero config ; requiert les extras [cognition]+[browser] et la cle moteur ANTHROPIC_API_KEY (env ou .env).",
+  "act": "continuum",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": { "timeout_ms": 30000 },
+  "steps": [
+    { "id": "home", "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "id": "dom",
+      "action": "extract",
+      "outputs": {
+        "first_quote": { "selector": ".quote .text", "as": "text" },
+        "quote_count": { "selector": ".quote", "as": "count" }
+      }
+    },
+    {
+      "id": "screen",
+      "act": "oracle",
+      "action": "read",
+      "vision": "the author of the first quote on the page and the three tags attached to that quote",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "author": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["author", "tags"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "outputs": {
+    "first_quote": "{{ steps.dom.first_quote }}",
+    "quote_count": "{{ steps.dom.quote_count }}",
+    "author": "{{ steps.screen.author }}",
+    "tags": "{{ steps.screen.tags }}"
+  }
+}

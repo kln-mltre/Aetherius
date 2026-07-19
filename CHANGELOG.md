@@ -8,6 +8,24 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 2-D — Composition multi-Act & self-healing** ([docs/composition.md](docs/composition.md)) :
+  la contrainte « un Act par Blueprint » tombe. **`act` par step** — chaque step peut surcharger
+  l'act du run (hérité dans les branches `if`/`repeat`/`for_each`, validé contre l'act **effectif**) ;
+  les Acts navigateur (II/III/IV) partagent **un seul navigateur** : le moteur pré-scanne l'arbre
+  (surcharges + chaînes de fallback) et instancie une seule instance du plus haut Act atteignable,
+  par subsomption de la chaîne d'héritage des drivers (`core/runtime/drivers.py`, `DriverManager` à
+  démarrage paresseux, teardown groupé). **Self-healing** opt-in : sur échec d'un step navigateur,
+  la chaîne `options.fallback` (ou `fallback` par step, `[]` désactive) rejoue l'**intention** du
+  step (`describe`, jamais devinée) sur l'Act supérieur — escalade `oracle` = rejeu du même step en
+  ciblage vision (`fill` → `type`), escalade `phantom` = **micro-objectif** d'agent borné (6
+  actions, capable d'écarter un obstacle ; limité aux intentions exprimables par le planner).
+  L'escalade est ponctuelle (le step suivant repart sur son act) ; un step guéri est un succès
+  (`StepResult.healed_by`, durée cumulée), le récit passe par des événements `progress` de niveau
+  `warning` (aucun nouveau type d'événement) ; chaîne épuisée = l'erreur d'origine propagée
+  inchangée. Schéma : champs `step.act`/`step.describe`/`step.fallback` + `options.fallback`
+  (additifs). L'exécuteur est réorganisé (`core/runtime/steps.py` + `flow.py` extrait +
+  `healing.py`), zéro régression mono-Act. Exemples zéro config : `examples/composition/`
+  (run mixte Continuum→Oracle et sélecteur cassé rattrapé par vision, vérifiés en réel).
 - **Jalon 2-C — Act IV Phantom** ([docs/acts/phantom.md](docs/acts/phantom.md)) : `act: "phantom"`
   est **runnable**. Un Blueprint **sans `steps`** déclare un `goal` et des `constraints` ; le moteur
   route vers `driver.run_goal` (seam goal-only dans `RunEngine.run`) qui lance la boucle

@@ -48,10 +48,12 @@ def run_loop(
     goal: str,
     constraints: list[str],
     max_steps: int,
+    id_prefix: str = "agent",
 ) -> dict[str, Any]:
     """Iterate until the goal is met, the planner aborts, or the step budget runs out.
 
-    Returns ``{"result": <finish payload>, "steps_taken": N}``.
+    Returns ``{"result": <finish payload>, "steps_taken": N}``. *id_prefix* names the recorded
+    StepResults (``agent[N]`` for a goal-only run, ``<step>.heal[N]`` for a healing micro-goal).
 
     Raises:
         AgentError: the planner aborted, or the budget was exhausted before the goal was reached.
@@ -66,7 +68,7 @@ def run_loop(
             _emit(bus, ctx, EventType.PROGRESS, None, f"agent: done in {steps_taken} steps", "info")
             return {"result": memory.result, "steps_taken": steps_taken}
 
-        step_id = f"agent[{steps_taken}]"
+        step_id = f"{id_prefix}[{steps_taken}]"
         _emit(bus, ctx, EventType.PROGRESS, step_id, f"agent: {_action_summary(action)}", "info")
         _dispatch(driver, action, ctx, bus, results, memory, step_id)
         steps_taken += 1

@@ -13,6 +13,10 @@ step ciblé) — c'est ce qui le distingue de Phantom (agent complet, Jalon 2-C)
 > `Grounder`, comme upgrade **optionnel** (voir [`training/`](../../training/README.md)). Décision
 > et cadrage : [docs/phase-2/README.md](../phase-2/README.md).
 
+Depuis le Jalon 2-D, le ciblage vision d'Oracle sert aussi hors d'un Blueprint `oracle` : un step
+peut passer `act: "oracle"` dans un run Continuum, et le **self-healing** rejoue par vision un
+step au sélecteur cassé (`describe` + `fallback`) — voir [docs/composition.md](../composition.md).
+
 ## Le principe
 
 Un Blueprint `act: "oracle"` est un Blueprint Continuum dont certains steps ciblent par

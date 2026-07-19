@@ -11,6 +11,7 @@ examples/
   continuum/    Act II — navigateur scripté (Playwright)
   oracle/       Act III — vision + discrétion (ciblage {vision} + read)
   phantom/      Act IV — agent autonome orienté objectif (goal/constraints)
+  composition/  Multi-Act : act par step + self-healing (Jalon 2-D)
   plugins/      Extension par paquet tiers : action + canal custom (Jalon 1.5-E)
 ```
 
@@ -76,6 +77,17 @@ Voir [docs/acts/phantom.md](../docs/acts/phantom.md).
 | Fichier | Ce qu'il montre |
 |---------|-----------------|
 | [`phantom/quotes-find-author.blueprint.json`](phantom/quotes-find-author.blueprint.json) | Objectif « trouve la première citation de l'auteur X » sur quotes.toscrape.com, borné par `options.agent.max_steps`. Sans `outputs` déclarés : le résultat de l'agent est renvoyé tel quel. Zéro config (`--input author=...` pour changer d'auteur). |
+
+## Composition multi-Act (Jalon 2-D)
+
+Un même run mélange les Acts (`act` par step) et se répare seul (`describe` +
+`options.fallback`) — les Acts navigateur partagent un seul navigateur. Mêmes extras et clé
+moteur qu'Oracle. Voir [docs/composition.md](../docs/composition.md).
+
+| Fichier | Ce qu'il montre |
+|---------|-----------------|
+| [`composition/quotes-mixed-read.blueprint.json`](composition/quotes-mixed-read.blueprint.json) | Run Continuum (navigate + extract DOM) dont le dernier step passe `act: oracle` pour un `read` sémantique. Zéro config sur quotes.toscrape.com. |
+| [`composition/quotes-selfheal-click.blueprint.json`](composition/quotes-selfheal-click.blueprint.json) | Self-healing : un `click` au sélecteur volontairement cassé est rejoué par ciblage vision (`describe` + `fallback: ["oracle"]`), puis le run repart sur Continuum. Zéro config. |
 
 ## Plugins
 

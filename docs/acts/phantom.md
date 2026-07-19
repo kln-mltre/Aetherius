@@ -3,7 +3,10 @@
 **Statut : livré (Phase 2, [Jalon 2-C](../phase-2/2-c-phantom.md)).** Le plus lourd. Un agent
 décisionnel orienté **objectif** : plutôt qu'une séquence de `steps`, le Blueprint décrit un `goal`
 et des `constraints`, et Phantom boucle **percevoir → raisonner → agir** jusqu'à l'atteindre. Pour
-les objectifs non scriptés et la résilience maximale.
+les objectifs non scriptés et la résilience maximale. Depuis le Jalon 2-D, la même boucle sert
+aussi le **self-healing** en micro-objectif borné (`run_micro_goal`), et un step scripté peut
+passer `act: "phantom"` (il se comporte alors comme Oracle) — voir
+[docs/composition.md](../composition.md).
 
 ## Le contrat d'un Blueprint Phantom
 

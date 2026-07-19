@@ -1,0 +1,30 @@
+{
+  "aetherius": "1.0",
+  "name": "quotes.composition.selfheal",
+  "description": "Self-healing (Jalon 2-D) : le click porte un selecteur volontairement casse ; grace a son describe et a la chaine options.fallback, le step est rejoue par ciblage vision (Oracle) au lieu d'avorter le run, puis la suite repart sur Continuum. Zero config ; requiert [cognition]+[browser] et ANTHROPIC_API_KEY (env ou .env).",
+  "act": "continuum",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": { "timeout_ms": 8000, "fallback": ["oracle"] },
+  "steps": [
+    { "id": "home", "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "id": "next_page",
+      "action": "click",
+      "selector": "#next-page-button-legacy",
+      "describe": "the Next pagination link at the bottom of the quotes list"
+    },
+    {
+      "id": "page2",
+      "action": "wait_for",
+      "selector": "li.previous",
+      "timeout_ms": 15000,
+      "on_timeout": "fail:PAGE2_NOT_REACHED"
+    },
+    {
+      "id": "data",
+      "action": "extract",
+      "outputs": { "first_quote": { "selector": ".quote .text", "as": "text" } }
+    }
+  ],
+  "outputs": { "page2_first_quote": "{{ steps.data.first_quote }}" }
+}

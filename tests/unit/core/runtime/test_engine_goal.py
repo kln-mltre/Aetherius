@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 
 from aetherius.core.blueprint.models import Blueprint
-from aetherius.core.runtime import engine as engine_module
+from aetherius.core.runtime import drivers as drivers_module
 from aetherius.core.runtime.engine import RunEngine
 from aetherius.core.runtime.result import RunStatus
 
@@ -43,7 +43,7 @@ class _FakeDriver:
 
 def _install(monkeypatch: pytest.MonkeyPatch) -> _FakeDriver:
     driver = _FakeDriver()
-    monkeypatch.setattr(engine_module, "_make_driver", lambda act: driver)
+    monkeypatch.setattr(drivers_module, "_make_driver", lambda act: driver)
     return driver
 
 

@@ -129,6 +129,11 @@
               "description": "Upper bound on the perceive->reason->act loop: the agent fails cleanly if the goal is not reached within this many steps."
             }
           }
+        },
+        "fallback": {
+          "type": "array",
+          "description": "Self-healing (Jalon 2-D): default escalation chain tried, in order, when a browser step fails and carries a 'describe' (or a vision target). A step's own 'fallback' overrides it.",
+          "items": { "enum": ["oracle", "phantom"] }
         }
       }
     },
@@ -190,6 +195,19 @@
         "when": {
           "type": "string",
           "description": "Guard expression rendered before dispatch; the step is skipped unless it yields true/1/yes."
+        },
+        "act": {
+          "enum": ["vector", "continuum", "oracle", "phantom"],
+          "description": "Multi-Act composition (Jalon 2-D): overrides the Blueprint act for this step (nested flow steps inherit it). Browser Acts share a single browser within the run."
+        },
+        "describe": {
+          "type": "string",
+          "description": "Self-healing: natural-language intent of the step, replayed on a higher Act (vision grounding or agent micro-goal) when its selector fails. Without it a failing selector step is not escalated."
+        },
+        "fallback": {
+          "type": "array",
+          "description": "Self-healing: per-step escalation chain; overrides options.fallback ([] disables it for this step).",
+          "items": { "enum": ["oracle", "phantom"] }
         },
         "target": {
           "description": "Unified target of an interactive action. Either the drop selector of drag (string), or an object aiming at a DOM selector ({selector, selector_type}) or, on Act III+, at a natural-language description resolved by vision grounding ({vision}). Top-level 'selector' and 'target' are mutually exclusive on a step.",

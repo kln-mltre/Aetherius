@@ -394,7 +394,8 @@ console.log(result.outputs.events);
 ```
 src/aetherius/
   core/        blueprint (models/loader/validator/template), actions (le dictionnaire),
-               runtime (engine/context/steps/selector/result), extraction, events, errors, driver
+               runtime (engine/drivers/steps/flow/healing/context/selector/result), extraction,
+               events, errors, driver
   acts/        vector (I), continuum (II), oracle (III), phantom (IV)
   stealth/     policy, humanizer (mouse/keyboard/scroll/timing), gestures, fingerprint,
                session (store/warmup), ml (optionnel)
@@ -655,8 +656,20 @@ optionnel), sans entraînement obligatoire.
   l'agent renvoyée telle quelle sans `outputs`. Exemple zéro config :
   `examples/phantom/quotes-find-author.blueprint.json`. [docs/acts/phantom.md](docs/acts/phantom.md),
   [docs/phase-2/2-c-phantom.md](docs/phase-2/2-c-phantom.md).
-- [ ] **2-D** — Composition multi-Act par step + self-healing (fallback II→III→IV, un seul navigateur
-  partagé).
+- [x] **2-D** — Composition multi-Act par step + self-healing : un Blueprint mélange les Acts —
+  `act` **par step** (hérité dans les branches de flux, validé contre l'act effectif), les Acts
+  navigateur partageant **un seul navigateur** (une instance du plus haut Act atteignable, par
+  subsomption de la chaîne d'héritage des drivers ; drivers démarrés à la demande,
+  `core/runtime/drivers.py`). **Self-healing** opt-in : un step navigateur qui échoue est rejoué
+  sur l'Act supérieur via sa chaîne `options.fallback`/`fallback` (ordonnée, `oracle`/`phantom`)
+  et son **`describe`** (intention en langage naturel, jamais devinée) — escalade Oracle = rejeu
+  vision du même step (`fill`→`type`), escalade Phantom = **micro-objectif** d'agent borné
+  (6 actions) capable d'écarter un obstacle ; ponctuelle (le step suivant repart sur son act),
+  step guéri = succès tracé (`healed_by` + événements `progress` warning, aucun nouveau type
+  d'événement), chaîne épuisée = l'erreur d'origine inchangée. Exemples zéro config :
+  `examples/composition/` (run mixte + self-healing, vérifiés en réel).
+  [docs/composition.md](docs/composition.md),
+  [docs/phase-2/2-d-composition.md](docs/phase-2/2-d-composition.md).
 - [ ] **2-E** — Human-in-the-loop (action `confirm` : run garé jusqu'à décision humaine, via console /
   API daemon / notification).
 

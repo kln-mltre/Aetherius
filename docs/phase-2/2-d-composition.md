@@ -1,8 +1,9 @@
 # Jalon 2-D — Composition multi-Act & self-healing
 
-**Statut : à venir.** Fait tomber la contrainte « un Act par Blueprint ». Deux capacités liées :
-(a) **`act` par step** — mélanger Continuum, Oracle et Phantom dans un même run ; (b) **self-healing**
-— quand un sélecteur lâche, rejouer l'intention du step sur l'Act supérieur.
+**Statut : livré.** Doc définitive : [docs/composition.md](../composition.md). Fait tomber la
+contrainte « un Act par Blueprint ». Deux capacités liées : (a) **`act` par step** — mélanger
+Continuum, Oracle et Phantom dans un même run ; (b) **self-healing** — quand un sélecteur lâche,
+rejouer l'intention du step sur l'Act supérieur.
 
 ## Objectif
 

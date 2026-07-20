@@ -11,8 +11,13 @@ import pytest
 from aetherius.config import settings as settings_mod
 from aetherius.store import Store
 from aetherius.store import engine as engine_mod
+from aetherius.store.schema import _MIGRATIONS
 
 from .conftest import make_run, make_schedule
+
+# The latest schema version is the number of migrations applied; tracking it here keeps these
+# assertions honest when a forward-only migration is appended (Jalon 2-E added v1 -> v2).
+_LATEST_VERSION = len(_MIGRATIONS)
 
 pytestmark = pytest.mark.unit
 
@@ -37,7 +42,7 @@ def test_creates_the_file_and_missing_parent_dirs(tmp_path: Path) -> None:
 def test_schema_is_migrated_to_the_latest_version(tmp_path: Path) -> None:
     db_path = tmp_path / "aetherius.db"
     Store(db_path).close()
-    assert _user_version(db_path) == 1
+    assert _user_version(db_path) == _LATEST_VERSION
 
 
 def test_reopening_the_same_file_preserves_data(tmp_path: Path) -> None:
@@ -54,7 +59,7 @@ def test_reopening_the_same_file_preserves_data(tmp_path: Path) -> None:
         assert second.runs.get("run-1") is not None
         assert second.state.get("sch-1", "stock") == "in-stock"
         # Reopening an already-migrated database must not re-run or fail its migration.
-        assert _user_version(db_path) == 1
+        assert _user_version(db_path) == _LATEST_VERSION
     finally:
         second.close()
 

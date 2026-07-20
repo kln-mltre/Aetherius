@@ -55,3 +55,33 @@ def test_raises_on_http_error(capture: Capture) -> None:
     channel = NtfyChannel("restock", transport=capture.transport())
     with pytest.raises(httpx.HTTPStatusError):
         channel.send(Notification(body="ping"))
+
+
+def test_confirm_callback_becomes_tappable_action_buttons(capture: Capture) -> None:
+    """Human-in-the-loop (Jalon 2-E): a confirm callback under data['confirm'] adds Approve/Reject."""
+    channel = NtfyChannel("approvals", transport=capture.transport())
+    channel.send(
+        Notification(
+            body="Publish this post?",
+            data={
+                "confirm": {
+                    "decisions_url": "https://box.example/v1/runs/r1/decisions",
+                    "token": "tok-abc",
+                    "auth": "Bearer s3cr3t",
+                }
+            },
+        )
+    )
+    actions = capture.payload["actions"]
+    assert [a["label"] for a in actions] == ["Approve", "Reject"]
+    assert all(a["action"] == "http" and a["method"] == "POST" for a in actions)
+    assert all(a["url"] == "https://box.example/v1/runs/r1/decisions" for a in actions)
+    assert actions[0]["body"] == '{"token": "tok-abc", "approved": true}'
+    assert actions[0]["headers"]["Authorization"] == "Bearer s3cr3t"
+
+
+def test_no_action_buttons_without_a_reachable_callback(capture: Capture) -> None:
+    # An informational confirm alert (no decisions_url) carries no dead buttons.
+    channel = NtfyChannel("approvals", transport=capture.transport())
+    channel.send(Notification(body="Approve?", data={"confirm": {"token": "x"}}))
+    assert "actions" not in capture.payload

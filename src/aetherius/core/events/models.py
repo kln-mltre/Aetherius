@@ -21,6 +21,10 @@ class EventType(str, Enum):
     ARTIFACT = "artifact"
     ERROR = "error"
     DONE = "done"
+    # Human-in-the-loop (Jalon 2-E): a ``confirm`` step parked the run awaiting a decision, and the
+    # decision (or timeout) that resumed it. The run stays ``running`` throughout — no new status.
+    INPUT_REQUESTED = "input_requested"
+    INPUT_PROVIDED = "input_provided"
 
 
 class RunEvent(BaseModel):

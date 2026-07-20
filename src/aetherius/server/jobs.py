@@ -22,10 +22,11 @@ from typing import Any, Callable, Mapping
 
 from ..core.blueprint.models import Blueprint
 from ..core.errors import AetheriusError
-from ..core.events.models import RunEvent
+from ..core.events.models import EventType, RunEvent
+from ..core.runtime.approvals import ApprovalGateway, ApprovalRegistry, Decision
 from ..core.runtime.engine import RunEngine
 from ..core.runtime.result import Result
-from ..store import RunRecord, RunRepository
+from ..store import ApprovalRepository, RunRecord, RunRepository
 from .schemas import DaemonRunStatus, to_daemon_status
 
 
@@ -72,8 +73,17 @@ class RunManager:
     the unit tests drive it.
     """
 
-    def __init__(self, runs: RunRepository | None = None) -> None:
+    def __init__(
+        self,
+        runs: RunRepository | None = None,
+        *,
+        approvals: ApprovalRepository | None = None,
+        registry: ApprovalGateway | None = None,
+    ) -> None:
         self._runs = runs
+        self._approvals = approvals
+        # The rendezvous a parked ``confirm`` blocks on; the decisions route resolves it (Jalon 2-E).
+        self._registry: ApprovalGateway = registry or ApprovalRegistry()
         self._jobs: dict[str, Job] = {}
         # The loop only keeps weak references to tasks; hold strong ones so a run cannot be
         # garbage-collected mid-flight while it awaits the worker thread.
@@ -81,6 +91,10 @@ class RunManager:
 
     def get(self, run_id: str) -> Job | None:
         return self._jobs.get(run_id)
+
+    def resolve_decision(self, run_id: str, token: str, decision: Decision) -> bool:
+        """Deliver a human decision to a parked ``confirm``; False for an unknown run or token."""
+        return self._registry.resolve(run_id, token, decision)
 
     async def submit(
         self,
@@ -112,8 +126,38 @@ class RunManager:
         if job is None:
             return
         job.history.append(event)
+        self._persist_approval(event)
         for queue in list(job.subscribers):
             queue.put_nowait(event)
+
+    def _persist_approval(self, event: RunEvent) -> None:
+        """Mirror a confirm request and its resolution onto the store's audit trail (best-effort).
+
+        Driven off the authoritative event stream — ``input_provided`` carries the true final outcome
+        whether a human decided or the timeout fired — so there is a single, race-free writer. The
+        write is tiny and only runs for the two rare confirm events, so doing it inline on the loop is
+        fine.
+        """
+        if self._approvals is None:
+            return
+        token = event.data.get("token")
+        if not token:
+            return
+        try:
+            if event.type == EventType.INPUT_REQUESTED:
+                self._approvals.open_pending(
+                    str(token), event.run_id, event.message or "", step_id=event.step_id
+                )
+            elif event.type == EventType.INPUT_PROVIDED:
+                decided_by = event.data.get("decided_by")
+                status = (
+                    "timeout"
+                    if decided_by == "timeout"
+                    else ("approved" if event.data.get("approved") else "rejected")
+                )
+                self._approvals.resolve(str(token), status, decided_by=decided_by)
+        except Exception:  # noqa: BLE001 - audit trail is best-effort; never disturb the run
+            pass
 
     async def _execute(
         self,
@@ -133,6 +177,7 @@ class RunManager:
                 secrets,
                 sinks=[sink],
                 run_id=job.run_id,
+                approvals=self._registry,
             )
             job.result = result
             job.status = to_daemon_status(result.status)

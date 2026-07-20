@@ -44,6 +44,11 @@ class Capability(str, Enum):
     # See docs/notifications.md.
     NOTIFY = "notify"
 
+    # ── Human-in-the-loop (all Acts) ─────────────────────────────────────────
+    # Park the run until a human decides (approve/reject/value) or a timeout fires.
+    # Dispatched by the shared handler like notify. See docs/human-in-the-loop.md.
+    CONFIRM = "confirm"
+
     # ── Vision (Act III+) ────────────────────────────────────────────────────
     # Semantic extraction: read data off the screen described in natural language.
     # See docs/acts/oracle.md.
@@ -62,6 +67,7 @@ _VECTOR_CAPS: frozenset[Capability] = frozenset(
         Capability.FOR_EACH,
         Capability.EXTRACT,
         Capability.NOTIFY,
+        Capability.CONFIRM,
     }
 )
 

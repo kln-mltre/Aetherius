@@ -56,17 +56,27 @@ def run(
 
     from ..core.blueprint.loader import load_blueprint
     from ..core.errors import AetheriusError
+    from ..core.events.sinks import LogSink, Sink
+    from ..core.runtime.approvals import ApprovalRegistry
     from ..core.runtime.engine import RunEngine
+    from .approvals import StdinApprovalSink
 
     rich_console = RichConsole()
     inputs = parse_pairs(input, label="--input")
     secrets = parse_pairs(secret, label="--secret")
 
+    # Human-in-the-loop (Jalon 2-E): a confirm step parks the run and prompts on stdin.
+    registry = ApprovalRegistry()
+    sinks: list[Sink] = [StdinApprovalSink(registry)]
+
     try:
         loaded = load_blueprint(blueprint)
         if debug:
             loaded.options.debug = True
-        result = RunEngine().run(loaded, inputs=inputs, secrets=secrets)
+            sinks.append(LogSink(debug=True))
+        result = RunEngine().run(
+            loaded, inputs=inputs, secrets=secrets, sinks=sinks, approvals=registry
+        )
     except AetheriusError as exc:
         rich_console.print(f"[bold red]Error:[/bold red] {exc}")
         raise typer.Exit(1) from exc

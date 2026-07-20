@@ -34,6 +34,7 @@ def test_openapi_declares_the_implemented_paths(contracts_dir: Path) -> None:
         "/v1/runs",
         "/v1/runs/{runId}",
         "/v1/runs/{runId}/events",
+        "/v1/runs/{runId}/decisions",
         "/v1/blueprints/validate",
         "/v1/schema",
         "/v1/schedules",

@@ -105,6 +105,8 @@ class ContinuumDriver(SharedActionsMixin):
                 return self._assert(step, renderer)
             case "notify":
                 return self._notify(step, ctx, bus, renderer)
+            case "confirm":
+                return self._confirm(step, ctx, bus, renderer)
             case _:
                 # Built-ins first, then the plugin registry (docs/plugins.md).
                 handler = find_handler(step.action)

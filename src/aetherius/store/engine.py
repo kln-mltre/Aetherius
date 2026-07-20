@@ -12,6 +12,7 @@ import sqlite3
 from functools import lru_cache
 from pathlib import Path
 
+from .approvals import ApprovalRepository
 from .runs import RunRepository
 from .schedules import ScheduleRepository
 from .schema import apply_migrations
@@ -33,6 +34,7 @@ class Store:
         self._schedules = ScheduleRepository(self._conn)
         self._runs = RunRepository(self._conn)
         self._state = StateRepository(self._conn)
+        self._approvals = ApprovalRepository(self._conn)
 
     @staticmethod
     def _connect(db_path: Path) -> sqlite3.Connection:
@@ -57,6 +59,10 @@ class Store:
     @property
     def state(self) -> StateRepository:
         return self._state
+
+    @property
+    def approvals(self) -> ApprovalRepository:
+        return self._approvals
 
     def close(self) -> None:
         """Close the underlying connection."""

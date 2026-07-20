@@ -55,6 +55,24 @@ _MIGRATIONS: tuple[tuple[str, ...], ...] = (
         )
         """,
     ),
+    # v1 -> v2: human-in-the-loop approvals (Jalon 2-E). Audit trail of every ``confirm`` request and
+    # its resolution; the live rendezvous is in-memory (a parked run cannot outlive its worker), this
+    # table is for observability. Keyed by the opaque token so an unknown token is rejected cleanly.
+    (
+        """
+        CREATE TABLE approvals (
+            token       TEXT PRIMARY KEY,
+            run_id      TEXT NOT NULL,
+            step_id     TEXT,
+            message     TEXT NOT NULL,
+            status      TEXT NOT NULL,
+            decided_by  TEXT,
+            created_at  TEXT NOT NULL,
+            decided_at  TEXT
+        )
+        """,
+        "CREATE INDEX idx_approvals_run ON approvals (run_id)",
+    ),
 )
 
 

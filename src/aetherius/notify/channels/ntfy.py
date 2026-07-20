@@ -6,6 +6,7 @@ is exactly the "alert me on my phone" case without an app to build. The topic ac
 
 from __future__ import annotations
 
+import json
 from typing import Any, Mapping
 
 import httpx
@@ -16,6 +17,37 @@ from ..registry import register_channel, require
 from ._http import post_json
 
 _DEFAULT_SERVER = "https://ntfy.sh"
+
+
+def _confirm_actions(confirm: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+    """Turn a confirm callback (server/approvals.py) into tappable ntfy Approve/Reject buttons.
+
+    Each is an ntfy ``http`` action that POSTs the decision to the daemon's ``/decisions`` route with
+    the request token — the "approve from my phone" case, without an app to build. Returns None when
+    the callback is incomplete (no reachable URL), so the alert stays purely informational.
+    """
+    url = confirm.get("decisions_url")
+    token = confirm.get("token")
+    if not url or not token:
+        return None
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    auth = confirm.get("auth")
+    if auth:
+        headers["Authorization"] = str(auth)
+
+    def action(label: str, approved: bool) -> dict[str, Any]:
+        return {
+            "action": "http",
+            "label": label,
+            "url": url,
+            "method": "POST",
+            "headers": headers,
+            "body": json.dumps({"token": token, "approved": approved}),
+            "clear": True,
+        }
+
+    return [action("Approve", True), action("Reject", False)]
+
 
 # ntfy priorities: 3 is the default, 4 rings, 5 rings insistently.
 _LEVEL_PRIORITY: dict[NotificationLevel, int] = {
@@ -55,6 +87,13 @@ class NtfyChannel:
             payload["title"] = notification.title
         if notification.url:
             payload["click"] = notification.url
+        # Human-in-the-loop (Jalon 2-E): a confirm request carries a decision callback under
+        # data["confirm"]; expose it as tappable Approve/Reject buttons.
+        confirm = notification.data.get("confirm")
+        if isinstance(confirm, Mapping):
+            actions = _confirm_actions(confirm)
+            if actions is not None:
+                payload["actions"] = actions
         post_json(self._server, payload, transport=self._transport)
 
 

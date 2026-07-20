@@ -1,0 +1,41 @@
+{
+  "aetherius": "1.0",
+  "name": "demo.confirm.before-post",
+  "act": "vector",
+  "inputs": {
+    "title": { "type": "string", "default": "Aetherius demo post" }
+  },
+  "vars": { "api": "https://jsonplaceholder.typicode.com" },
+  "steps": [
+    {
+      "id": "preview",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.api }}/users/1",
+      "expect": { "status": 200 },
+      "extract": { "author": { "from": "json", "path": "$.name" } }
+    },
+    {
+      "id": "approve",
+      "action": "confirm",
+      "title": "Publish this post?",
+      "message": "Publish '{{ inputs.title }}' as {{ steps.preview.author | first }}? Rejects after 30s.",
+      "timeout_ms": 30000,
+      "on_timeout": "reject"
+    },
+    {
+      "id": "publish",
+      "when": "{{ steps.approve.approved }}",
+      "action": "http.request",
+      "method": "POST",
+      "url": "{{ vars.api }}/posts",
+      "json": { "title": "{{ inputs.title }}", "userId": 1 },
+      "expect": { "status": 201 },
+      "extract": { "post_id": { "from": "json", "path": "$.id" } }
+    }
+  ],
+  "outputs": {
+    "approved": "{{ steps.approve.approved }}",
+    "post_id": "{{ steps.publish.post_id if steps.publish is defined else None }}"
+  }
+}

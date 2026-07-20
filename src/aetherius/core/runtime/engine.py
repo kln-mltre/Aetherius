@@ -13,6 +13,7 @@ from ..errors import AetheriusError, RunError
 from ..events.bus import EventBus
 from ..events.models import EventType, RunEvent
 from ..events.sinks import LogSink, NullSink, Sink
+from ..runtime.approvals import ApprovalGateway
 from ..runtime.context import RunContext, resolve_inputs
 from ..runtime.drivers import IMPLEMENTED_ACTS as IMPLEMENTED_ACTS  # re-export (public surface)
 from ..runtime.drivers import DriverManager
@@ -29,6 +30,7 @@ class RunEngine:
         *,
         sinks: list[Sink] | None = None,
         run_id: str | None = None,
+        approvals: ApprovalGateway | None = None,
     ) -> Result:
         # Plugins must be visible before validation: a Blueprint may use a plugin action. Imported
         # lazily (like resolve_secrets below) and idempotent, so per-run cost is a flag check.
@@ -52,6 +54,7 @@ class RunEngine:
             inputs=resolved_inputs,
             secrets=resolved_secrets,
             started_at=started_at,
+            approvals=approvals,
         )
 
         bus = EventBus()

@@ -8,6 +8,27 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 2-E — Human-in-the-loop (`confirm`)** ([docs/human-in-the-loop.md](docs/human-in-the-loop.md)) :
+  une action **orthogonale aux Acts** (héritée par tous les drivers comme `notify`) qui **gare le
+  run** jusqu'à une décision humaine puis reprend. **Attente bloquante, pas suspend/resume** : le
+  worker parqué bloque sur un rendez-vous mémoire (`core/runtime/approvals.py`,
+  `ApprovalRegistry`/`Rendezvous`), le run — navigateur compris — reste vivant ; la boucle asyncio,
+  l'UI, ne gèlent jamais. Le **statut reste `running`** (deux nouveaux events
+  `input_requested`/`input_provided` au contrat `events.schema.json`, aucun nouveau statut). **Timeout
+  obligatoire** (`timeout_ms`, défaut 5 min) + `on_timeout` `approve`/`reject`/`fail:CODE` (défaut
+  **reject**, deny-by-default : le step sensible gardé par `when` se saute) ; un run non surveillé
+  (bibliothèque, sans surface) applique le timeout **immédiatement**. **Quatre surfaces, un seul
+  rendez-vous** : Console (`ConfirmModal` via `ConsoleApprovalSink` sur `input_requested`),
+  CLI/in-process (invite stdin `questionary`, sur un thread pour respecter le timeout, no-op sans
+  TTY), **API daemon** (`POST /v1/runs/{id}/decisions`, token opaque lié au `run_id`, 404 run inconnu
+  / 409 rien en attente ou token invalide), et **réponse de notification** (boutons ntfy
+  Approve/Reject POSTant la route, via `Notification.data["confirm"]` + `AETHERIUS_DAEMON_PUBLIC_URL`).
+  Piste d'audit `approvals` (migration store forward-only **v1→v2**) écrite par le daemon depuis le
+  flux d'événements (source unique, sans course). Nouveaux : `core/actions/human.py` (spec `confirm`),
+  `Capability.CONFIRM`, `RunContext.approvals` + `RunEngine.run(approvals=)`, `server/approvals.py`,
+  `console/approvals.py`, `cli/approvals.py`, `store/approvals.py`. Contrats : event enum + route
+  OpenAPI. Exemple zéro config : `examples/vector/confirm-before-post.blueprint.json`. **Phase 2
+  terminée (A–E).**
 - **Jalon 2-D — Composition multi-Act & self-healing** ([docs/composition.md](docs/composition.md)) :
   la contrainte « un Act par Blueprint » tombe. **`act` par step** — chaque step peut surcharger
   l'act du run (hérité dans les branches `if`/`repeat`/`for_each`, validé contre l'act **effectif**) ;

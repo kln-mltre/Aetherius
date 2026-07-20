@@ -56,6 +56,26 @@ class Run(BaseModel):
     error: str | None = None
 
 
+class DecisionRequest(BaseModel):
+    """Body of ``POST /v1/runs/{run_id}/decisions``: a human's answer to a parked ``confirm``.
+
+    ``token`` is the opaque credential minted for the request (carried on the ``input_requested``
+    event); it authorises exactly one run's pending decision. ``value`` supplies an optional value
+    for the "provide a value" case.
+    """
+
+    token: str
+    approved: bool
+    value: Any = None
+
+
+class DecisionAck(BaseModel):
+    """Response of ``POST /v1/runs/{run_id}/decisions``: the decision was delivered to the parked run."""
+
+    run_id: str
+    accepted: bool
+
+
 class ScheduleCreate(BaseModel):
     """Body of ``POST /v1/schedules``: which Blueprint to re-run, when, and how to alert.
 

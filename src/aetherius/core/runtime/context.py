@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 from ..blueprint.models import Blueprint
 from ..errors import BlueprintValidationError
+from .approvals import ApprovalGateway
 
 
 @dataclass
@@ -21,6 +22,9 @@ class RunContext:
     # Loop variables injected by flow actions (for_each) for the duration of an iteration.
     scope: dict[str, Any] = field(default_factory=dict)
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    # Human-in-the-loop decision channel (Jalon 2-E). None means unattended: a ``confirm`` step
+    # applies its on_timeout policy at once instead of parking with no surface to answer it.
+    approvals: ApprovalGateway | None = None
 
     def template_ctx(self) -> dict[str, Any]:
         """Build the Jinja2 context dict for rendering step fields and outputs."""

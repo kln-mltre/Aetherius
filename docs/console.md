@@ -63,6 +63,13 @@ puis événements en direct et résultat final.
 
 ![L'écran Runs : formulaire d'inputs et bouton Run](screenshots/runs.svg)
 
+Quand un run atteint un step **`confirm`** (human-in-the-loop, Jalon 2-E), il se **gare** et un
+`ConfirmModal` s'ouvre : Approve/Reject résout le run parqué (le worker Textual reste bloqué, l'UI
+non). C'est piloté par le `ConsoleApprovalSink` sur l'événement `input_requested` — même rendez-vous
+que les surfaces CLI et daemon. Voir [docs/human-in-the-loop.md](human-in-the-loop.md).
+
+![La Console : le modal de confirmation garant le run](screenshots/human-in-the-loop.svg)
+
 **Catalog** — la référence des 4 Acts : statut d'implémentation et actions supportées (un `†` marque
 une action déclarée mais pas encore exécutée par le driver de l'Act).
 

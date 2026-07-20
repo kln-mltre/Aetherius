@@ -15,8 +15,10 @@ from ...core.blueprint.loader import load_blueprint
 from ...core.blueprint.models import Blueprint
 from ...core.blueprint.validator import validate_for_act
 from ...core.errors import AetheriusError
+from ...core.runtime.approvals import ApprovalRegistry
 from ...core.runtime.engine import IMPLEMENTED_ACTS, RunEngine
 from ...core.runtime.result import Result
+from ..approvals import ConsoleApprovalSink
 from ..run_bridge import TextualRunSink
 from ..theme import starred
 from ..widgets.event_log import EventLog
@@ -110,9 +112,19 @@ class RunsScreen(Screen[None]):
         assert self._blueprint is not None
         event_log = self.query_one("#run-event-log", EventLog)
         sink = TextualRunSink(self.app, event_log)
+        # Human-in-the-loop (Jalon 2-E): a confirm step parks this worker; the approval sink raises a
+        # modal on the UI thread and resolves this registry with the answer.
+        registry = ApprovalRegistry()
+        approval_sink = ConsoleApprovalSink(self.app, registry)
 
         try:
-            result = RunEngine().run(self._blueprint, inputs=inputs, secrets=secrets, sinks=[sink])
+            result = RunEngine().run(
+                self._blueprint,
+                inputs=inputs,
+                secrets=secrets,
+                sinks=[sink, approval_sink],
+                approvals=registry,
+            )
         except AetheriusError as exc:
             self.app.call_from_thread(self._notify_error, exc)
             self.app.call_from_thread(self._reenable_run_button)

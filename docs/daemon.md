@@ -44,6 +44,7 @@ systemd) : [deployment.md](deployment.md).
 | `POST /v1/runs` | Soumet un Blueprint (inline ou chemin) + `inputs`/`secrets`. Répond **202** avec `{run_id}`. |
 | `GET /v1/runs/{id}` | Statut + résultat du run : `{run_id, status, outputs, error}`. |
 | `WS /v1/runs/{id}/events` | Flux d'événements du run (voir ci-dessous). |
+| `POST /v1/runs/{id}/decisions` | Livre une décision humaine à un run garé sur `confirm` (Jalon 2-E). Corps `{token, approved, value?}` ; **200** si livrée, **404** run inconnu, **409** rien en attente ou token invalide. Le run reste `running`. Voir [human-in-the-loop.md](human-in-the-loop.md). |
 | `POST /v1/blueprints/validate` | Rapport de validation **non-levant** : `{valid, errors:[{path, message}]}`. |
 | `GET /v1/schema` | Le JSON Schema du Blueprint. |
 | `POST /v1/schedules`, `GET /v1/schedules[/{id}]`, `PATCH`/`DELETE /v1/schedules/{id}`, `POST /v1/schedules/{id}/run` | CRUD des schedules persistants + tir immédiat (Jalon 1.5-D) ; voir [scheduler.md](scheduler.md). |

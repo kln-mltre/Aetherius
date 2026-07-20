@@ -117,6 +117,17 @@ schedule) ; la couche notify reste sans état. C'est la politique `notify` d'un 
 `"on": "change"` : elle compare les outputs de chaque run réussi au tir précédent et n'alerte
 qu'au changement (voir [docs/scheduler.md](scheduler.md)).
 
+## Réponses de notification (human-in-the-loop)
+
+`Notification.data` porte un contexte structuré qu'un canal peut exploiter. L'action `confirm`
+(Jalon 2-E, [docs/human-in-the-loop.md](human-in-the-loop.md)) s'en sert : quand une demande est
+émise via le daemon **et** qu'une URL publique est configurée (`AETHERIUS_DAEMON_PUBLIC_URL`),
+`data["confirm"]` contient `{decisions_url, token, auth}`. Le canal **ntfy** le traduit en deux
+boutons d'action HTTP **Approve** / **Reject** qui POSTent `/v1/runs/{id}/decisions` — approuver
+depuis le téléphone en un tap, sans app à construire. Sans URL joignable, `data["confirm"]` est absent
+et l'alerte reste informative (pas de bouton mort). Les autres canaux ignorent `data["confirm"]`
+aujourd'hui ; un callback Telegram (bot recevant les réponses) est une évolution future.
+
 ## Tester les notifications
 
 L'exemple zéro configuration (webhook → écho public httpbin) :

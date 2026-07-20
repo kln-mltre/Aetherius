@@ -609,7 +609,7 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   `examples/vector/http-headers-identity.blueprint.json`. [docs/stealth.md](docs/stealth.md),
   [docs/phase-1.5/h-fingerprint.md](docs/phase-1.5/h-fingerprint.md).
 
-### Phase 2 — Autonomie & Contrôle (en cours)
+### Phase 2 — Autonomie & Contrôle (terminée)
 
 Cadrage complet et **spécifications par jalon** : [docs/phase-2/](docs/phase-2/README.md). La phase
 livre les **Acts cognitifs** et rend le bot à la fois plus **autonome** (il gère les parties non
@@ -670,8 +670,22 @@ optionnel), sans entraînement obligatoire.
   `examples/composition/` (run mixte + self-healing, vérifiés en réel).
   [docs/composition.md](docs/composition.md),
   [docs/phase-2/2-d-composition.md](docs/phase-2/2-d-composition.md).
-- [ ] **2-E** — Human-in-the-loop (action `confirm` : run garé jusqu'à décision humaine, via console /
-  API daemon / notification).
+- [x] **2-E** — Human-in-the-loop : l'action **`confirm`** (orthogonale aux Acts, héritée par tous les
+  drivers) **gare le run** jusqu'à une décision humaine puis reprend — attente bloquante sur un
+  rendez-vous mémoire (`core/runtime/approvals.py`), le worker parqué, jamais la boucle ; le statut
+  reste `running` (nouveaux events `input_requested`/`input_provided`, aucun nouveau statut). Timeout
+  **obligatoire** (`on_timeout` `approve`/`reject`/`fail:CODE`, défaut **reject** deny-by-default) ;
+  run non surveillé (bibliothèque) = timeout immédiat. **Quatre surfaces, un seul rendez-vous** :
+  Console (`ConfirmModal` sur `input_requested`), CLI/in-process (invite stdin `questionary`), API
+  daemon (`POST /v1/runs/{id}/decisions`, token opaque lié au run, 404/409), et **réponse de
+  notification** (boutons ntfy Approve/Reject POSTant la route via `Notification.data`, URL publique
+  `AETHERIUS_DAEMON_PUBLIC_URL`). Piste d'audit `approvals` (migration store v1→v2) écrite depuis le
+  flux d'événements. Exemple zéro config : `examples/vector/confirm-before-post.blueprint.json`.
+  [docs/human-in-the-loop.md](docs/human-in-the-loop.md),
+  [docs/phase-2/2-e-human-in-loop.md](docs/phase-2/2-e-human-in-loop.md).
+
+**Phase 2 terminée (A–E).** Aetherius est désormais autonome (Oracle/Phantom, composition,
+self-healing) **et** pilotable (human-in-the-loop).
 
 ## Sources de référence
 

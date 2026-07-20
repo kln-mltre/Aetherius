@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from ..plugins import load_plugins
 from ..store import get_store
 from ..version import __version__
+from .approvals import DaemonApprovalRegistry
 from .config import DaemonConfig
 from .jobs import RunManager
 from .routes import blueprints, recorder, runs, schedules, stream
@@ -52,7 +53,10 @@ def create_app(config: DaemonConfig | None = None) -> FastAPI:
     # Runs persist their outcome to the durable store so history survives daemon restarts (Jalon A).
     store = get_store()
     app.state.store = store
-    app.state.manager = RunManager(runs=store.runs)
+    # The approval registry parks confirm steps and carries the daemon's decision callback into
+    # notifications (Jalon 2-E); the store gives the requests a durable audit trail.
+    registry = DaemonApprovalRegistry(public_url=config.public_url, token=config.token)
+    app.state.manager = RunManager(runs=store.runs, approvals=store.approvals, registry=registry)
 
     app.include_router(runs.router)
     app.include_router(blueprints.router)

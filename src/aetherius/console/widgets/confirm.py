@@ -30,12 +30,18 @@ class ConfirmModal(ModalScreen[bool]):
     BINDINGS = [("escape", "cancel", "Cancel")]
 
     def __init__(
-        self, message: str, *, title: str = "Confirm", confirm_label: str = "Confirm"
+        self,
+        message: str,
+        *,
+        title: str = "Confirm",
+        confirm_label: str = "Confirm",
+        cancel_label: str = "Cancel",
     ) -> None:
         super().__init__()
         self._message = message
         self._title = title
         self._confirm_label = confirm_label
+        self._cancel_label = cancel_label
 
     def compose(self) -> ComposeResult:
         with Vertical(id="confirm-dialog"):
@@ -43,7 +49,7 @@ class ConfirmModal(ModalScreen[bool]):
             yield Static(self._message, id="confirm-message")
             with Horizontal(classes="step-actions"):
                 yield Button(self._confirm_label, id="confirm-ok", variant="primary")
-                yield Button("Cancel", id="confirm-cancel")
+                yield Button(self._cancel_label, id="confirm-cancel")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss(event.button.id == "confirm-ok")

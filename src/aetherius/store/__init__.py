@@ -11,6 +11,7 @@ See docs/phase-1.5/a-store.md.
 
 from __future__ import annotations
 
+from .approvals import ApprovalRepository
 from .engine import Store, get_store
 from .models import RunRecord, ScheduleRecord
 from .runs import RunRepository
@@ -25,4 +26,5 @@ __all__ = [
     "ScheduleRepository",
     "RunRepository",
     "StateRepository",
+    "ApprovalRepository",
 ]

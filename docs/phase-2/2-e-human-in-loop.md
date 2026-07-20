@@ -1,9 +1,9 @@
 # Jalon 2-E — Human-in-the-loop (action `confirm`)
 
-**Statut : à venir.** Orthogonal aux Acts. Une action qui **met le run en pause** jusqu'à une décision
-humaine (approuver/rejeter, ou fournir une valeur), avec timeout. Rend le bot **pilotable à 100 % à
-distance** (surveillance restock → « confirmer l'achat ? ») **et** en local (comme les permissions de
-Claude Code).
+**Statut : livré.** Doc de référence : [docs/human-in-the-loop.md](../human-in-the-loop.md). Orthogonal
+aux Acts. Une action qui **met le run en pause** jusqu'à une décision humaine (approuver/rejeter, ou
+fournir une valeur), avec timeout. Rend le bot **pilotable à 100 % à distance** (surveillance restock →
+« confirmer l'achat ? ») **et** en local (comme les permissions de Claude Code).
 
 ## Objectif
 

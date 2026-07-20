@@ -77,6 +77,30 @@ paths:
       responses:
         "101": { description: Switching Protocols (WebSocket). }
 
+  /v1/runs/{runId}/decisions:
+    post:
+      summary: Deliver a human decision to a run parked on a confirm step.
+      description: >
+        Human-in-the-loop (Jalon 2-E). A `confirm` step parks the run until a decision arrives; this
+        route resolves it. The `token` (carried on the `input_requested` event) authorises exactly one
+        run's pending decision. The run stays `running` throughout — no new status.
+      operationId: decideRun
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecisionRequest" }
+      responses:
+        "200":
+          description: Decision delivered to the parked run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DecisionAck" }
+        "404": { description: Unknown run. }
+        "409": { description: No pending decision for this run, or the token is invalid. }
+
   /v1/blueprints/validate:
     post:
       summary: Validate a Blueprint against the schema and the selected Act capabilities.
@@ -225,6 +249,19 @@ components:
         status: { type: string, enum: [queued, running, succeeded, failed] }
         outputs: { type: object }
         error: { type: string, nullable: true }
+    DecisionRequest:
+      type: object
+      required: [token, approved]
+      description: A human's answer to a parked confirm step.
+      properties:
+        token: { type: string, description: Opaque credential from the input_requested event. }
+        approved: { type: boolean }
+        value: { description: Optional value supplied with the decision. }
+    DecisionAck:
+      type: object
+      properties:
+        run_id: { type: string }
+        accepted: { type: boolean }
     ValidationReport:
       type: object
       properties:

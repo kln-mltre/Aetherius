@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 _REPO = Path(__file__).resolve().parents[3]
 _EXAMPLE = _REPO / "examples" / "vector" / "ukit-planning-week.blueprint.json"
 _QUOTES = _REPO / "examples" / "vector" / "quotes-watch.blueprint.json"
+_CONFIRM = _REPO / "examples" / "vector" / "confirm-before-post.blueprint.json"
 
 Setup = Callable[[AetheriusConsoleApp, Pilot[None]], Awaitable[None]]
 
@@ -146,6 +147,25 @@ async def _runs(app: AetheriusConsoleApp, pilot: Pilot[None]) -> None:
     await pilot.pause()
 
 
+async def _human_in_the_loop(app: AetheriusConsoleApp, pilot: Pilot[None]) -> None:
+    from .screens.runs import RunsScreen
+    from .widgets.confirm import ConfirmModal
+
+    app.push_screen(RunsScreen(_CONFIRM))
+    await pilot.pause()
+    # The approval modal the ConsoleApprovalSink raises when a confirm step parks the run; shown with
+    # the message the example renders (jsonplaceholder user 1 is "Leanne Graham").
+    app.push_screen(
+        ConfirmModal(
+            "Publish 'Aetherius demo post' as Leanne Graham? Rejects after 30s.",
+            title="Publish this post?",
+            confirm_label="Approve",
+            cancel_label="Reject",
+        )
+    )
+    await pilot.pause()
+
+
 async def _catalog(app: AetheriusConsoleApp, pilot: Pilot[None]) -> None:
     from .screens.catalog import CatalogScreen
 
@@ -243,6 +263,7 @@ _SHOTS: list[tuple[str, tuple[int, int], Setup]] = [
     ("home", (92, 34), _home),
     ("library", (100, 26), _library),
     ("runs", (100, 34), _runs),
+    ("human-in-the-loop", (100, 34), _human_in_the_loop),
     ("schedules", (122, 24), _schedules),
     ("schedule-detail", (100, 42), _schedule_detail),
     ("schedule-form", (104, 52), _schedule_form),

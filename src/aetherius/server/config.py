@@ -19,15 +19,19 @@ class DaemonConfig(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8787
     token: str | None = None
+    # Publicly reachable base URL (behind a reverse proxy), used only to build the decision callback
+    # embedded in ``confirm`` notifications so an ntfy action button can reach this daemon. Unset (the
+    # loopback default) keeps confirm alerts informational — see docs/human-in-the-loop.md.
+    public_url: str | None = None
 
-    @field_validator("token", mode="before")
+    @field_validator("token", "public_url", mode="before")
     @classmethod
-    def _empty_token_is_none(cls, value: object) -> object:
-        """Treat a blank token as no token at all.
+    def _blank_is_none(cls, value: object) -> object:
+        """Treat a blank string as unset.
 
-        Deployment tooling (compose interpolation, env files) easily materialises
-        AETHERIUS_DAEMON_TOKEN as an empty string; enforcing auth against an empty bearer
-        would lock every client out for no security gain.
+        Deployment tooling (compose interpolation, env files) easily materialises an env var as an
+        empty string; enforcing auth against an empty bearer would lock every client out for no
+        security gain, and a blank public URL must not build a dead callback.
         """
         if isinstance(value, str) and not value.strip():
             return None

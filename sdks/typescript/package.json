@@ -1,6 +1,6 @@
 {
   "name": "@aetherius/client",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Thin TypeScript client for the Aetherius daemon. Load a Blueprint, run it, stream events.",
   "type": "module",
   "main": "dist/index.js",

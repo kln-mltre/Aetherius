@@ -7,6 +7,12 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 
 ## [Non publié]
 
+## [0.4.0] - 2026-07-20
+
+Phase 2 — les Acts autonomes : **Oracle** (vision) et **Phantom** (agent) deviennent runnables, la
+**composition multi-Act** et le **self-healing** lèvent la contrainte « un Act par Blueprint », et
+l'**humain dans la boucle** (`confirm`) garde les actions sensibles. Phase 2 complète (A–E).
+
 ### Ajouté
 - **Jalon 2-E — Human-in-the-loop (`confirm`)** ([docs/human-in-the-loop.md](docs/human-in-the-loop.md)) :
   une action **orthogonale aux Acts** (héritée par tous les drivers comme `notify`) qui **gare le
@@ -299,6 +305,7 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.3.0...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.2.0

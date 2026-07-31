@@ -7,6 +7,31 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 
 ## [Non publié]
 
+### Ajouté
+- **Phase 3 — Embarqué : le moteur sur l'appareil (squelette)**
+  ([docs/phase-3/](docs/phase-3/README.md)) : cadrage, décisions d'architecture et **sept
+  spécifications de jalon** (3-A à 3-G) pour un **second moteur**, écrit en TypeScript, qui rejoue
+  les **mêmes** Blueprints directement sur un appareil mobile. Motivation : héberger un daemon pour
+  une application mobile ferait sortir toutes les requêtes d'une seule IP (imposant une
+  infrastructure de proxies pour compenser) et ferait transiter les identifiants de l'utilisateur par
+  une machine tierce. Périmètre : **Acts I et II uniquement**, le flux et `confirm` ; les Acts
+  cognitifs, la planification et l'outillage restent au moteur Python. Deux gardes anti-dérive sont
+  spécifiées : un contrat généré `contracts/actions.json` et un corpus de conformance rejoué par les
+  deux moteurs (cible `make conformance`, en échec explicite jusqu'au jalon 3-A).
+- **Squelette de code** : le répertoire `sdks/` devient un **workspace npm** à trois paquets —
+  `@aetherius/engine` (moteur embarqué, neutre plateforme) et `@aetherius/react-native` (Act II sur
+  WebView + façade applicative) rejoignent `@aetherius/client`. Les deux nouveaux paquets ne portent
+  que des **stubs d'interface documentés** (modèle de Blueprint, erreurs typées, événements,
+  `Result`, `ActDriver` asynchrone, joint `WebViewHost`, `SecretResolver`) ; ils sont `private` tant
+  que rien ne s'exécute.
+
+### Modifié
+- **`sdks/typescript/` renommé en `sdks/client/`** — un répertoire nommait un langage là où les
+  autres nomment un rôle, ce qui n'était plus tenable avec trois paquets TypeScript. Références mises
+  à jour : `Makefile`, `.github/workflows/release.yml`, `docs/daemon.md`, `sdks/python/README.md`.
+  `make test-ts` opère désormais sur le workspace entier ; la publication npm reste limitée à
+  `@aetherius/client`.
+
 ## [0.4.0] - 2026-07-20
 
 Phase 2 — les Acts autonomes : **Oracle** (vision) et **Phantom** (agent) deviennent runnables, la

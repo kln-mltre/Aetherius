@@ -101,7 +101,7 @@ l'arrêt, la boucle de tick est annulée mais les suivis de fin (alertes) sont a
 
 Client mince pour Node 20+. Il **spawn** un daemon local automatiquement (ou cible un daemon déjà
 lancé via `baseUrl`), exécute un Blueprint et streame ses événements. Détails et options :
-[`sdks/typescript/README.md`](../sdks/typescript/README.md).
+[`sdks/client/README.md`](../sdks/client/README.md).
 
 ```ts
 import { Aetherius } from "@aetherius/client";

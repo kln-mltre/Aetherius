@@ -1,7 +1,7 @@
 # Automated release. Publishing lives here (as infra), not in a doc to remember.
 #
 # To cut a release:
-#   1. Bump the version in BOTH src/aetherius/version.py and sdks/typescript/package.json (same X.Y.Z).
+#   1. Bump the version in BOTH src/aetherius/version.py and sdks/client/package.json (same X.Y.Z).
 #   2. Add a "## [X.Y.Z] - <date>" section at the top of CHANGELOG.md (becomes the release notes).
 #   3. Commit, then: git tag vX.Y.Z && git push && git push --tags
 #
@@ -30,10 +30,10 @@ jobs:
         run: |
           tag="${GITHUB_REF_NAME#v}"
           py=$(python3 -c "import re,pathlib; print(re.search(r'__version__\s*=\s*\"([^\"]+)\"', pathlib.Path('src/aetherius/version.py').read_text()).group(1))")
-          ts=$(node -p "require('./sdks/typescript/package.json').version")
+          ts=$(node -p "require('./sdks/client/package.json').version")
           echo "tag=$tag  python=$py  npm=$ts"
           test "$tag" = "$py" || { echo "::error::Tag $tag != Python version $py (bump src/aetherius/version.py)"; exit 1; }
-          test "$tag" = "$ts" || { echo "::error::Tag $tag != npm version $ts (bump sdks/typescript/package.json)"; exit 1; }
+          test "$tag" = "$ts" || { echo "::error::Tag $tag != npm version $ts (bump sdks/client/package.json)"; exit 1; }
 
   pypi:
     name: Publish to PyPI
@@ -60,12 +60,15 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
+      # Le workspace `sdks/` porte trois paquets ; seul @aetherius/client est publie a ce stade.
+      # @aetherius/engine et @aetherius/react-native sont `private: true` tant que la Phase 3 n'a
+      # pas livre leur premier jalon runnable ; les publier vides n'aurait aucun sens.
       - run: npm install --no-audit --no-fund
-        working-directory: sdks/typescript
-      - run: npm run build
-        working-directory: sdks/typescript
-      - run: npm publish --access public
-        working-directory: sdks/typescript
+        working-directory: sdks
+      - run: npm run build --workspace @aetherius/client
+        working-directory: sdks
+      - run: npm publish --access public --workspace @aetherius/client
+        working-directory: sdks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

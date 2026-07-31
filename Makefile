@@ -4,9 +4,9 @@
 
 .DEFAULT_GOAL := help
 PY := python3
-TS_DIR := sdks/typescript
+TS_DIR := sdks
 
-.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts check check-all screenshots screenshots-check dist release-check
+.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts conformance check check-all screenshots screenshots-check dist release-check
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -36,9 +36,13 @@ test-fast: ## Run only the fast tests (skip heavy extras and slow tests)
 test-browser: ## Run the browser tests (Act II) against a real Chromium; needs the [browser] extra
 	pytest -m browser
 
-test-ts: ## Typecheck, build and test the TypeScript SDK (unit + a real spawn E2E)
+test-ts: ## Typecheck, build and test the npm workspace (client SDK + embedded engine)
 	npm --prefix $(TS_DIR) install
 	npm --prefix $(TS_DIR) test
+
+conformance: ## Replay the shared Blueprint corpus on both engines (Python + TypeScript)
+	@echo "Conformance harness: pending milestone 3-A (see docs/phase-3/3-a-socle-ts.md)."
+	@exit 1
 
 screenshots: ## Regenerate the Console SVG screenshots under docs/screenshots/
 	$(PY) -m aetherius.console.screenshots
@@ -56,7 +60,7 @@ screenshots-check: ## Fail if the committed screenshots are stale (deterministic
 check: ## Full Python gate: format check, lint, types, tests
 	@$(MAKE) format-check lint typecheck test
 
-check-all: ## Full repository gate: Python + TypeScript SDK
+check-all: ## Full repository gate: Python + npm workspace
 	@$(MAKE) check test-ts
 
 dist: ## Build the Python distribution (wheel + sdist) into dist/

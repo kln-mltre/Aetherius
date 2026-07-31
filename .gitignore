@@ -14,9 +14,9 @@ venv/
 coverage.xml
 htmlcov/
 
-# Node / TypeScript SDK
+# Node / npm workspace (sdks/)
 node_modules/
-sdks/typescript/dist/
+sdks/*/dist/
 *.tsbuildinfo
 
 # Aetherius runtime artifacts
@@ -35,6 +35,9 @@ training/runs/
 .env
 .env.*
 !.env.example
+
+# Documentation miroir des projets consommateurs (copiee ici pour le contexte, pas versionnee)
+doc-ukit/
 
 # OS / editor / tooling
 .DS_Store

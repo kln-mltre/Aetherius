@@ -24,6 +24,19 @@ les parties au fil de l'implémentation.
    Console. Le contrat (`contracts/openapi.yaml` + `events.schema.json`) fait foi. Voir
    [daemon.md](daemon.md).
 
+## Un contrat, deux moteurs
+
+Parce que la source de vérité est un contrat et non une implémentation, une seconde implémentation du
+moteur est possible sans dupliquer les décisions. C'est l'objet de la **Phase 3** : `sdks/engine/` et
+`sdks/react-native/` portent un moteur TypeScript qui exécute les **mêmes** Blueprints directement
+sur un appareil mobile, là où le daemon ne convient pas (les requêtes doivent partir du téléphone de
+l'utilisateur, et ses identifiants ne doivent pas transiter par une machine tierce).
+
+Ce moteur couvre les **Acts I et II** ; les Acts cognitifs, la planification et l'outillage restent
+l'apanage du moteur Python. Deux gardes empêchent la dérive : `contracts/actions.json` (projection
+générée du registre d'actions) et un corpus de conformance rejoué par les deux moteurs
+(`make conformance`). Cadrage et jalons : [phase-3/](phase-3/README.md).
+
 ## Invariants
 
 - Un fichier de logique reste sous ~300 lignes.

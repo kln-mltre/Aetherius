@@ -337,6 +337,12 @@ dans « Créer un Blueprint : trois voies ».)
 
 Le cœur est en Python ; il est exposé à tous les langages via un **daemon local**.
 
+> Deux voies, un seul format de Blueprint. Celle décrite ci-dessous — **piloter** le moteur Python à
+> distance — convient à une application de bureau ou à un service. Pour une application **mobile**,
+> la Phase 3 (en cours) livre la seconde : un **moteur embarqué** en TypeScript qui exécute les mêmes
+> Blueprints directement sur l'appareil, sans daemon ni serveur. Voir
+> [docs/phase-3/](docs/phase-3/README.md).
+
 ```
 ┌─────────────┐   Blueprint + inputs + secrets    ┌──────────────────────────┐
 │  App        │ ────────────────────────────────► │  Aetherius Daemon        │
@@ -355,7 +361,8 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 - **SDK Python** : l'import in-process direct (`import aetherius`, sans daemon) ; le client remote
   mince est différé.
 - **Contrats** ([`contracts/`](contracts/)) : JSON Schema du Blueprint + OpenAPI du daemon + schéma
-  d'événements = source de vérité ; les types des SDK s'y conforment (gardés par des tests).
+  d'événements = source de vérité ; les types des SDK s'y conforment (gardés par des tests). C'est
+  aussi ce qui rend un **second moteur** possible sans dupliquer les décisions (Phase 3).
 
 Détails, sécurité et « Tester le daemon » : [docs/daemon.md](docs/daemon.md).
 
@@ -412,7 +419,10 @@ src/aetherius/
   config/      settings
 contracts/     blueprint.schema.json, openapi.yaml, events.schema.json  (source de vérité)
 deploy/        recette always-on : Dockerfile, docker-compose.yml, service systemd
-sdks/          typescript (@aetherius/client), python
+sdks/          workspace npm + python
+  client/        @aetherius/client — pilote le daemon depuis TypeScript
+  engine/        @aetherius/engine — moteur embarqué, neutre plateforme (Phase 3)
+  react-native/  @aetherius/react-native — Act II sur WebView + façade mobile (Phase 3)
 examples/      Blueprints de démonstration (par Act + plugins/)
 training/      entraînement des modèles Oracle (hors runtime)
 legacy_examples/  code de référence des projets d'origine (UKit, TikTok) + carte de provenance
@@ -462,11 +472,12 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 
 ## État d'avancement
 
-Le projet avance en deux grandes phases. La **Phase 1** — le socle, utilisable comme **bibliothèque**
-(in-process Python) et comme **service** (daemon + SDK) — est **terminée avec ce jalon** : un premier
-point de contrôle, à éprouver en conditions réelles avant d'attaquer la **Phase 2** (les deux Acts les
-plus lourds). Entre les deux, une **Phase 1.5** durcit ce socle pour les workflows **récurrents et
-réactifs** (planification, alertes, réactivité) — voir ci-dessous.
+Le projet avance par phases. La **Phase 1** pose le socle, utilisable comme **bibliothèque**
+(in-process Python) et comme **service** (daemon + SDK). La **Phase 1.5** le durcit pour les workflows
+**récurrents et réactifs** (planification, alertes, réactivité, furtivité). La **Phase 2** apporte les
+Acts cognitifs et le contrôle humain. Toutes trois sont **terminées**. La **Phase 3**, en cours, ne
+touche pas au vocabulaire des Blueprints : elle livre un **second moteur** qui les exécute
+directement sur l'appareil d'un utilisateur.
 
 ### Phase 1 — le socle réutilisable (terminée)
 
@@ -686,6 +697,37 @@ optionnel), sans entraînement obligatoire.
 
 **Phase 2 terminée (A–E).** Aetherius est désormais autonome (Oracle/Phantom, composition,
 self-healing) **et** pilotable (human-in-the-loop).
+
+### Phase 3 — Embarqué : le moteur sur l'appareil (en cours)
+
+Cadrage complet et **spécifications par jalon** : [docs/phase-3/](docs/phase-3/README.md). La phase
+n'ajoute **aucune capacité** au vocabulaire des Blueprints : elle livre un **second moteur**, écrit
+en TypeScript, qui rejoue les **mêmes** Blueprints directement sur l'appareil — pour les applications
+mobiles, où héberger un daemon signifierait faire sortir toutes les requêtes d'une seule IP (et donc
+construire une infrastructure de proxies pour compenser) et faire transiter les identifiants de
+l'utilisateur par une machine tierce. Périmètre : **Acts I et II uniquement**, le flux, et `confirm`.
+Le squelette (workspace npm `sdks/`, stubs typés) est en place.
+
+- [ ] **3-A** — Socle TypeScript & parité : modèle de Blueprint, validation en deux temps, erreurs
+  typées, bus d'événements, interface `ActDriver` asynchrone ; contrat généré `contracts/actions.json`
+  et **harnais de conformance** rejouant un corpus partagé sur les deux moteurs.
+  [docs/phase-3/3-a-socle-ts.md](docs/phase-3/3-a-socle-ts.md).
+- [ ] **3-B** — Expressions, templates & extraction, **sans exécution de code dynamique** (contrainte
+  du moteur JS mobile) : sous-ensemble Jinja2, règle de l'expression nue, prédicat `where`, JSONPath,
+  extraction JSON et HTML. [docs/phase-3/3-b-expressions.md](docs/phase-3/3-b-expressions.md).
+- [ ] **3-C** — Runtime asynchrone & **Act I (Vector)** sur `fetch` : premier Blueprint qui tourne
+  réellement sur un téléphone. [docs/phase-3/3-c-vector.md](docs/phase-3/3-c-vector.md).
+- [ ] **3-D** — **Act II (Continuum)** sur WebView : agent JavaScript injecté, RPC corrélée, locators,
+  auto-attente, extraction DOM, sessions. Remplace les WebView cachées écrites à la main.
+  [docs/phase-3/3-d-continuum.md](docs/phase-3/3-d-continuum.md).
+- [ ] **3-E** — Intégration applicative : façade `Aetherius`, secrets par le trousseau de l'OS,
+  événements pour l'UI, `confirm` en modal natif, modèle d'erreur exploitable.
+  [docs/phase-3/3-e-integration.md](docs/phase-3/3-e-integration.md).
+- [ ] **3-F** — Livraison des Blueprints : socle embarqué + surcouche distante avec cache, intégrité,
+  repli et interrupteur d'arrêt — corriger un site cassé sans republier sur les stores.
+  [docs/phase-3/3-f-delivery.md](docs/phase-3/3-f-delivery.md).
+- [ ] **3-G** — Blueprints de référence & guide de migration : un cas d'usage mobile réel décrit
+  entièrement en Blueprints. [docs/phase-3/3-g-reference.md](docs/phase-3/3-g-reference.md).
 
 ## Sources de référence
 

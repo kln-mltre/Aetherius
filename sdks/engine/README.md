@@ -12,19 +12,25 @@ Le paquet est **neutre plateforme** — il ne connait ni React Native, ni Node. 
 `fetch`. L'**Act II (Continuum)**, qui exige une WebView, vit dans
 [`@aetherius/react-native`](../react-native).
 
-> **Etat : socle pose (jalon 3-A) + expressions et extraction (jalon 3-B).** On peut charger,
-> valider et refuser un Blueprint a l'identique du moteur Python, rendre ses expressions `{{ }}` et
-> extraire du JSON comme du HTML. Aucun step ne s'execute encore : le runtime et l'Act I arrivent au
-> jalon 3-C. Le paquet reste `private`.
+> **Etat : Act I executable (jalon 3-C).** Sur le socle des jalons 3-A (charger, valider, refuser)
+> et 3-B (expressions et extraction), un Blueprint `act: "vector"` **tourne** : runtime asynchrone,
+> flux, garde `when`, utilitaires partages et requetes HTTP sur `fetch`. L'Act II arrive au jalon
+> 3-D, la facade applicative au jalon 3-E.
 
 ```ts
-import { parseBlueprint, validateForAct, renderValue } from "@aetherius/engine";
+import { RunEngine, parseBlueprint } from "@aetherius/engine";
 
-const blueprint = parseBlueprint(text, "planning.blueprint.json"); // structurel
-validateForAct(blueprint);                                        // semantique, par act
+const blueprint = parseBlueprint(text, "planning.blueprint.json");
+const result = await new RunEngine().run(blueprint, {
+  inputs: { group: "TP-A1" },
+  sinks: [{ onEvent: (event) => console.log(event.type, event.step_id) }],
+});
 
-renderValue("{{ inputs.monday | add_days(7) }}", { inputs: { monday: "2026-09-07" } });
+console.log(result.status, result.outputs);
 ```
+
+Une seule chose est demandee a l'hote : `fetch`. Le moteur n'ajoute aucune dependance d'execution
+pour l'Act I, et accepte le sien (`RunOptions.fetch`) — ce qui le rend testable sans reseau.
 
 ## Build
 

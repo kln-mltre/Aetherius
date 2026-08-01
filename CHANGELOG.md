@@ -8,6 +8,65 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 3-C — Runtime asynchrone & Act I (Vector) sur `fetch`**
+  ([docs/embedded.md](docs/embedded.md)) : le moteur embarqué **exécute**. Un Blueprint
+  `act: "vector"` tourne réellement sur un téléphone, et la requête part de l'appareil.
+  - **Le runtime, converti en asynchrone sans changer ce qui s'observe** (`sdks/engine/src/runtime/`)
+    : moteur de run, exécuteur de steps, garde `when` (l'événement `step_skipped` publie l'expression
+    **brute**, jamais sa valeur rendue — elle peut dériver d'un secret), actions de flux, contexte,
+    gestion des drivers. `repeat` et `for_each` restent des **boucles séquentielles** : les
+    paralléliser « puisqu'on est en asynchrone » rendrait les runs non reproductibles et casserait
+    les Blueprints dont les itérations se lisent l'une l'autre. Deux chemins d'échec, comme en
+    Python : une `AetheriusError` est un run échoué proprement, toute autre exception est enveloppée
+    dans une `RunError` et relancée.
+  - **Un registre de drivers plutôt qu'un `match`.** `@aetherius/engine` est neutre plateforme et le
+    driver Continuum aura besoin d'une WebView : il s'enregistrera depuis `@aetherius/react-native`
+    (jalon 3-D). En attendant, un Blueprint `continuum` est accepté à la validation et refusé au
+    démarrage par un message qui **nomme le paquet à importer**.
+  - **Act I sur `fetch`** (`sdks/engine/src/acts/vector/`) : `http.request`, extraction, et les
+    cinq stratégies d'authentification. Les encodages reproduisent httpx **à l'octet près** —
+    `true`/`false` et chaîne vide des primitives, `quote_plus` (donc **pas** `URLSearchParams`, qui
+    diffère sur `~` et `*`), `params` qui **remplace** la query, JSON compact, `Content-Type` posé
+    par défaut mais toujours battu par l'en-tête explicite du Blueprint. Un corps de formulaire qui
+    différerait d'un caractère ne lèverait rien : c'est le risque de divergence silencieuse du
+    jalon, et c'est pourquoi un cas de conformance le compare sur une route qui **renvoie la requête
+    reçue**.
+  - **Les reprises restent une politique** : `max: 0` désactive, sinon `max + 1` tentatives avec le
+    recul `none`/`linear`/`exponential` de tenacity, **sans jitter** ; seuls les échecs de transport
+    et les délais dépassés sont rejoués — un statut est une réponse. Des reprises épuisées remontent
+    la **dernière** erreur, pas une enveloppe. Le délai est construit avec `AbortController` et
+    couvre la lecture du corps.
+  - **La stratégie cookies/redirections, tranchée et écrite.** `fetch` ne laisse pas lire
+    `Set-Cookie`, suit les redirections en aveugle, et partage le magasin de la plateforme. Le
+    moteur tient donc un **jar opportuniste** : capturer ce que l'hôte expose (`getSetCookie` sous
+    Node), ne renvoyer que ce qu'il a capturé lui-même. Sur appareil il reste vide et la plateforme
+    fait le travail — **aucun cookie envoyé deux fois** ; sous Node il *est* la session, ce qui rend
+    un login de formulaire testable en CI. Les limites qui en découlent sont documentées et testées :
+    un cookie posé par une **redirection** est perdu hors appareil, et le jar n'a pas de portée.
+  - **Zéro dépendance d'exécution ajoutée.** Les globales (`fetch`, `AbortController`) sont lues à
+    travers `globalThis` — une référence au niveau module ferait échouer le *chargement* du paquet
+    au lieu du seul step concerné —, le base64 de `BasicAuth` est écrit à la main (`btoa` n'est pas
+    garanti sous Hermes, `Buffer` est un module Node), et les types de `fetch` sont déclarés
+    structurellement plutôt qu'empruntés à `lib: ["DOM"]`.
+  - **Le corpus de conformance gagne le `kind` `run`** : un Blueprint **joué en entier** contre un
+    serveur de fixtures local (port éphémère sur la boucle locale, aucun réseau public), comparé sur
+    les sorties, les `StepResult` **et** la séquence d'événements avec leurs `step_id`. Dix cas :
+    run nominal, encodages, corps JSON, garde `when`, flux imbriqué, `expect` violé, conflit
+    `json`/`form`, extraction HTML, `confirm` non surveillé, session entre deux steps.
+  - **`confirm` avant le jalon 3-E** : le moteur implémente exactement le **chemin non surveillé**
+    du moteur Python (politique `on_timeout` appliquée aussitôt, refus par défaut). Laisser l'action
+    non implémentée aurait fait passer un Blueprint à la validation pour le tuer au milieu du run,
+    ce que le socle promet de ne jamais faire.
+  - **Application de démonstration** ([`examples/mobile/`](examples/mobile/README.md)) : une app
+    Expo minimale (Expo Go, aucun build natif) qui joue les Blueprints d'`examples/` sur l'appareil
+    et affiche le flux d'événements en direct. Banc de vérification, pas vitrine. **Vérifié sur un
+    iPhone** (Expo Go SDK 54, téléphone en cellulaire) : les trois Blueprints tournent, le flux
+    imbriqué rend la **même séquence d'événements** que le moteur Python — chemins de step compris —
+    et `device-ip-check` sort par une autre IP que le poste de dev. S'y ajoute
+    `session-cookie-probe`, une **sonde** qui rapporte l'asymétrie des cookies au lieu de la subir :
+    `carried: true` sur l'appareil (le magasin de la plateforme porte la session) et `false` sous
+    Node, ce qui rend observable une limite jusque-là seulement affirmée.
+  - `@aetherius/engine` **sort de `private`** et peut rejoindre le flux de publication.
 - **Jalon 3-B — Expressions, templates & extraction**
   ([docs/embedded.md](docs/embedded.md#expressions-et-extraction)) : le moteur embarqué sait rendre
   les `{{ }}` d'un Blueprint et en extraire des données, **sans exécution de code dynamique**.
@@ -97,6 +156,14 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
   que rien ne s'exécute.
 
 ### Corrigé
+- **Act I perdait sa session d'un step à l'autre.** `VectorClient` construit sa `httpx.Request` à la
+  main (pour garder explicite la précédence des en-têtes), or httpx n'attache les cookies du client
+  que dans `build_request` : un `Set-Cookie` capturé par un step — ou la session ouverte par
+  `CasFormLogin` — n'était jamais réémis, et chaque step repartait anonyme, **silencieusement**.
+  `_request_httpx` appelle désormais `cookies.set_cookie_header(req)` avant l'auth ; un en-tête
+  `Cookie` explicite du Blueprint garde la priorité. Trouvé par une sonde du jalon 3-C sur une
+  source réelle, gardé par un test unitaire **et** par le cas de conformance
+  `run-session-cookie-between-steps`.
 - **`render_value` laissait échapper des exceptions non typées.** Un filtre appliqué à une valeur du
   mauvais type (`{{ 3 | first }}`, `{{ liste | add_days(7) }}`) remonte un `TypeError` de la
   bibliothèque standard, que la fonction ne rattrapait pas — elle ne captait que les erreurs propres

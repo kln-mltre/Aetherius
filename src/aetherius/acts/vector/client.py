@@ -160,8 +160,13 @@ class VectorClient:
             json=json,
             data=form,
         )
-        req = self._auth.apply(req)
         assert self._client is not None  # invariant: the httpx path is chosen only with a client
+        # httpx attaches the client's cookies in `build_request`, not in `send`. This path builds
+        # its own Request (to keep header precedence explicit), so without this line a session
+        # captured by one step — a form login, a Set-Cookie — would never reach the next one.
+        # The jar respects an explicit `Cookie` header: the Blueprint's own always wins.
+        self._client.cookies.set_cookie_header(req)
+        req = self._auth.apply(req)
 
         def _send() -> httpx.Response:
             assert self._client is not None

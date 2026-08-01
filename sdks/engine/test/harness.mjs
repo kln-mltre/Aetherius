@@ -6,8 +6,10 @@
  * happen to disagree.
  *
  * A case declares its `kind`. `validation` (the default) answers "is this Blueprint accepted"; the
- * execution kinds added at milestone 3-B answer "and does it produce the same value". Adding a
- * *case* touches no executor; adding a *kind* touches both, on purpose. See conformance/README.md.
+ * execution kinds added at milestone 3-B answer "and does it produce the same value"; `run`, added
+ * at 3-C, plays a whole Blueprint against a local fixture server and compares the outputs, the
+ * step results and the event stream. Adding a *case* touches no executor; adding a *kind* touches
+ * both, on purpose. See conformance/README.md.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -17,9 +19,12 @@ import { fileURLToPath } from "node:url";
 import { validateBlueprintData, parseBlueprint } from "../dist/blueprint/loader.js";
 import { validateForAct } from "../dist/blueprint/validator.js";
 import { AetheriusError } from "../dist/errors.js";
+import { CollectingSink } from "../dist/events/index.js";
 import { isTruthy } from "../dist/expr/index.js";
 import { dispatchExtract } from "../dist/extraction/index.js";
+import { RunEngine } from "../dist/runtime/engine.js";
 import { renderValue } from "../dist/template.js";
+import { fixtureServer } from "./fixture-server.mjs";
 
 export const ENGINE = "embedded";
 
@@ -80,8 +85,56 @@ function execute(kase) {
   }
 }
 
+/**
+ * Play a whole Blueprint against the case's fixture server and summarise what happened.
+ *
+ * The summary is deliberately narrow: status, outputs, one line per step and per event. Run ids
+ * and durations differ by nature and would make every case flaky; the step ids and the event order
+ * are the contract — an application written against one engine's stream must work against the
+ * other's.
+ *
+ * A failed run is still a *result*, so the outcome stays `rendered` and the failure message lands
+ * in `message`, where `message_contains` can look at it.
+ */
+async function runBlueprint(kase) {
+  const sink = new CollectingSink();
+  const server = await fixtureServer(kase.data.server ?? {});
+  let result;
+  try {
+    result = await new RunEngine().run(loadBlueprint(kase), {
+      inputs: { base_url: server.baseUrl, ...(kase.data.inputs ?? {}) },
+      secrets: kase.data.secrets ?? {},
+      sinks: [sink],
+    });
+  } catch (error) {
+    if (!(error instanceof AetheriusError)) throw error;
+    return { outcome: ERROR, error: error.name, message: error.message, value: MISSING };
+  } finally {
+    await server.close();
+  }
+
+  return {
+    outcome: RENDERED,
+    error: null,
+    message: result.error ?? "",
+    value: {
+      status: result.status,
+      outputs: result.outputs,
+      steps: result.step_results.map((step) => ({
+        step_id: step.step_id,
+        action: step.action,
+        status: step.status,
+      })),
+      events: sink.events.map((event) => ({
+        type: event.type,
+        step_id: event.step_id ?? null,
+      })),
+    },
+  };
+}
+
 /** Run the case through the production code path, reporting what happened rather than throwing. */
-export function runCase(kase) {
+export async function runCase(kase) {
   if (kase.kind === "validation") {
     try {
       validateForAct(loadBlueprint(kase));
@@ -91,6 +144,8 @@ export function runCase(kase) {
     }
     return { outcome: ACCEPTED, error: null, message: "", value: MISSING };
   }
+
+  if (kase.kind === "run") return runBlueprint(kase);
 
   try {
     return { outcome: RENDERED, error: null, message: "", value: execute(kase) };

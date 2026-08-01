@@ -7,8 +7,10 @@ so the comparison itself can be tested (a harness that reports every case as pas
 silent hole).
 
 A case declares its ``kind``. ``validation`` (the default) answers "is this Blueprint accepted";
-the execution kinds added at milestone 3-B answer "and does it produce the same value". Adding a
-*case* touches no executor; adding a *kind* touches both, on purpose.
+the execution kinds added at milestone 3-B answer "and does it produce the same value"; ``run``,
+added at 3-C, plays a whole Blueprint against a local fixture server and compares the outputs, the
+step results and the event stream. Adding a *case* touches no executor; adding a *kind* touches
+both, on purpose.
 
 See conformance/README.md for the case format.
 """
@@ -25,8 +27,14 @@ from aetherius.core.blueprint.loader import load_blueprint, validate_blueprint_d
 from aetherius.core.blueprint.template import render_value
 from aetherius.core.blueprint.validator import validate_for_act
 from aetherius.core.errors import AetheriusError
+from aetherius.core.events.models import RunEvent
+from aetherius.core.events.sinks import Sink
 from aetherius.core.extraction.dispatch import dispatch_extract
+from aetherius.core.runtime.engine import RunEngine
 from aetherius.core.runtime.flow import is_truthy
+from aetherius.core.runtime.result import Result
+
+from .server import fixture_server
 
 ENGINE = "python"
 
@@ -84,6 +92,8 @@ def run_case(case: Case) -> Outcome:
     """Run the case through the production code path, reporting what happened rather than raising."""
     if case.kind == "validation":
         return _run_validation(case)
+    if case.kind == "run":
+        return _run_blueprint(case)
     try:
         return Outcome(outcome=RENDERED, value=_execute(case))
     except AetheriusError as exc:
@@ -96,6 +106,51 @@ def _run_validation(case: Case) -> Outcome:
     except AetheriusError as exc:
         return Outcome(outcome=REJECTED, error=type(exc).__name__, message=str(exc))
     return Outcome(outcome=ACCEPTED)
+
+
+def _run_blueprint(case: Case) -> Outcome:
+    """Play a whole Blueprint against the case's fixture server and summarise what happened.
+
+    The summary is deliberately narrow: status, outputs, one line per step and per event. Run ids
+    and durations differ by nature, and comparing them would make every case flaky; the step ids
+    and the event order, on the other hand, are the contract — an application written against one
+    engine's stream must work against the other's.
+
+    A failed run is still a *result*, so the outcome stays ``rendered`` and the failure message
+    lands in ``message``, where ``message_contains`` can look at it.
+    """
+    events: list[RunEvent] = []
+
+    class _Collect(Sink):
+        def on_event(self, event: RunEvent) -> None:
+            events.append(event)
+
+    with fixture_server(case.data.get("server", {})) as base_url:
+        blueprint = _load(case)
+        inputs = {"base_url": base_url, **case.data.get("inputs", {})}
+        try:
+            result = RunEngine().run(
+                blueprint,
+                inputs=inputs,
+                secrets=case.data.get("secrets"),
+                sinks=[_Collect()],
+            )
+        except AetheriusError as exc:
+            return Outcome(outcome=ERROR, error=type(exc).__name__, message=str(exc))
+
+    return Outcome(outcome=RENDERED, value=_summary(result, events), message=result.error or "")
+
+
+def _summary(result: Result, events: list[RunEvent]) -> dict[str, Any]:
+    return {
+        "status": result.status.value,
+        "outputs": result.outputs,
+        "steps": [
+            {"step_id": step.step_id, "action": step.action, "status": step.status.value}
+            for step in result.step_results
+        ],
+        "events": [{"type": event.type.value, "step_id": event.step_id} for event in events],
+    }
 
 
 def _execute(case: Case) -> Any:

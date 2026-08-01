@@ -1,0 +1,77 @@
+{
+  "name": "run-session-cookie-between-steps",
+  "kind": "run",
+  "description": "Une session posee par un Set-Cookie survit d'un step a l'autre, des deux cotes. Les chemins different et c'est assume : le moteur Python garde le jar de son client HTTP, le moteur embarque tient un jar opportuniste sous Node et s'en remet au magasin de la plateforme sur un appareil. L'observable, lui, doit etre le meme — c'est ce que ce cas fige. Il garde aussi le correctif Python trouve par une sonde du jalon 3-C : le client construisait sa requete a la main et n'y attachait jamais les cookies du jar.",
+  "server": {
+    "GET /login": {
+      "status": 200,
+      "headers": { "Set-Cookie": "SESSION=abc123; Path=/" },
+      "json": { "ok": true }
+    },
+    "GET /me": { "echo": true }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.session",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "login",
+        "action": "http.request",
+        "method": "GET",
+        "url": "{{ inputs.base_url }}/login",
+        "expect": { "status": 200 }
+      },
+      {
+        "id": "me",
+        "action": "http.request",
+        "method": "GET",
+        "url": "{{ inputs.base_url }}/me",
+        "expect": { "status": 200 },
+        "extract": { "cookie": { "from": "json", "path": "$.headers.cookie" } }
+      }
+    ],
+    "outputs": { "cookie": "{{ steps.me.cookie | first }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "cookie": "SESSION=abc123" },
+        "steps": [
+          { "step_id": "login", "action": "http.request", "status": "success" },
+          { "step_id": "me", "action": "http.request", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "login" },
+          { "type": "step_finished", "step_id": "login" },
+          { "type": "step_started", "step_id": "me" },
+          { "type": "step_finished", "step_id": "me" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "cookie": "SESSION=abc123" },
+        "steps": [
+          { "step_id": "login", "action": "http.request", "status": "success" },
+          { "step_id": "me", "action": "http.request", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "login" },
+          { "type": "step_finished", "step_id": "login" },
+          { "type": "step_started", "step_id": "me" },
+          { "type": "step_finished", "step_id": "me" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

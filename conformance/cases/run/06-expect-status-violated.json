@@ -1,0 +1,55 @@
+{
+  "name": "run-expect-status-violated",
+  "kind": "run",
+  "description": "Un statut inattendu arrete le run : StepResult failed, evenement error portant le step, done en erreur, et aucun outputs publie. Le message est compare par fragment, l'URL portant un port ephemere.",
+  "server": { "GET /flaky": { "status": 503, "body": "upstream down" } },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.expect",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "fetch",
+        "action": "http.request",
+        "method": "GET",
+        "url": "{{ inputs.base_url }}/flaky",
+        "expect": { "status": 200 }
+      },
+      { "id": "never", "action": "emit", "message": "UNREACHABLE" }
+    ],
+    "outputs": { "status": "{{ steps.fetch.status_code }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "message_contains": ["Expected HTTP 200, got 503", "upstream down"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [{ "step_id": "fetch", "action": "http.request", "status": "failed" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "fetch" },
+          { "type": "error", "step_id": "fetch" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "message_contains": ["Expected HTTP 200, got 503", "upstream down"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [{ "step_id": "fetch", "action": "http.request", "status": "failed" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "fetch" },
+          { "type": "error", "step_id": "fetch" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

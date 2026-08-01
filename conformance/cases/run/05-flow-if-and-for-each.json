@@ -1,0 +1,100 @@
+{
+  "name": "run-flow-if-and-for-each",
+  "kind": "run",
+  "description": "Le flux imbrique : if choisit sa branche, for_each parcourt les elements dans l'ordre, et les steps imbriques portent leur chemin complet (loop[0].announce). Les boucles sont sequentielles des deux cotes — paralleliser cote asynchrone rendrait l'ordre des evenements non reproductible.",
+  "server": { "GET /users": { "json": [{ "id": 1 }, { "id": 2 }] } },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.flow",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "fetch",
+        "action": "http.request",
+        "method": "GET",
+        "url": "{{ inputs.base_url }}/users",
+        "expect": { "status": 200 },
+        "extract": { "ids": { "from": "json", "path": "$[*].id" } }
+      },
+      {
+        "id": "walk",
+        "action": "if",
+        "condition": "{{ steps.fetch.ids | length > 0 }}",
+        "then": [
+          {
+            "id": "each",
+            "action": "for_each",
+            "items": "{{ steps.fetch.ids }}",
+            "as": "user_id",
+            "steps": [{ "id": "announce", "action": "emit", "message": "user {{ user_id }}" }]
+          }
+        ],
+        "else": [{ "id": "none", "action": "emit", "message": "NO_USERS" }]
+      }
+    ],
+    "outputs": { "branch": "{{ steps.walk.branch }}", "seen": "{{ steps.each.iterations }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "branch": "then", "seen": 2 },
+        "steps": [
+          { "step_id": "fetch", "action": "http.request", "status": "success" },
+          { "step_id": "walk.each[0].announce", "action": "emit", "status": "success" },
+          { "step_id": "walk.each[1].announce", "action": "emit", "status": "success" },
+          { "step_id": "walk.each", "action": "for_each", "status": "success" },
+          { "step_id": "walk", "action": "if", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "fetch" },
+          { "type": "step_finished", "step_id": "fetch" },
+          { "type": "step_started", "step_id": "walk" },
+          { "type": "step_started", "step_id": "walk.each" },
+          { "type": "step_started", "step_id": "walk.each[0].announce" },
+          { "type": "progress", "step_id": "announce" },
+          { "type": "step_finished", "step_id": "walk.each[0].announce" },
+          { "type": "step_started", "step_id": "walk.each[1].announce" },
+          { "type": "progress", "step_id": "announce" },
+          { "type": "step_finished", "step_id": "walk.each[1].announce" },
+          { "type": "step_finished", "step_id": "walk.each" },
+          { "type": "step_finished", "step_id": "walk" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "branch": "then", "seen": 2 },
+        "steps": [
+          { "step_id": "fetch", "action": "http.request", "status": "success" },
+          { "step_id": "walk.each[0].announce", "action": "emit", "status": "success" },
+          { "step_id": "walk.each[1].announce", "action": "emit", "status": "success" },
+          { "step_id": "walk.each", "action": "for_each", "status": "success" },
+          { "step_id": "walk", "action": "if", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "fetch" },
+          { "type": "step_finished", "step_id": "fetch" },
+          { "type": "step_started", "step_id": "walk" },
+          { "type": "step_started", "step_id": "walk.each" },
+          { "type": "step_started", "step_id": "walk.each[0].announce" },
+          { "type": "progress", "step_id": "announce" },
+          { "type": "step_finished", "step_id": "walk.each[0].announce" },
+          { "type": "step_started", "step_id": "walk.each[1].announce" },
+          { "type": "progress", "step_id": "announce" },
+          { "type": "step_finished", "step_id": "walk.each[1].announce" },
+          { "type": "step_finished", "step_id": "walk.each" },
+          { "type": "step_finished", "step_id": "walk" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

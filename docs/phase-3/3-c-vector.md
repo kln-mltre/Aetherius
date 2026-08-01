@@ -1,7 +1,17 @@
 # Jalon 3-C — Runtime asynchrone & Act I (Vector)
 
-**Statut : à faire.** Premier jalon qui produit une capacité utilisateur : à la fin, un Blueprint
-`act: "vector"` tourne réellement sur un téléphone, et la requête part de l'appareil.
+**Statut : livré.** Doc de référence : [docs/embedded.md](../embedded.md). Un Blueprint
+`act: "vector"` s'exécute réellement sur l'appareil : runtime asynchrone (moteur de run, exécuteur
+de steps, garde `when`, actions de flux séquentielles, registre de drivers), utilitaires
+act-agnostiques et **Act I sur `fetch`** — encodages reproduits à l'octet près, reprises comme
+politique, délai par `AbortController`, extraction déjà là depuis 3-B. La stratégie
+cookies/redirections est tranchée et écrite : **jar opportuniste** — capturer ce que l'hôte laisse
+lire, ne renvoyer que ce qu'on a capturé —, la plateforme faisant le travail sur appareil. Le corpus
+de conformance gagne un `kind` **`run`** : un Blueprint joué en entier contre un serveur de fixtures
+local, comparé sur les sorties, les `StepResult` et la séquence d'événements. Une sonde a trouvé un
+défaut **côté Python** — une session capturée n'atteignait jamais le step suivant — corrigé et gardé
+des deux côtés. `@aetherius/engine` sort de `private`. Ce document conserve la spécification
+d'origine du jalon.
 
 ## Objectif
 

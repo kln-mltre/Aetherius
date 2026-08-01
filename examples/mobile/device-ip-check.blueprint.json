@@ -1,0 +1,29 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.device-ip-check",
+  "description": "Le Blueprint temoin du moteur embarque (jalon 3-C) : il demande a un service public quelle adresse IP a emis la requete. Joue depuis 'aetherius run' il rend l'IP de la machine de developpement ; joue depuis l'application de demonstration sur un telephone en donnees cellulaires, il en rend une autre — c'est la preuve, observable, que la requete part bien de l'appareil. Zero configuration.",
+  "act": "vector",
+  "vars": { "endpoint": "https://api.ipify.org" },
+  "options": { "timeout_ms": 15000, "retries": { "max": 2, "backoff": "exponential" } },
+  "steps": [
+    {
+      "id": "who",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.endpoint }}",
+      "params": { "format": "json" },
+      "headers": { "Accept": "application/json" },
+      "expect": { "status": 200 },
+      "extract": { "ip": { "from": "json", "path": "$.ip" } }
+    },
+    {
+      "id": "announce",
+      "action": "emit",
+      "message": "request left from {{ steps.who.ip | first }}"
+    }
+  ],
+  "outputs": {
+    "ip": "{{ steps.who.ip | first }}",
+    "status": "{{ steps.who.status_code }}"
+  }
+}

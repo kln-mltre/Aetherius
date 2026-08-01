@@ -1,0 +1,61 @@
+{
+  "name": "run-unattended-confirm",
+  "kind": "run",
+  "description": "Un confirm sans surface humaine (bibliotheque cote Python, jalon 3-E pas encore la cote embarque) applique sa politique on_timeout tout de suite : refus par defaut, et le step sensible garde par when est simplement saute. Le run reste un succes — c'est le refus par defaut qui protege, pas un echec.",
+  "server": { "POST /publish": { "json": { "ok": true } } },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.confirm",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      { "id": "ask", "action": "confirm", "message": "Publier ?", "timeout_ms": 1000 },
+      {
+        "id": "publish",
+        "action": "http.request",
+        "when": "{{ steps.ask.approved }}",
+        "method": "POST",
+        "url": "{{ inputs.base_url }}/publish"
+      }
+    ],
+    "outputs": { "decision": "{{ steps.ask.decision }}", "by": "{{ steps.ask.decided_by }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "decision": "rejected", "by": "timeout" },
+        "steps": [
+          { "step_id": "ask", "action": "confirm", "status": "success" },
+          { "step_id": "publish", "action": "http.request", "status": "skipped" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "ask" },
+          { "type": "step_finished", "step_id": "ask" },
+          { "type": "step_skipped", "step_id": "publish" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "decision": "rejected", "by": "timeout" },
+        "steps": [
+          { "step_id": "ask", "action": "confirm", "status": "success" },
+          { "step_id": "publish", "action": "http.request", "status": "skipped" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "ask" },
+          { "type": "step_finished", "step_id": "ask" },
+          { "type": "step_skipped", "step_id": "publish" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

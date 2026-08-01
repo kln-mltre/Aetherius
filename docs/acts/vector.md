@@ -12,6 +12,13 @@ Cas fondateur : les services `axios` de UKit (`PlanningApiService.ts`). Les cons
 Modules : [`src/aetherius/acts/vector/`](../../src/aetherius/acts/vector/) —
 `driver.py`, `client.py`, `auth.py`.
 
+**Act I a deux moteurs.** Depuis le jalon 3-C, le moteur embarqué TypeScript
+([`sdks/engine/src/acts/vector/`](../../sdks/engine/src/acts/vector/)) exécute les mêmes Blueprints
+sur `fetch`, directement sur l'appareil de l'utilisateur. Les encodages, la politique de reprises et
+la sémantique de `expect` y sont reproduits à l'octet près, et le corpus de conformance rejoue des
+runs entiers sur les deux. Ce qui diffère (cookies, redirections, `options.stealth` ignorée) est
+écrit dans [docs/embedded.md](../embedded.md#act-i--vector-sur-fetch).
+
 Exemple : [`examples/vector/ukit-planning-week.blueprint.json`](../../examples/vector/ukit-planning-week.blueprint.json).
 
 **Recorder** : on peut générer un Blueprint Vector **par démonstration** — le recorder observe les
@@ -90,6 +97,10 @@ Configurée programmatiquement via `acts/vector/auth.py` :
 | `BasicAuth(user, pwd)` | HTTP Basic via `httpx.BasicAuth` |
 | `CookieAuth(cookies)` | Injection de cookies dans le client |
 | `CasFormLogin(url, user, pwd)` | GET login page → extrait champs cachés (parsel) → POST credentials → cookies capturés |
+
+Les cookies capturés (par une stratégie ou par un `Set-Cookie` de réponse) sont **réémis sur les
+steps suivants** du même run : le client construit sa requête à la main, il attache donc lui-même le
+jar avant l'auth. Un en-tête `Cookie` explicite du Blueprint garde la priorité.
 
 ## Template engine
 

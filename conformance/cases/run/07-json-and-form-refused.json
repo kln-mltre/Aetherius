@@ -1,0 +1,54 @@
+{
+  "name": "run-json-and-form-refused",
+  "kind": "run",
+  "description": "json et form sur le meme step sont mutuellement exclusifs, et le refus arrive avant tout envoi. Ce n'est pas refusable a la validation : les deux champs sont legitimes separement, et c'est le rendu qui decide de leur presence (un json qui rend null vaut absent).",
+  "server": { "POST /echo": { "echo": true } },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.body-conflict",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "send",
+        "action": "http.request",
+        "method": "POST",
+        "url": "{{ inputs.base_url }}/echo",
+        "json": { "a": 1 },
+        "form": { "a": "1" }
+      }
+    ]
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "message_contains": ["Cannot set both 'json' and 'form'"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [{ "step_id": "send", "action": "http.request", "status": "failed" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "send" },
+          { "type": "error", "step_id": "send" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "message_contains": ["Cannot set both 'json' and 'form'"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [{ "step_id": "send", "action": "http.request", "status": "failed" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "send" },
+          { "type": "error", "step_id": "send" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "name": "run-form-and-query-encoding",
+  "kind": "run",
+  "description": "L'encodage est le risque de divergence silencieuse d'Act I : un corps de formulaire qui differe d'un caractere ne leve rien, il obtient juste une autre reponse. La route echo renvoie la requete recue, et le Blueprint en extrait lui-meme le corps, la query et le Content-Type : ce sont donc les deux moteurs qui sont compares, pas le harnais.",
+  "server": { "POST /echo": { "echo": true } },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.encoding",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "send",
+        "action": "http.request",
+        "method": "POST",
+        "url": "{{ inputs.base_url }}/echo?dropped=1",
+        "params": { "q": "a b~c*d", "flag": true, "none": null, "n": ["1", "2"] },
+        "form": { "user": "é@x", "flag": true, "off": false, "missing": null, "ids": [1, 2] },
+        "expect": { "status": 200 },
+        "extract": {
+          "body": { "from": "json", "path": "$.body" },
+          "query": { "from": "json", "path": "$.query" },
+          "ctype": { "from": "json", "path": "$.headers.'content-type'" }
+        }
+      }
+    ],
+    "outputs": {
+      "body": "{{ steps.send.body | first }}",
+      "query": "{{ steps.send.query | first }}",
+      "content_type": "{{ steps.send.ctype | first }}"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "body": "user=%C3%A9%40x&flag=true&off=false&missing=&ids=1&ids=2",
+          "query": "q=a+b~c%2Ad&flag=true&none=&n=1&n=2",
+          "content_type": "application/x-www-form-urlencoded"
+        },
+        "steps": [{ "step_id": "send", "action": "http.request", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "send" },
+          { "type": "step_finished", "step_id": "send" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "body": "user=%C3%A9%40x&flag=true&off=false&missing=&ids=1&ids=2",
+          "query": "q=a+b~c%2Ad&flag=true&none=&n=1&n=2",
+          "content_type": "application/x-www-form-urlencoded"
+        },
+        "steps": [{ "step_id": "send", "action": "http.request", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "send" },
+          { "type": "step_finished", "step_id": "send" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

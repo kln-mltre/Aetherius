@@ -1,8 +1,7 @@
 {
   "name": "@aetherius/engine",
   "version": "0.4.0",
-  "private": true,
-  "description": "Moteur Aetherius embarque : coeur neutre plateforme + Act I (Vector) sur fetch. Socle du jalon 3-A.",
+  "description": "Moteur Aetherius embarque : coeur neutre plateforme + Act I (Vector) sur fetch.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

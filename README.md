@@ -340,7 +340,8 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 > Deux voies, un seul format de Blueprint. Celle décrite ci-dessous — **piloter** le moteur Python à
 > distance — convient à une application de bureau ou à un service. Pour une application **mobile**,
 > la Phase 3 (en cours) livre la seconde : un **moteur embarqué** en TypeScript qui exécute les mêmes
-> Blueprints directement sur l'appareil, sans daemon ni serveur. Voir
+> Blueprints directement sur l'appareil, sans daemon ni serveur. L'Act I y tourne déjà
+> ([`@aetherius/engine`](sdks/engine), jalon 3-C). Voir [docs/embedded.md](docs/embedded.md) et
 > [docs/phase-3/](docs/phase-3/README.md).
 
 ```
@@ -426,7 +427,8 @@ sdks/          workspace npm + python
   client/        @aetherius/client — pilote le daemon depuis TypeScript
   engine/        @aetherius/engine — moteur embarqué, neutre plateforme (Phase 3)
   react-native/  @aetherius/react-native — Act II sur WebView + façade mobile (Phase 3)
-examples/      Blueprints de démonstration (par Act + plugins/)
+examples/      Blueprints de démonstration (par Act + plugins/ + mobile/ : moteur embarqué et
+               son application de démonstration)
 training/      entraînement des modèles Oracle (hors runtime)
 legacy_examples/  code de référence des projets d'origine (UKit, TikTok) + carte de provenance
 ```
@@ -712,8 +714,9 @@ mobiles, où héberger un daemon signifierait faire sortir toutes les requêtes 
 construire une infrastructure de proxies pour compenser) et faire transiter les identifiants de
 l'utilisateur par une machine tierce. Périmètre : **Acts I et II uniquement**, le flux, et `confirm`.
 Le socle est posé (jalon 3-A) — on charge, valide et refuse un Blueprint côté TypeScript, et des
-gardes empêchent les moteurs de diverger — et les deux mini-langages sont là (jalon 3-B) :
-expressions et extraction. Référence d'usage : [docs/embedded.md](docs/embedded.md).
+gardes empêchent les moteurs de diverger —, les deux mini-langages sont là (jalon 3-B) et, depuis le
+jalon 3-C, **un Blueprint `vector` s'exécute réellement sur l'appareil**. Référence d'usage :
+[docs/embedded.md](docs/embedded.md).
 
 - [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
   Blueprint à l'identique du moteur Python. Validation **en deux temps** — JSON Schema **précompilé
@@ -753,8 +756,30 @@ expressions et extraction. Référence d'usage : [docs/embedded.md](docs/embedde
   devient la vraie mesure de la parité ; une garde `no-dynamic-code` rescanne les dépendances.
   [docs/embedded.md](docs/embedded.md#expressions-et-extraction),
   [docs/phase-3/3-b-expressions.md](docs/phase-3/3-b-expressions.md).
-- [ ] **3-C** — Runtime asynchrone & **Act I (Vector)** sur `fetch` : premier Blueprint qui tourne
-  réellement sur un téléphone. [docs/phase-3/3-c-vector.md](docs/phase-3/3-c-vector.md).
+- [x] **3-C** — Runtime asynchrone & **Act I (Vector)** sur `fetch` : le premier Blueprint qui tourne
+  réellement sur un téléphone, et la requête part de l'appareil. Le **runtime** reproduit le pipeline
+  Python avec `await` devant — ordre des steps, garde `when` (l'événement publie l'expression
+  **brute**, jamais sa valeur rendue), `if`/`repeat`/`for_each` en boucles **séquentielles** (les
+  paralléliser « puisqu'on est en asynchrone » rendrait l'ordre des événements non reproductible),
+  utilitaires partagés, et un **registre de drivers** parce que Continuum vivra dans l'autre paquet.
+  **Act I sur `fetch`** : encodages reproduits **à l'octet près** (`true`/`false` et chaîne vide des
+  primitives httpx, `quote_plus` — donc pas `URLSearchParams`, qui diffère sur `~` et `*` —, `params`
+  qui *remplace* la query, JSON compact), reprises **comme politique** (`max: 0` désactive, recul
+  `none`/`linear`/`exponential` sans jitter, un statut n'est jamais rejoué), délai par
+  `AbortController`. **La stratégie cookies est tranchée et écrite** : `fetch` ne laisse pas lire
+  `Set-Cookie`, suit les redirections en aveugle et partage le magasin de la plateforme — le moteur
+  tient donc un **jar opportuniste** (capturer ce que l'hôte expose, ne renvoyer que ce qu'on a
+  capturé), si bien qu'un login CAS devient testable en CI sans jamais doubler un cookie sur
+  l'appareil. **Zéro dépendance d'exécution ajoutée** (base64 écrit à la main, globales lues via
+  `globalThis`). Le corpus de conformance gagne le `kind` **`run`** — un Blueprint joué en entier
+  contre un serveur de fixtures local, comparé sur les sorties, les `StepResult` **et** la séquence
+  d'événements ; une route `echo` fait extraire au Blueprint lui-même le corps et la query, de sorte
+  que ce sont les deux moteurs qui sont comparés. Une sonde a trouvé un défaut **côté Python** (une
+  session capturée n'atteignait jamais le step suivant : `httpx` n'attache les cookies que dans
+  `build_request`), corrigé et gardé des deux côtés. Application de démonstration Expo et Blueprint
+  témoin `device-ip-check` dans [`examples/mobile/`](examples/mobile/README.md) : la même requête
+  rend une IP depuis le poste de dev et une autre depuis le téléphone.
+  [docs/embedded.md](docs/embedded.md), [docs/phase-3/3-c-vector.md](docs/phase-3/3-c-vector.md).
 - [ ] **3-D** — **Act II (Continuum)** sur WebView : agent JavaScript injecté, RPC corrélée, locators,
   auto-attente, extraction DOM, sessions. Remplace les WebView cachées écrites à la main.
   [docs/phase-3/3-d-continuum.md](docs/phase-3/3-d-continuum.md).

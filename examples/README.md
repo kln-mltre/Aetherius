@@ -13,6 +13,7 @@ examples/
   phantom/      Act IV — agent autonome orienté objectif (goal/constraints)
   composition/  Multi-Act : act par step + self-healing (Jalon 2-D)
   plugins/      Extension par paquet tiers : action + canal custom (Jalon 1.5-E)
+  mobile/       Moteur embarqué : Blueprint témoin + application de démonstration (Jalon 3-C)
 ```
 
 ## Act I — Vector
@@ -103,6 +104,17 @@ Contrat d'extension complet : [docs/plugins.md](../docs/plugins.md).
 Sans le plugin installé, la validation rejette l'action inconnue — c'est le comportement attendu.
 Après l'essai, le désinstaller (`pip uninstall aetherius-plugin-demo`) avant de relancer
 `make check` : les tests d'intégration démarrent le vrai moteur, qui le découvrirait.
+
+## Moteur embarqué (Jalon 3-C)
+
+Les mêmes Blueprints, joués par le **second moteur** directement sur un téléphone. Prise en main,
+prérequis et lancement : [`mobile/README.md`](mobile/README.md).
+
+| Fichier | Ce qu'il montre | Prérequis |
+|---------|-----------------|-----------|
+| [`mobile/device-ip-check.blueprint.json`](mobile/device-ip-check.blueprint.json) | Le Blueprint témoin : quelle IP a émis la requête. Jouée depuis `aetherius run` puis depuis l'appareil, elle diffère — la preuve que la requête part bien du téléphone. Zéro config. | Aucun |
+| [`mobile/session-cookie-probe.blueprint.json`](mobile/session-cookie-probe.blueprint.json) | **Sonde, pas démonstration** : un cookie de session posé par une redirection. `carried: true` sur l'appareil et sous le moteur Python, `false` sous Node — l'asymétrie est le résultat, et elle est rapportée plutôt que subie. Zéro config. | Aucun |
+| [`mobile/demo/`](mobile/demo/) | L'application de démonstration (Expo) : liste de Blueprints, run sur l'appareil, flux d'événements en direct, `Result`. Banc de vérification, pas vitrine. | Node 20+, Expo Go |
 
 ## Lancer un exemple
 

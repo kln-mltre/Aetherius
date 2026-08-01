@@ -1,0 +1,66 @@
+{
+  "name": "run-json-body",
+  "kind": "run",
+  "description": "Un corps JSON part avec les memes octets des deux cotes : separateurs compacts, non-ASCII conserve, Content-Type application/json. httpx serialise avec separators=(',',':') et ensure_ascii=False, ce qui est exactement JSON.stringify.",
+  "server": { "POST /echo": { "echo": true } },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.json-body",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "send",
+        "action": "http.request",
+        "method": "POST",
+        "url": "{{ inputs.base_url }}/echo",
+        "json": { "a": true, "b": null, "d": "é", "n": [1, 2], "nested": { "k": "v" } },
+        "expect": { "status": 200 },
+        "extract": {
+          "body": { "from": "json", "path": "$.body" },
+          "ctype": { "from": "json", "path": "$.headers.'content-type'" }
+        }
+      }
+    ],
+    "outputs": {
+      "body": "{{ steps.send.body | first }}",
+      "content_type": "{{ steps.send.ctype | first }}"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "body": "{\"a\":true,\"b\":null,\"d\":\"é\",\"n\":[1,2],\"nested\":{\"k\":\"v\"}}",
+          "content_type": "application/json"
+        },
+        "steps": [{ "step_id": "send", "action": "http.request", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "send" },
+          { "type": "step_finished", "step_id": "send" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "body": "{\"a\":true,\"b\":null,\"d\":\"é\",\"n\":[1,2],\"nested\":{\"k\":\"v\"}}",
+          "content_type": "application/json"
+        },
+        "steps": [{ "step_id": "send", "action": "http.request", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "send" },
+          { "type": "step_finished", "step_id": "send" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

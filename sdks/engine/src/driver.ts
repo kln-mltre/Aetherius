@@ -7,12 +7,13 @@
  * sur appareil, rien ne peut bloquer la boucle JS. La semantique observable — ordre des steps,
  * evenements emis, forme du `Result` — reste identique.
  *
- * Squelette Phase 3 : le moteur (`RunEngine`, executeur de steps, flux) arrive au jalon 3-C
- * (docs/phase-3/3-c-vector.md), le driver WebView au jalon 3-D.
+ * Le moteur (`RunEngine`, executeur de steps, flux) vit dans `runtime/` depuis le jalon 3-C ; le
+ * driver WebView arrive au jalon 3-D, dans `@aetherius/react-native`.
  */
 
 import type { ActName, Blueprint, StepModel } from "./blueprint/types.js";
 import type { EventBus } from "./events/index.js";
+import type { FetchLike } from "./http.js";
 
 /** Applique le rendu d'expressions a une valeur (chaine, tableau ou objet). Jalon 3-B. */
 export type Renderer = (value: unknown) => unknown;
@@ -29,7 +30,26 @@ export interface RunContext {
   readonly vars: Readonly<Record<string, unknown>>;
   /** Sorties indexees par identifiant de step, lues par `{{ steps.<id>.<champ> }}`. */
   readonly stepOutputs: Record<string, Record<string, unknown>>;
+  /**
+   * Table exposee par `{{ env.X }}`. Cote Python c'est `os.environ` ; un appareil n'en a pas, donc
+   * elle est vide sauf si l'application en fournit une (docs/embedded.md).
+   */
+  readonly env: Readonly<Record<string, string>>;
+  /** Variables de boucle injectees par `for_each`, le temps d'une iteration. */
+  readonly scope: Record<string, unknown>;
 }
+
+/**
+ * Ce que l'hote prete au moteur. Un seul service pour l'instant : `fetch`. Il est passe plutot que
+ * capture au niveau module, parce que c'est ce qui rend l'Act I testable sans reseau — et parce
+ * qu'une application peut vouloir le sien (interception, telemetrie, epinglage de certificat).
+ */
+export interface HostServices {
+  readonly fetch?: FetchLike;
+}
+
+/** Fabrique un driver pour un act. Le registre vit dans `runtime/drivers.ts`. */
+export type DriverFactory = (host: HostServices) => ActDriver;
 
 /**
  * Un Act est un driver interchangeable derriere cette interface — meme contrat que cote Python,

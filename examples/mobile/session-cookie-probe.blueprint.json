@@ -1,0 +1,36 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.session-cookie-probe",
+  "description": "SONDE, pas demonstration : elle n'a pas le meme resultat partout, et c'est son objet. Un service public pose un cookie de session par une REDIRECTION, puis un second appel demande qui il est. Sur un appareil, le magasin de cookies de la plateforme porte la session et la sonde REUSSIT ; sous Node ('make conformance', un script), 'fetch' n'a aucun magasin et la reponse intermediaire d'une redirection n'est pas lisible : elle ECHOUE proprement, ce qui est la limite decrite dans docs/embedded.md. Le moteur Python reussit, lui, grace au jar de son client HTTP. Zero configuration.",
+  "act": "vector",
+  "vars": { "base": "https://httpbin.org" },
+  "options": { "timeout_ms": 20000, "retries": { "max": 1, "backoff": "linear" } },
+  "steps": [
+    {
+      "id": "login",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.base }}/cookies/set",
+      "params": { "session": "aetherius-probe" },
+      "expect": { "status": 200 }
+    },
+    {
+      "id": "whoami",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.base }}/cookies",
+      "expect": { "status": 200 },
+      "extract": { "session": { "from": "json", "path": "$.cookies.session" } }
+    },
+    {
+      "id": "kept",
+      "action": "emit",
+      "when": "{{ steps.whoami.session | length > 0 }}",
+      "message": "SESSION_KEPT"
+    }
+  ],
+  "outputs": {
+    "session": "{{ steps.whoami.session }}",
+    "carried": "{{ steps.whoami.session | length > 0 }}"
+  }
+}

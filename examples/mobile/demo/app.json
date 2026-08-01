@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Aetherius Demo",
+    "slug": "aetherius-mobile-demo",
+    "version": "0.4.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": { "backgroundColor": "#0b0b12" },
+    "android": { "package": "dev.aetherius.demo" },
+    "ios": { "bundleIdentifier": "dev.aetherius.demo" }
+  }
+}

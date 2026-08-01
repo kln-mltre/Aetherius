@@ -25,8 +25,8 @@ test("the corpus is not empty", () => {
 });
 
 for (const kase of cases) {
-  test(`conformance: ${kase.name}`, () => {
-    const actual = runCase(kase);
+  test(`conformance: ${kase.name}`, async () => {
+    const actual = await runCase(kase);
     const problems = mismatches(expectationFor(kase), actual);
     assert.deepEqual(problems, [], describeFailure(kase, actual, problems));
   });

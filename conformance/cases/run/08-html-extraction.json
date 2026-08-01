@@ -1,0 +1,78 @@
+{
+  "name": "run-html-extraction",
+  "kind": "run",
+  "description": "Une reponse HTML traversee par l'extraction hors navigateur : pseudo-elements parsel ::text et ::attr, attribut par le champ attr, et multiple: false qui rend la premiere valeur. Le moteur embarque n'a pas de DOM et parse lui-meme (htmlparser2 / css-select).",
+  "server": {
+    "GET /page": {
+      "headers": { "Content-Type": "text/html; charset=utf-8" },
+      "body": "<html><body><div class='quote'><span class='text'>Hello <b>bold</b> world</span><small class='author'>Ada</small><a href='/next' class='go'>Suivant</a></div><div class='quote'><span class='text'>Second</span><small class='author'>Alan</small></div></body></html>"
+    }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.html",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "fetch",
+        "action": "http.request",
+        "method": "GET",
+        "url": "{{ inputs.base_url }}/page",
+        "expect": { "status": 200 },
+        "extract": {
+          "quotes": { "from": "html", "selector": "div.quote span.text::text" },
+          "authors": { "from": "html", "selector": "div.quote small.author::text" },
+          "next": { "from": "html", "selector": "a.go::attr(href)", "multiple": false },
+          "link_text": { "from": "html", "selector": "a.go", "attr": "class", "multiple": false }
+        }
+      }
+    ],
+    "outputs": {
+      "quotes": "{{ steps.fetch.quotes }}",
+      "authors": "{{ steps.fetch.authors }}",
+      "next": "{{ steps.fetch.next }}",
+      "link_class": "{{ steps.fetch.link_text }}"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "quotes": ["Hello ", " world", "Second"],
+          "authors": ["Ada", "Alan"],
+          "next": "/next",
+          "link_class": "go"
+        },
+        "steps": [{ "step_id": "fetch", "action": "http.request", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "fetch" },
+          { "type": "step_finished", "step_id": "fetch" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "quotes": ["Hello ", " world", "Second"],
+          "authors": ["Ada", "Alan"],
+          "next": "/next",
+          "link_class": "go"
+        },
+        "steps": [{ "step_id": "fetch", "action": "http.request", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "fetch" },
+          { "type": "step_finished", "step_id": "fetch" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

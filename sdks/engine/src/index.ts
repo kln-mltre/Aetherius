@@ -5,11 +5,17 @@
  * Blueprint, runtime, extraction, evenements, erreurs) et l'Act I (Vector) sur `fetch`. L'Act II
  * (Continuum), qui a besoin d'une WebView, vit dans `@aetherius/react-native`.
  *
- * Etat (jalon 3-B) : on charge, valide et refuse un Blueprint, et les deux mini-langages sont la —
- * rendu d'expressions et extraction. Aucun step ne s'execute encore ; le runtime et l'Act I
- * arrivent au jalon 3-C. Voir docs/embedded.md.
+ * Etat (jalon 3-C) : un Blueprint `act: "vector"` s'execute reellement — runtime asynchrone, flux,
+ * garde `when`, utilitaires partages et requetes HTTP sur `fetch`. L'Act II arrive au jalon 3-D et
+ * la facade applicative au jalon 3-E. Voir docs/embedded.md.
  */
 
+export * from "./acts/shared.js";
+export * from "./acts/vector/auth.js";
+export * from "./acts/vector/client.js";
+export * from "./acts/vector/cookies.js";
+export * from "./acts/vector/driver.js";
+export * from "./acts/vector/encode.js";
 export * from "./blueprint/types.js";
 export * from "./blueprint/capabilities.js";
 export * from "./blueprint/contract.js";
@@ -22,5 +28,11 @@ export * from "./errors.js";
 export * from "./events/index.js";
 export * from "./expr/index.js";
 export * from "./extraction/index.js";
+export * from "./http.js";
 export * from "./result.js";
+export * from "./runtime/context.js";
+export * from "./runtime/drivers.js";
+export * from "./runtime/engine.js";
+export * from "./runtime/flow.js";
+export * from "./runtime/steps.js";
 export * from "./template.js";

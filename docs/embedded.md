@@ -10,19 +10,21 @@ Le cadrage, les décisions d'architecture et les sept jalons sont dans
 [docs/phase-3/](phase-3/README.md). Ce document décrit ce qui est **livré** : ce qui existe, comment
 ça marche, et où sont les limites.
 
-> **État.** On peut charger, valider et **refuser** un Blueprint (jalon 3-A), et les deux
-> mini-langages sont là — rendu d'expressions et extraction (jalon 3-B). Aucun step ne s'exécute
-> encore : le runtime et l'Act I arrivent au jalon 3-C, l'Act II au jalon 3-D.
+> **État.** Un Blueprint `act: "vector"` **s'exécute réellement** (jalon 3-C), sur les fondations
+> des jalons 3-A (charger, valider, refuser) et 3-B (expressions et extraction) : runtime
+> asynchrone, flux, garde `when`, utilitaires partagés et requêtes HTTP sur `fetch`. L'Act II arrive
+> au jalon 3-D, la façade applicative au jalon 3-E.
 
 ## Les trois paquets
 
 | Paquet | Rôle |
 |--------|------|
-| [`@aetherius/engine`](../sdks/engine) | Le moteur, **neutre plateforme** : il ne connaît ni React Native, ni Node. Modèle de Blueprint, validation, erreurs, événements, et à terme l'Act I sur `fetch`. |
+| [`@aetherius/engine`](../sdks/engine) | Le moteur, **neutre plateforme** : il ne connaît ni React Native, ni Node. Modèle de Blueprint, validation, erreurs, événements, runtime et l'Act I sur `fetch`. |
 | [`@aetherius/react-native`](../sdks/react-native) | Ce que le précédent ne peut pas porter sans dépendre d'une plateforme : l'Act II sur WebView, le trousseau, la façade applicative. |
 | [`@aetherius/client`](../sdks/client) | **Rien à voir** : il *pilote* le daemon Python à distance. Piloter un moteur et *être* un moteur sont deux métiers. |
 
-Les deux premiers restent `private` tant que rien ne s'exécute.
+`@aetherius/engine` est sorti de `private` au jalon 3-C, en même temps que sa première capacité
+utilisateur. `@aetherius/react-native` y reste tant qu'il ne porte pas l'Act II (jalon 3-D).
 
 ## Deux moteurs, un contrat
 
@@ -275,6 +277,167 @@ XPath est la seule capacité d'extraction absente : hors navigateur, il demande 
 et l'exemple livré `books-restock-notify` utilise `normalize-space(//p[contains(@class, …)])`, une
 expression XPath 1.0 complète avec fonctions. Reproduire lxml serait disproportionné face à l'usage.
 
+## Exécuter un Blueprint
+
+```ts
+import { RunEngine, parseBlueprint } from "@aetherius/engine";
+
+const blueprint = parseBlueprint(text, "planning.blueprint.json");
+const result = await new RunEngine().run(blueprint, {
+  inputs: { group: "TP-A1" },
+  secrets: { cas_pass: "…" },
+  sinks: [{ onEvent: (event) => console.log(event.type, event.step_id) }],
+});
+```
+
+Le pipeline est celui du moteur Python (`core/runtime/`), avec `await` devant : valider, résoudre
+les entrées et les secrets, lier le driver racine, dérouler les steps, démonter, rendre les
+`outputs`, retourner un `Result`. Ce qui est **observable** — l'ordre des steps, les événements
+émis, la forme du `Result` — est le contrat, et le corpus de conformance le compare cas par cas.
+
+Quelques points de sémantique qui décident du résultat :
+
+- **`when` saute le step** : statut `skipped`, événement `step_skipped` à la place de la paire
+  `step_started`/`step_finished`, et l'événement publie l'expression **brute** — jamais sa valeur
+  rendue, qui peut dériver d'un secret.
+- **Les steps imbriqués portent leur chemin** dans les événements et les `StepResult`
+  (`walk.each[1].announce`), mais publient leurs sorties sous leur **identifiant nu**
+  (`{{ steps.announce.… }}`). L'asymétrie vient du moteur Python et se lit dans un cas de
+  conformance plutôt que dans deux implémentations.
+- **`repeat` et `for_each` sont des boucles séquentielles `await`.** La tentation de les
+  paralléliser « puisqu'on est en asynchrone » est écartée : l'ordre est observable dans le flux
+  d'événements, et des itérations qui partagent une session cesseraient d'être reproductibles.
+- **Deux chemins d'échec.** Une `AetheriusError` est un échec de run propre, tracé dans le `Result`
+  (`status: "failed"`, message dans `error`, aucun `outputs` publié) ; toute autre exception est
+  enveloppée dans une `RunError` et **relancée** — un bug du moteur ne doit pas se déguiser en run
+  qui « n'a pas marché ».
+- **Les `outputs` sont rendus après coup, hors du rattrapage d'erreur** : une `TemplateError` dans
+  un `outputs` remonte à l'appelant au lieu d'être maquillée en run échoué. C'est aussi le
+  comportement Python.
+
+Le driver d'un act est résolu par un **registre** (`registerDriver`), là où le moteur Python nomme
+ses quatre drivers dans un `match`. La raison est la frontière des paquets : le driver Continuum a
+besoin d'une WebView et vivra dans `@aetherius/react-native` (jalon 3-D), où il s'enregistrera
+lui-même. En attendant, un Blueprint `continuum` est accepté à la validation et refusé au démarrage
+par un message qui nomme le paquet à importer — pas par un `undefined`.
+
+### `confirm` avant le jalon 3-E
+
+`confirm` fait partie des capacités embarquées, mais sa surface humaine (un modal natif) est le
+jalon [3-E](phase-3/3-e-integration.md). Le moteur implémente donc **exactement le chemin non
+surveillé** du moteur Python — celui qu'il prend quand aucune passerelle d'approbation n'est
+attachée : la politique `on_timeout` s'applique immédiatement, et elle **refuse par défaut**.
+`approve` laisse passer, `fail:CODE` échoue avec son code.
+
+Le choix n'est pas un raccourci : laisser l'action non implémentée aurait fait passer un Blueprint
+à la validation pour le tuer au milieu du run, ce que ce moteur promet de ne jamais faire.
+
+## Act I — Vector sur `fetch`
+
+Un seul besoin de plateforme : `fetch`. C'est ce qui rend l'Act I exécutable partout — un téléphone,
+Node, un test qui injecte le sien (`RunOptions.fetch`).
+
+```
+http.request → params/form/json encodes → auth → cookies → fetch (timeout, reprises) → expect → extract
+```
+
+### L'encodage est le risque de divergence silencieuse
+
+Un corps de formulaire qui diffère d'un caractère ne lève rien : la requête part, le serveur répond
+autre chose, et le Blueprint a l'air de marcher partout sauf là où ça compte. Les encodeurs
+reproduisent donc httpx à l'octet près, et un cas de conformance les compare sur une route qui
+**renvoie la requête reçue** — ce sont les deux moteurs qui sont comparés, pas le harnais.
+
+| Point | Règle reproduite |
+|-------|------------------|
+| Primitives d'un `form`/`params` | `httpx._utils.primitive_value_to_str` : `true`/`false` pour les booléens, chaîne vide pour `None`, `str()` sinon. **Ce n'est pas** la règle du moteur de templates (`True`/`None`) — les deux cohabitent des deux côtés. |
+| Échappement | `quote_plus` : espace → `+`, `~` conservé, `*` → `%2A`. `URLSearchParams` fait l'inverse sur ces deux caractères : il n'est pas utilisé. |
+| Valeur de liste | La clé est répétée (`ids=1&ids=2`). |
+| `params` | **Remplace** la query de l'URL, ne la fusionne pas ; le fragment survit. Contre-intuitif, et c'est httpx. |
+| Corps `json` | Séparateurs compacts, non-ASCII conservé — soit exactement `JSON.stringify`. |
+| `Content-Type` | Posé par défaut selon le corps, mais l'en-tête explicite du Blueprint **gagne** (`setdefault`, insensible à la casse). |
+| `json` + `form` | Refusés ensemble, **après rendu** : un `json` qui rend `null` vaut absent et ne provoque pas le conflit. |
+
+### Reprises et délais
+
+`retries.max: 0` désactive toute reprise ; sinon le client fait `max + 1` tentatives et attend
+`none` = 0 s, `linear` = 1 s, `exponential` = `2^(n-1)` borné à [1, 30] s — la formule de tenacity,
+**sans jitter**. En ajouter « parce que c'est mieux » ferait rejouer le même Blueprint sur deux
+horaires différents selon le moteur.
+
+Seuls les échecs de **transport** et les **délais dépassés** sont rejoués, jamais un code de statut :
+un 500 est une réponse, et c'est `expect` qui décide ce qu'on en fait. Des reprises épuisées
+remontent la **dernière** erreur (`TimeoutError` ou `NetworkError`), pas une erreur d'enveloppe —
+c'est ce que fait le moteur Python (`reraise=True`), et l'appelant n'a pas à savoir combien de
+tentatives ont eu lieu.
+
+`fetch` n'a pas de délai propre : il est construit avec `AbortController`, et la fenêtre couvre la
+lecture du corps, comme celle de httpx. Un hôte sans `AbortController` n'a **pas** de délai plutôt
+qu'un délai qui ne se déclenche jamais.
+
+### Cookies, redirections et sessions
+
+C'est la contrainte la plus structurante du jalon, et elle tient à trois faits de plateforme :
+
+1. **`Set-Cookie` n'est en général pas lisible depuis JavaScript.** Un navigateur l'interdit ; une
+   WebView React Native ne le promet pas. `fetch` sous Node l'expose, lui, via
+   `Headers.getSetCookie()`.
+2. **Le magasin de cookies appartient à la plateforme.** Sur appareil, l'OS garde les cookies pour
+   tout le processus et les attache lui-même : une session survit sans l'aide du moteur — et ne peut
+   pas être isolée par run.
+3. **Node n'a aucun magasin.** Personne n'attache rien.
+
+**Stratégie retenue : un jar opportuniste.** Le client capture ce que l'hôte laisse lire, et ne
+renvoie que ce qu'il a capturé lui-même. Sur appareil il reste vide et la plateforme fait le travail
+— donc aucun cookie n'est envoyé deux fois ; sous Node il **est** la session, ce qui rend un login
+de formulaire testable en CI et pas seulement sur le téléphone de quelqu'un.
+
+Ce qui en découle, et qu'il faut connaître :
+
+- **Le jar ne scope ni par domaine, ni par chemin, ni par expiration.** Il tient les cookies d'un run
+  pour ce run. Un Blueprint qui parle à deux hôtes sans rapport dans le même run enverrait les
+  cookies du premier au second. Acceptable tant qu'Act I veut dire « une API », et une bonne raison
+  de ne pas promouvoir ce jar en magasin généraliste.
+- **`Set-Cookie` n'est lu que par l'accesseur structuré.** `headers.get("set-cookie")` renvoie
+  plusieurs cookies joints par des virgules, et un attribut `Expires` en contient une aussi : les
+  découper est une devinette, et se tromper là veut dire envoyer la session de quelqu'un d'autre.
+- **Les redirections sont suivies d'office** (`redirect: "follow"` ; `manual` n'existe pas dans un
+  `fetch` React Native). Les réponses intermédiaires sont invisibles : un enchaînement de tickets
+  fonctionne, mais **en aveugle** — on constate le résultat, on ne pilote pas les étapes.
+- **`options.session` n'a pas d'effet côté Vector**, exactement comme côté Python. Sur appareil,
+  l'isolation d'un run vis-à-vis du magasin de la plateforme n'est pas offerte ; elle sera un choix
+  explicite de la WebView au jalon 3-D.
+
+### Authentification
+
+Les cinq stratégies du moteur Python sont là — `NoAuth`, `BearerAuth`, `BasicAuth`, `CookieAuth`,
+`CasFormLogin` —, y compris le fait que ce soit une surface **programmatique** : aucun champ de
+Blueprint ne sélectionne une stratégie, ni ici ni là-bas (voir
+[docs/acts/vector.md](acts/vector.md#authentification)). On construit un `VectorClient` avec celle
+qu'on veut.
+
+Deux sont touchées par la plateforme. `CookieAuth` ne peut pas écrire le magasin de l'OS : elle
+amorce le jar du moteur, et les cookies voyagent dans un en-tête `Cookie` explicite. `CasFormLogin`
+lit les champs cachés de la page de login avec la **pile d'extraction déjà là** (aucun parseur
+supplémentaire), puis poste les identifiants ; la suite se joue en aveugle, redirections comprises.
+Une page de login qui répond en erreur lève une erreur **typée**, là où le moteur Python laisse
+échapper une erreur httpx enveloppée en `RunError`.
+
+### Budget de dépendances
+
+**Aucune dépendance d'exécution ajoutée par ce jalon.** Chaque paquet alourdit le binaire d'une
+application mobile, donc :
+
+- `fetch`, `AbortController`, `setTimeout` sont des globales de l'hôte, lues **à travers
+  `globalThis`** — une référence au niveau module ferait échouer le *chargement* du paquet sur un
+  hôte sans `fetch`, au lieu d'échouer au seul step qui en a besoin, avec un message qui le dit ;
+- le **base64** de `BasicAuth` est écrit à la main (une trentaine de lignes) : `btoa` n'est pas
+  garanti sous Hermes, `Buffer` est un module Node, `TextEncoder` est optionnel en React Native.
+  Les trois marcheraient *la plupart du temps*, ce qui est la pire propriété possible pour un
+  encodeur d'identifiants ;
+- les types de `fetch` sont **déclarés structurellement** (`src/http.ts`) plutôt qu'empruntés à
+  `lib: ["DOM"]` ou à `@types/node`. C'est aussi ce qui rend le client injectable en test.
+
 ## Les événements
 
 Le moteur émet exactement les types de `contracts/events.schema.json`, pour qu'une même UI consomme
@@ -307,6 +470,25 @@ jamais l'échec d'un run. Le logger est injectable, pour qu'une application le r
 - **Tout est asynchrone.** Seule divergence structurelle assumée avec le moteur Python, qui est
   synchrone de bout en bout : sur appareil, rien ne peut bloquer la boucle JS. La sémantique
   observable — ordre des steps, événements émis, forme du `Result` — reste identique.
+- **Un cookie posé par une *redirection* est perdu hors appareil.** `fetch` suit les redirections
+  d'office et cache les réponses intermédiaires : un `Set-Cookie` porté par un 302 n'est jamais
+  observable, donc jamais capturé par le jar. Sur un appareil le magasin de la plateforme le garde
+  et la session tient ; sous Node, non. Un cookie posé par une réponse **directe** fonctionne des
+  deux côtés, et c'est ce que fige le cas de conformance `run-session-cookie-between-steps`.
+- **Le jar n'a pas de portée.** Ni domaine, ni chemin, ni expiration : les cookies d'un run valent
+  pour ce run. Un Blueprint qui parle à deux hôtes sans rapport enverrait les cookies du premier au
+  second.
+- **`{{ env.X }}` est vide par défaut.** Le moteur Python expose `os.environ` ; un appareil n'a pas
+  d'environnement. La table est celle que l'hôte fournit (`RunOptions.env`), donc une variable
+  absente lève, comme n'importe quelle variable indéfinie.
+- **Les secrets viennent de l'appelant, et de lui seul.** Pas de `.env`, pas de variables
+  d'environnement : le trousseau de l'OS est le jalon 3-E. Un secret non fourni est omis, et c'est
+  le rendu qui le signale, au step qui le lit.
+- **Une variable de boucle `for_each` doit être un identifiant ASCII.** `str.isidentifier()` accepte
+  n'importe quelle lettre Unicode côté Python ; ici la vérification est ASCII, parce que les
+  échappements de propriété Unicode (`\p{L}`) ne sont pas garantis par le moteur JS mobile et
+  qu'une expression régulière qui ne compile pas emporte le module au chargement. Refuser plus que
+  Python est la direction sûre.
 - **Ni stealth, ni proxy, ni store, ni scheduler.** Hors périmètre de la phase (décision 8). Seul le
   user-agent configurable survivra, un portail servant souvent un DOM différent aux mobiles.
 - **Le sous-ensemble d'expressions et d'extraction** décrit plus haut : XPath, JSONPath hors
@@ -346,6 +528,8 @@ moyen de vérifier que les gardes mordent toujours.
 | Faire rendre `"true"` au lieu de `"True"` à `pythonStr` | `make conformance` : `expr-python-str` — « expected value `"flag: True none: None"` ». |
 | Utiliser la véracité native de JavaScript dans `isTruthy` | `make conformance` : `truthy-table` (le nombre `2` et la liste `[1]` basculent). |
 | Retirer le refus XPath de `portability.ts` | `make conformance` : `not-portable-xpath-extract` — « expected the Blueprint to be rejected, got accepted ». |
+| Sérialiser les booléens d'un `form` à la `str()` de Python (`True` au lieu de `true`) | `make conformance` : `run-form-and-query-encoding` — le corps attendu ne correspond plus. |
+| Paralléliser `for_each` avec un `Promise.all` | `make conformance` : `run-flow-if-and-for-each` — la séquence d'événements change d'ordre. |
 
 Le harnais lui-même est testé (`tests/conformance/test_harness.py`) : un exécuteur qui rapporterait
 tous les cas comme passants transformerait une suite verte en affirmation fausse.
@@ -388,3 +572,75 @@ moteurs, mais **pour deux raisons différentes** — le moteur Python parce que 
 pas installé, le moteur embarqué parce qu'il n'a pas de système de plugins. Cet accord est
 accidentel : installer le plugin le ferait diverger. C'est la limite « pas de plugins » ci-dessus,
 vue depuis le corpus.
+
+### Sondes du jalon 3-C
+
+Le jalon 3-C exécute pour la première fois : les sondes ne comparent donc plus des verdicts mais des
+**runs entiers**, jusqu'aux octets envoyés.
+
+- **Parité d'exécution sur les exemples.** Les **12 Blueprints `vector` zéro configuration**
+  d'`examples/` ont été *joués* sur les deux moteurs, contre les mêmes vraies sources
+  (`jsonplaceholder`, `quotes.toscrape.com`, `api.ipify.org`, `httpbin.org`), et leurs `outputs`,
+  `StepResult` et séquences d'événements comparés : **8 identiques, 4 divergents**, chaque
+  divergence étant déclarée — l'action de plugin, l'extraction XPath de `books-restock-notify`,
+  `http-headers-identity` qui lit les en-têtes d'empreinte que le moteur embarqué n'envoie pas
+  (`options.stealth` ignorée), et `session-cookie-probe`, divergent **par construction** (voir
+  ci-dessous). Aucune divergence inattendue. Un cas mérite d'être lu correctement :
+  `device-ip-check` peut rendre deux valeurs d'IP différentes d'un appel à l'autre — c'est la
+  **source** qui varie (NAT d'opérateur), pas les moteurs ; ses steps et sa séquence d'événements
+  sont identiques.
+- **Session, sur une source réelle.** `httpbin.org` : un `Set-Cookie` posé par une réponse
+  **directe** est capturé et renvoyé identiquement des deux côtés. Posé par une **redirection**
+  (`/cookies/set`, un 302), il est invisible pour le moteur embarqué hors appareil — d'où
+  [`session-cookie-probe`](../examples/mobile/session-cookie-probe.blueprint.json), qui **rapporte
+  l'asymétrie au lieu d'échouer** : `carried: true` côté Python et sur un téléphone (le magasin de
+  la plateforme porte la session), `carried: false` sous Node. C'est la limite écrite plus haut,
+  rendue observable — et c'est aussi pourquoi elle est une sonde et non une démonstration.
+- **Conçue pour échouer : hôte injoignable** (`retries.max: 2`, recul `none`). Les deux moteurs
+  échouent proprement, sans pile : `Transport error: …`, run `failed`, `outputs` vide, après
+  exactement trois tentatives.
+- **Conçue pour échouer : 404 réel** sur `quotes.toscrape.com` avec `expect.status: 200`. Les deux
+  moteurs rendent le **même message**, extrait de corps compris.
+
+Cette campagne a trouvé un défaut, **côté Python cette fois** :
+
+| Trouvé | Correction |
+|--------|-----------|
+| **Côté Python** : une session capturée par un step n'atteignait jamais le suivant. `VectorClient` construit sa `httpx.Request` à la main (pour garder la précédence des en-têtes explicite), or httpx n'attache les cookies que dans `build_request`. Conséquence : un `CasFormLogin` se connectait, puis chaque step repartait anonyme — silencieusement. | `_request_httpx` appelle `cookies.set_cookie_header(req)` avant l'auth. Le jar respecte un en-tête `Cookie` explicite, donc le Blueprint garde le dernier mot. Gardé par `tests/unit/acts/vector/test_client.py` **et** par le cas de conformance `run-session-cookie-between-steps`. |
+
+### Sur appareil
+
+Le point 5 de [CONTRIBUTING](../CONTRIBUTING.md#définition-de--terminé-) — « le vrai run, pas
+seulement les tests » — se joue ici sur un téléphone, via l'application de démonstration
+d'[`examples/mobile/`](../examples/mobile/README.md) (Expo + Expo Go, aucun build natif).
+
+**Joué à la livraison du jalon** : iPhone sous iOS, Expo Go **SDK 54**, téléphone en données
+cellulaires et poste de développement en Wi-Fi (`expo start --tunnel`, seul mode qui traverse deux
+réseaux). Les quatre Blueprints ont tourné, tous `success` :
+
+| Blueprint | Sur l'appareil | Ce que rend le moteur Python |
+|-----------|----------------|------------------------------|
+| `quotes-watch` | la citation d'Einstein, `quotes_on_page: 10` | identique |
+| `jsonplaceholder-flow` | `branch: "then"`, `user_count: 3`, et les événements `walk.each_user[0].announce` → `[1]` → `[2]` dans cet ordre | **séquence identique**, chemins imbriqués compris |
+| `device-ip-check` | `92.184.98.145` | `92.184.98.101` depuis le poste |
+| `session-cookie-probe` | `carried: true` | `true` aussi — et `false` sous Node |
+
+La dernière ligne est celle qui comptait le plus : elle **vérifie** la stratégie de cookies au lieu
+de la supposer. Le magasin de la plateforme porte bien la session à travers la redirection, donc le
+jar opportuniste n'a rien à capturer sur appareil et ne double aucun cookie — ce que la conception
+affirmait, et qu'aucun test hors appareil ne pouvait montrer.
+
+La séquence d'événements du flux imbriqué est la vérification la plus parlante : mêmes `step_id`,
+même ordre, boucle bien séquentielle — une application de progression écrite contre un moteur
+fonctionne contre l'autre.
+
+Une nuance, parce qu'elle change ce que la sonde prouve : les deux adresses diffèrent, mais
+partagent leur `/24`. Le poste sortait par le **même opérateur** que le téléphone (box cellulaire).
+La requête part donc bien de l'appareil — l'application n'a ni daemon ni serveur, le moteur tourne
+dans Hermes —, mais la démonstration « deux réseaux vraiment distincts » demanderait un poste sur
+une connexion filaire d'un autre opérateur.
+
+**Ce qui reste à observer sur un appareil**, et qui est écrit ici plutôt que supposé : le corps de
+requête `form`/`json`, les reprises et le délai n'ont été éprouvés que sous Node et en test. Rien ne
+laisse penser qu'ils diffèrent — ils ne touchent pas à la plateforme —, mais ils n'ont pas été vus
+tourner sur un téléphone.

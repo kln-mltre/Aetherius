@@ -1,0 +1,57 @@
+{
+  "name": "run-vector-request-and-extract",
+  "kind": "run",
+  "description": "Le run nominal d'Act I : requete HTTP, extraction JSONPath avec fields, outputs rendus, et la sequence d'evenements complete. Le premier cas ou les deux moteurs executent vraiment quelque chose.",
+  "server": {
+    "GET /users": { "json": [{ "id": 1, "name": "Ada" }, { "id": 2, "name": "Alan" }] }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.minimal",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "fetch",
+        "action": "http.request",
+        "method": "GET",
+        "url": "{{ inputs.base_url }}/users",
+        "expect": { "status": 200 },
+        "extract": {
+          "users": { "from": "json", "path": "$[*]", "fields": { "id": "$.id", "name": "$.name" } }
+        }
+      }
+    ],
+    "outputs": { "users": "{{ steps.fetch.users }}", "count": "{{ steps.fetch.users | length }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "users": [{ "id": 1, "name": "Ada" }, { "id": 2, "name": "Alan" }], "count": 2 },
+        "steps": [{ "step_id": "fetch", "action": "http.request", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "fetch" },
+          { "type": "step_finished", "step_id": "fetch" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "users": [{ "id": 1, "name": "Ada" }, { "id": 2, "name": "Alan" }], "count": 2 },
+        "steps": [{ "step_id": "fetch", "action": "http.request", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "fetch" },
+          { "type": "step_finished", "step_id": "fetch" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

@@ -142,8 +142,10 @@ Deux adaptations pour un jalon TypeScript :
 
 > **Note de portée.** Comme en Phase 2, tout ce qui toucherait la table des `capabilities`, les
 > contrats (`contracts/*.json|yaml`), l'enum `EventType` ou le dispatch d'un driver est **différé au
-> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Le jalon **3-A est livré** :
-> `contracts/actions.json` existe (généré depuis le registre Python et gardé), le corpus de
-> conformance est en place sous [`conformance/`](../../conformance/README.md), et `make conformance`
-> rejoue les deux moteurs. Référence d'usage du socle : [docs/embedded.md](../embedded.md). Aucun
-> contrat existant n'a été modifié : un fichier a été **ajouté**, rien n'a bougé.
+> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les jalons **3-A à 3-C sont
+> livrés** : `contracts/actions.json` existe (généré depuis le registre Python et gardé), les deux
+> mini-langages sont là, et un Blueprint `vector` **s'exécute** sur l'appareil. Le corpus de
+> conformance vit sous [`conformance/`](../../conformance/README.md) et `make conformance` rejoue les
+> deux moteurs — depuis 3-C sur des **runs entiers**, pas seulement des verdicts. Référence d'usage :
+> [docs/embedded.md](../embedded.md). Aucun contrat existant n'a été modifié : un fichier a été
+> **ajouté** au jalon 3-A, rien n'a bougé depuis.

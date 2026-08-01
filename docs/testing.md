@@ -114,8 +114,11 @@ générée du registre d'actions — n'a pas divergé de celui-ci (`make contrac
 Aetherius a deux moteurs : le Python et l'embarqué TypeScript (Phase 3). Le **corpus de
 conformance** ([`conformance/`](../conformance/README.md)) fige ce que « le même Blueprint » veut
 dire — un cas, une entrée, et ce que **chacun** des deux moteurs doit en faire, divergences assumées
-comprises. Un cas déclare son `kind` : `validation` (accepté / refusé, et avec quelle erreur) ou,
-depuis le jalon 3-B, `expression` / `extraction` / `truthy`, qui comparent la **valeur** produite.
+comprises. Un cas déclare son `kind` : `validation` (accepté / refusé, et avec quelle erreur) ;
+depuis le jalon 3-B, `expression` / `extraction` / `truthy`, qui comparent la **valeur** produite ;
+et depuis le jalon 3-C, `run`, qui **joue le Blueprint en entier** contre un serveur de fixtures
+local (démarré par chaque harnais, port éphémère sur la boucle locale, aucun réseau public) et
+compare les sorties, les `StepResult` et la séquence d'événements.
 
 ```bash
 make conformance     # rejoue le corpus sur les deux moteurs

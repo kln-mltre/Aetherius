@@ -114,6 +114,32 @@ def test_default_headers_are_sent_and_overridable() -> None:
     client.close()
 
 
+def test_a_captured_cookie_is_sent_on_the_next_request() -> None:
+    """A session captured by one step must reach the next one.
+
+    Found by a milestone 3-C probe: the client builds its own ``httpx.Request`` (to keep header
+    precedence explicit), and httpx only attaches cookies in ``build_request``. A form login
+    therefore captured its session and never used it again. Guarded here and by the conformance
+    case ``run-session-cookie-between-steps``.
+    """
+    seen: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("cookie"))
+        return httpx.Response(200, json={}, headers={"Set-Cookie": "SESSION=abc123; Path=/"})
+
+    client = VectorClient()
+    client._client = httpx.Client(transport=httpx.MockTransport(handler))
+    client._retry_decorator = None
+    client.request("GET", "https://example.com/login")
+    client.request("GET", "https://example.com/me")
+    # An explicit Cookie header keeps priority over the jar.
+    client.request("GET", "https://example.com/me", headers={"Cookie": "SESSION=explicit"})
+
+    assert seen == [None, "SESSION=abc123", "SESSION=explicit"]
+    client.close()
+
+
 def test_impersonation_without_extra_raises_dependency_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

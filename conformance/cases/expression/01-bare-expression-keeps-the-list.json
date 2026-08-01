@@ -1,0 +1,44 @@
+{
+  "name": "expr-bare-list",
+  "kind": "expression",
+  "description": "La regle de l'expression nue : une chaine qui est exactement une expression rend l'objet brut. Sans elle, tous les outputs qui rendent une collection deviendraient des chaines, sans echouer.",
+  "context": {
+    "steps": {
+      "week": {
+        "events": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ]
+      }
+    }
+  },
+  "value": "{{ steps.week.events }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": [
+        {
+          "id": 1
+        },
+        {
+          "id": 2
+        }
+      ]
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": [
+        {
+          "id": 1
+        },
+        {
+          "id": 2
+        }
+      ]
+    }
+  }
+}

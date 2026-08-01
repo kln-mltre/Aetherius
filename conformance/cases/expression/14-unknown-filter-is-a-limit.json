@@ -1,0 +1,25 @@
+{
+  "name": "expr-unknown-filter",
+  "kind": "expression",
+  "description": "Limite declaree : le moteur embarque n'implemente qu'un jeu ferme de filtres. Jinja2 en a des dizaines ; en implementer beaucoup approximativement serait pire qu'en refuser un par son nom. Divergence assumee — le moteur Python rend la valeur.",
+  "context": {
+    "values": [
+      "b",
+      "a"
+    ]
+  },
+  "value": "{{ values | sort | join(',') }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": "a,b"
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "TemplateError",
+      "message_contains": [
+        "Unknown filter 'sort'"
+      ]
+    }
+  }
+}

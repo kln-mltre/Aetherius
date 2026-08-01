@@ -1,13 +1,13 @@
 {
   "name": "example-vector-notify",
-  "description": "Divergence assumee : la surveillance de restock alerte par 'notify', que l'application mobile assure elle-meme.",
+  "description": "Divergence assumee, sur un exemple livre qui touche DEUX limites : une extraction XPath (step 'check') et une alerte 'notify' (step 'alert'), que l'application mobile assure elle-meme. La marche s'arrete au premier refus, donc le message est celui du XPath ; le refus de 'notify' garde son propre cas synthetique (13-not-portable-notify).",
   "blueprint_path": "examples/vector/books-restock-notify.blueprint.json",
   "expect": {
     "python": { "outcome": "accepted" },
     "embedded": {
       "outcome": "rejected",
       "error": "BlueprintValidationError",
-      "message_contains": ["'notify'", "not by the embedded engine"]
+      "message_contains": ["selector_type='xpath'", "no XPath engine without a DOM"]
     }
   }
 }

@@ -1,0 +1,29 @@
+{
+  "name": "extract-where-subscript-refused",
+  "kind": "extraction",
+  "description": "L'indexation est hors du predicat sur les deux moteurs (ast.Subscript n'est pas dans la liste blanche Python). Le cas existe pour que la grammaire embarquee ne s'elargisse pas par inadvertance.",
+  "body": "[{\"id\": \"1\", \"start\": \"2026-09-07T08:00\", \"eventCategory\": \"Cours\"}, {\"id\": \"2\", \"start\": \"2026-09-07T10:00\", \"eventCategory\": \"Vacances\"}, {\"id\": \"3\", \"start\": \"2026-09-07T14:00\", \"eventCategory\": \"TD\"}]",
+  "spec": {
+    "events": {
+      "from": "json",
+      "path": "$[*]",
+      "where": "item['id'] == '1'"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Disallowed construct"
+      ]
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Disallowed construct"
+      ]
+    }
+  }
+}

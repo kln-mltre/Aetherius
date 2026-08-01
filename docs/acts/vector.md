@@ -74,6 +74,11 @@ Le champ `extract` d'un step `http.request` accepte un dict de specs :
 - `where` : expression de comparaison évaluée par AST-walk (seules les comparaisons, la logique booléenne et l'accès aux attributs de `item` sont autorisés ; appels, indexation et **attributs magiques** (`__class__`, `__globals__`, … tout nom en `__`) sont rejetés, fermant l'évasion de sandbox)
 - `fields` : mapping nom → JSONPath relatif à chaque item matché
 
+La construction de ces specs vit dans `core/extraction/dispatch.py` (`dispatch_extract`), partagée
+avec le corpus de conformance. Le moteur embarqué reproduit le même dialecte sur un sous-ensemble
+plus étroit (XPath en moins, JSONPath restreint) : voir
+[docs/embedded.md](../embedded.md#expressions-et-extraction).
+
 ## Authentification
 
 Configurée programmatiquement via `acts/vector/auth.py` :

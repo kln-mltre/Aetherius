@@ -1,0 +1,58 @@
+{
+  "name": "expr-recursion",
+  "kind": "expression",
+  "description": "Le rendu descend dans les tableaux et les objets ; les scalaires non-chaines passent intacts.",
+  "context": {
+    "x": [
+      1,
+      2
+    ]
+  },
+  "value": {
+    "nested": [
+      "{{ x }}",
+      {
+        "k": "{{ x }}"
+      }
+    ],
+    "raw": 5
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "nested": [
+          [
+            1,
+            2
+          ],
+          {
+            "k": [
+              1,
+              2
+            ]
+          }
+        ],
+        "raw": 5
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "nested": [
+          [
+            1,
+            2
+          ],
+          {
+            "k": [
+              1,
+              2
+            ]
+          }
+        ],
+        "raw": 5
+      }
+    }
+  }
+}

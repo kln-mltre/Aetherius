@@ -10,8 +10,7 @@ from ...core.blueprint.models import StepModel
 from ...core.blueprint.template import render_value
 from ...core.errors import ActionError
 from ...core.events.bus import EventBus
-from ...core.extraction.html_extractor import HtmlExtractSpec, extract_html
-from ...core.extraction.json_extractor import ExtractSpec, extract_json
+from ...core.extraction.dispatch import dispatch_extract
 from ...core.runtime.context import RunContext
 from ...network import NetworkIdentity, httpx_proxy_kwargs, resolve_identity
 from ...stealth.fingerprint.headers import http_headers
@@ -135,45 +134,6 @@ class VectorDriver(SharedActionsMixin):
 
         extract_specs: dict[str, Any] = p.get("extract") or {}
         if extract_specs:
-            content_type = response.headers.get("content-type", "")
-            extracted = self._dispatch_extract(
-                response.content, extract_specs, content_type, renderer
-            )
-            outputs.update(extracted)
+            outputs.update(dispatch_extract(response.content, extract_specs))
 
         return outputs
-
-    def _dispatch_extract(
-        self,
-        body: bytes,
-        raw_specs: dict[str, Any],
-        content_type: str,
-        renderer: Callable[[Any], Any],
-    ) -> dict[str, Any]:
-        json_specs: dict[str, ExtractSpec] = {}
-        html_specs: dict[str, HtmlExtractSpec] = {}
-
-        for name, raw in raw_specs.items():
-            from_val: str = raw.get("from", "json")
-            if from_val == "json":
-                json_specs[name] = ExtractSpec(
-                    from_=from_val,
-                    path=raw.get("path", "$"),
-                    where=raw.get("where"),
-                    fields={k: v for k, v in (raw.get("fields") or {}).items()},
-                )
-            else:
-                html_specs[name] = HtmlExtractSpec(
-                    from_=from_val,
-                    selector=raw.get("selector", ""),
-                    selector_type=raw.get("selector_type", "css"),
-                    attr=raw.get("attr"),
-                    multiple=raw.get("multiple", True),
-                )
-
-        result: dict[str, Any] = {}
-        if json_specs:
-            result.update(extract_json(body, json_specs))
-        if html_specs:
-            result.update(extract_html(body, html_specs))
-        return result

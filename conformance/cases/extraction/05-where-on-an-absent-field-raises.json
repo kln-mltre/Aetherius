@@ -1,0 +1,29 @@
+{
+  "name": "extract-where-absent-field",
+  "kind": "extraction",
+  "description": "Une comparaison sur un champ absent LEVE, elle ne filtre pas l'element en silence. Cote Python l'item est enveloppe dans un SimpleNamespace, donc c'est une AttributeError re-levee en ExtractionError.",
+  "body": "[{\"id\": \"1\", \"start\": \"2026-09-07T08:00\", \"eventCategory\": \"Cours\"}, {\"id\": \"2\", \"start\": \"2026-09-07T10:00\", \"eventCategory\": \"Vacances\"}, {\"id\": \"3\", \"start\": \"2026-09-07T14:00\", \"eventCategory\": \"TD\"}]",
+  "spec": {
+    "events": {
+      "from": "json",
+      "path": "$[*]",
+      "where": "item.missing == 1"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Error evaluating where expression"
+      ]
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Error evaluating where expression"
+      ]
+    }
+  }
+}

@@ -12,15 +12,18 @@ Le paquet est **neutre plateforme** — il ne connait ni React Native, ni Node. 
 `fetch`. L'**Act II (Continuum)**, qui exige une WebView, vit dans
 [`@aetherius/react-native`](../react-native).
 
-> **Etat : socle pose (jalon 3-A).** On peut charger, valider et refuser un Blueprint, a l'identique
-> du moteur Python. Rien ne s'execute encore : le runtime et l'Act I arrivent au jalon 3-C. Le
-> paquet reste `private`.
+> **Etat : socle pose (jalon 3-A) + expressions et extraction (jalon 3-B).** On peut charger,
+> valider et refuser un Blueprint a l'identique du moteur Python, rendre ses expressions `{{ }}` et
+> extraire du JSON comme du HTML. Aucun step ne s'execute encore : le runtime et l'Act I arrivent au
+> jalon 3-C. Le paquet reste `private`.
 
 ```ts
-import { parseBlueprint, validateForAct } from "@aetherius/engine";
+import { parseBlueprint, validateForAct, renderValue } from "@aetherius/engine";
 
 const blueprint = parseBlueprint(text, "planning.blueprint.json"); // structurel
 validateForAct(blueprint);                                        // semantique, par act
+
+renderValue("{{ inputs.monday | add_days(7) }}", { inputs: { monday: "2026-09-07" } });
 ```
 
 ## Build
@@ -29,6 +32,11 @@ Le validateur de schema est **precompile** : le moteur JS mobile refuse `eval` e
 donc la compilation est une etape de build dont la sortie est du JavaScript ordinaire. `npm run
 build` regenere `src/generated/` depuis `contracts/` avant d'appeler `tsc` ; ces fichiers sont
 git-ignores.
+
+La meme contrainte decide le reste : le rendu d'expressions est un evaluateur maison (`src/expr/`),
+pas Nunjucks, et les seules dependances d'execution — `htmlparser2`, `domhandler`, `domutils`,
+`css-select`, pour l'extraction HTML hors navigateur — sont retenues parce qu'elles ne generent pas
+de code. `test/no-dynamic-code.test.js` le verifie a chaque execution.
 
 ```bash
 npm --prefix sdks install

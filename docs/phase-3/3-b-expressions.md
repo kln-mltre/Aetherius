@@ -1,8 +1,22 @@
 # Jalon 3-B — Expressions, templates & extraction
 
-**Statut : à faire.** Le jalon à risque de la phase : c'est ici que se paie la contrainte « ni
-`eval`, ni `new Function` », et c'est ici que se joue la parité réelle entre les deux moteurs. Tout
-ce qui suit (le runtime, les deux Acts) consomme ces briques.
+**Statut : livré.** Doc de référence : [docs/embedded.md](../embedded.md#expressions-et-extraction).
+Le jalon à risque de la phase : c'est ici que se paie la contrainte « ni `eval`, ni `new Function` »,
+et c'est ici que se joue la parité réelle entre les deux moteurs. Tout ce qui suit (le runtime, les
+deux Acts) consomme ces briques.
+
+Ce qui a été livré : un **évaluateur maison** (analyseur lexical, parseur à précédence,
+interpréteur d'AST) sous [`expr/`](../../sdks/engine/src/expr), unique brique des **trois** usages —
+rendu ([`template.ts`](../../sdks/engine/src/template.ts)), vérité `isTruthy`, prédicat `where` ;
+l'extraction JSON (sous-ensemble JSONPath maison) et HTML (pile `htmlparser2`/`css-select`, sans
+génération de code, gardée par un test) sous
+[`extraction/`](../../sdks/engine/src/extraction) ; le refus XPath **à la validation**
+([`portability.ts`](../../sdks/engine/src/blueprint/portability.ts)) ; et l'extension du corpus de
+conformance aux premiers cas d'**exécution** (familles `expression`, `extraction`, `truthy`), qui
+devient à partir d'ici la vraie mesure de la parité. Côté Python, un seul changement, annoncé : la
+construction des specs d'extraction quitte le driver Vector pour
+[`core/extraction/dispatch.py`](../../src/aetherius/core/extraction/dispatch.py), afin que le
+corpus emprunte le vrai chemin de production plutôt qu'une copie.
 
 ## Objectif
 
@@ -122,3 +136,30 @@ Les expressions de tous les Blueprints d'`examples/` rendent la même valeur sur
 compris celles qui rendent des collections ; `isTruthy` est identique sur toute sa table ; un
 prédicat `where` malveillant échoue sans rien exécuter ; les limites documentées échouent avec un
 message explicite plutôt qu'un résultat partiel.
+
+## Ce qui a été décidé en chemin
+
+- **La pile HTML est une dépendance, pas un parseur maison.** `htmlparser2` + `domutils` +
+  `css-select` sont du JavaScript pur et — vérifié, puis **gardé par un test** sur le closure résolu
+  depuis le lockfile — sans `eval` ni `new Function`. Ce sont les premières dépendances d'exécution
+  du paquet ; réécrire un tokeniser HTML tolérant et un moteur de sélecteurs aurait coûté ~600
+  lignes de code subtil pour un résultat moins correct.
+- **XPath est refusé à la validation, JSONPath hors sous-ensemble à l'extraction.** L'asymétrie est
+  volontaire : `selector_type` est une enum du schéma, donc refusable statiquement sans risque de
+  faux positif, alors qu'un parseur JSONPath plus strict que `jsonpath-ng` refuserait des Blueprints
+  corrects. Un faux refus est pire qu'un échec propre.
+- **L'interpolation est fidèle à Python.** `str(True)` vaut `"True"`, pas `"true"`. Un booléen ou un
+  `None` interpolé dans une URL, un formulaire ou un en-tête diverge sinon en silence — la classe de
+  bug que la phase existe pour supprimer.
+- **Les bizarreries du moteur Python sont reproduites, pas corrigées** : la règle `isTruthy`
+  (chaîne minusculée comparée à `true`/`1`/`yes`, donc le nombre `2` est faux dans un `when`), le
+  refus d'une chaîne qui commence *et* finit par une expression (`"{{ a }} {{ b }}"`, dont le motif
+  de l'expression nue va jusqu'au dernier `}}`), et les coins de `jsonpath-ng` (`[*]` est une
+  tranche, `.*` un accès de champ ; un opérateur de liste sur un non-liste le traite comme une liste
+  d'un élément ; un indice numérique peut lever). Les « corriger » ici ferait diverger le même
+  Blueprint d'un moteur à l'autre.
+- **Les sondes valent la suite de tests.** Trois différentiels (les 101 expressions des `examples/`
+  sur trois contextes, l'extraction sur les vraies pages, les 44 formes JSONPath sur 12 documents)
+  ont trouvé quatre défauts qu'aucun test unitaire n'aurait montrés, dont un **côté Python**
+  (`render_value` laissait échapper un `TypeError` non typé). Le détail est dans
+  [docs/embedded.md](../embedded.md#parité-sur-le-corpus-livré).

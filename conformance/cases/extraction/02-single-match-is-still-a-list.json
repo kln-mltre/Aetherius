@@ -1,0 +1,43 @@
+{
+  "name": "extract-single-match",
+  "kind": "extraction",
+  "description": "$.champ sur un objet rend une liste d'un element. Le defaut `from: json` et le defaut `path: $` sont eux aussi figes ici.",
+  "body": "{\"title\": \"hello\", \"completed\": false}",
+  "spec": {
+    "title": {
+      "from": "json",
+      "path": "$.title"
+    },
+    "whole": {}
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "title": [
+          "hello"
+        ],
+        "whole": [
+          {
+            "title": "hello",
+            "completed": false
+          }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "title": [
+          "hello"
+        ],
+        "whole": [
+          {
+            "title": "hello",
+            "completed": false
+          }
+        ]
+      }
+    }
+  }
+}

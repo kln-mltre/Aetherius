@@ -1,0 +1,29 @@
+{
+  "name": "expr-undefined-variable",
+  "kind": "expression",
+  "description": "StrictUndefined : une variable absente leve, elle ne rend pas une chaine vide. C'est ce qui transforme une faute de frappe en erreur immediate.",
+  "context": {
+    "steps": {
+      "x": {}
+    }
+  },
+  "value": "{{ steps.x.missing }}",
+  "expect": {
+    "python": {
+      "outcome": "error",
+      "error": "TemplateError",
+      "message_contains": [
+        "Undefined variable in expression",
+        "steps.x.missing"
+      ]
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "TemplateError",
+      "message_contains": [
+        "Undefined variable in expression",
+        "steps.x.missing"
+      ]
+    }
+  }
+}

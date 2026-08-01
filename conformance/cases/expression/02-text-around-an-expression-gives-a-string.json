@@ -1,0 +1,22 @@
+{
+  "name": "expr-mixed-text",
+  "kind": "expression",
+  "description": "Des qu'il y a du texte autour, le resultat est une chaine — et les valeurs sont serialisees comme str() le fait cote Python.",
+  "context": {
+    "values": [
+      1,
+      2
+    ]
+  },
+  "value": "ids: {{ values }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": "ids: [1, 2]"
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": "ids: [1, 2]"
+    }
+  }
+}

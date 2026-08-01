@@ -1,0 +1,76 @@
+{
+  "name": "extract-html-attributes",
+  "kind": "extraction",
+  "description": "Sans pseudo-element ni `attr`, une correspondance rend son HTML serialise (ce que getall() renvoie cote parsel) ; `attr` absent rend la chaine vide ; `multiple: false` rend la premiere valeur ou null.",
+  "body": "<html><body>\n  <div class=\"quote\"><span class=\"text\">Hello <b>bold</b> world</span><small class=\"author\">Ada</small></div>\n  <div class=\"quote\"><span class=\"text\">Second</span><small class=\"author\">Alan</small></div>\n  <a class=\"next\" href=\"/page/2/\" data-id=\"7\">Next</a>\n</body></html>",
+  "spec": {
+    "outer": {
+      "from": "html",
+      "selector": "a.next"
+    },
+    "href": {
+      "from": "html",
+      "selector": "a.next",
+      "attr": "href"
+    },
+    "data_id": {
+      "from": "html",
+      "selector": "a.next::attr(data-id)"
+    },
+    "absent": {
+      "from": "html",
+      "selector": "a.next",
+      "attr": "nope"
+    },
+    "first_author": {
+      "from": "html",
+      "selector": "small.author::text",
+      "multiple": false
+    },
+    "no_match": {
+      "from": "html",
+      "selector": "h1::text",
+      "multiple": false
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "outer": [
+          "<a class=\"next\" href=\"/page/2/\" data-id=\"7\">Next</a>"
+        ],
+        "href": [
+          "/page/2/"
+        ],
+        "data_id": [
+          "7"
+        ],
+        "absent": [
+          ""
+        ],
+        "first_author": "Ada",
+        "no_match": null
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "outer": [
+          "<a class=\"next\" href=\"/page/2/\" data-id=\"7\">Next</a>"
+        ],
+        "href": [
+          "/page/2/"
+        ],
+        "data_id": [
+          "7"
+        ],
+        "absent": [
+          ""
+        ],
+        "first_author": "Ada",
+        "no_match": null
+      }
+    }
+  }
+}

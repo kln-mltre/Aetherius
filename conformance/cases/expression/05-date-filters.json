@@ -1,0 +1,36 @@
+{
+  "name": "expr-date-filters",
+  "kind": "expression",
+  "description": "Les trois filtres de date d'Aetherius sur une date ISO, dont add_days utilise par examples/vector/ukit-planning-week.",
+  "context": {
+    "inputs": {
+      "monday": "2026-09-07"
+    }
+  },
+  "value": {
+    "plus": "{{ inputs.monday | add_days(7) }}",
+    "minus": "{{ inputs.monday | sub_days(2) }}",
+    "formatted": "{{ inputs.monday | format_date('%d/%m/%Y') }}",
+    "names": "{{ inputs.monday | format_date('%A %B %j') }}"
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "plus": "2026-09-14",
+        "minus": "2026-09-05",
+        "formatted": "07/09/2026",
+        "names": "Monday September 250"
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "plus": "2026-09-14",
+        "minus": "2026-09-05",
+        "formatted": "07/09/2026",
+        "names": "Monday September 250"
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "expr-undefined-in-text",
+  "kind": "expression",
+  "description": "Meme regle dans une chaine a texte mele : un chemin partiellement absent leve au lieu de laisser un trou.",
+  "context": {},
+  "value": "value: {{ nope.deep }}",
+  "expect": {
+    "python": {
+      "outcome": "error",
+      "error": "TemplateError",
+      "message_contains": [
+        "nope"
+      ]
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "TemplateError",
+      "message_contains": [
+        "nope"
+      ]
+    }
+  }
+}

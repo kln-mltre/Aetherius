@@ -1,0 +1,23 @@
+{
+  "name": "expr-date-not-iso",
+  "kind": "expression",
+  "description": "Limite declaree : date.fromisoformat de Python accepte toute une famille d'ecritures ISO 8601 ('20260907', '2026-W36-1'). Le moteur embarque n'accepte que YYYY-MM-DD et echoue bruyamment plutot que de calculer une date differente en silence.",
+  "context": {
+    "d": "20260907"
+  },
+  "value": "{{ d | add_days(1) }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": "2026-09-08"
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "TemplateError",
+      "message_contains": [
+        "add_days",
+        "cannot parse date"
+      ]
+    }
+  }
+}

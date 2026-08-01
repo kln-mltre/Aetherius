@@ -711,8 +711,9 @@ en TypeScript, qui rejoue les **mêmes** Blueprints directement sur l'appareil �
 mobiles, où héberger un daemon signifierait faire sortir toutes les requêtes d'une seule IP (et donc
 construire une infrastructure de proxies pour compenser) et faire transiter les identifiants de
 l'utilisateur par une machine tierce. Périmètre : **Acts I et II uniquement**, le flux, et `confirm`.
-Le socle est posé (jalon 3-A) : on charge, valide et refuse un Blueprint côté TypeScript, et deux
-gardes empêchent les moteurs de diverger. Référence d'usage : [docs/embedded.md](docs/embedded.md).
+Le socle est posé (jalon 3-A) — on charge, valide et refuse un Blueprint côté TypeScript, et des
+gardes empêchent les moteurs de diverger — et les deux mini-langages sont là (jalon 3-B) :
+expressions et extraction. Référence d'usage : [docs/embedded.md](docs/embedded.md).
 
 - [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
   Blueprint à l'identique du moteur Python. Validation **en deux temps** — JSON Schema **précompilé
@@ -732,9 +733,26 @@ gardes empêchent les moteurs de diverger. Référence d'usage : [docs/embedded.
   `input_requested`/`input_provided` depuis 2-E, les deux paquets ont désormais leur garde
   d'énumération. [docs/embedded.md](docs/embedded.md),
   [docs/phase-3/3-a-socle-ts.md](docs/phase-3/3-a-socle-ts.md).
-- [ ] **3-B** — Expressions, templates & extraction, **sans exécution de code dynamique** (contrainte
-  du moteur JS mobile) : sous-ensemble Jinja2, règle de l'expression nue, prédicat `where`, JSONPath,
-  extraction JSON et HTML. [docs/phase-3/3-b-expressions.md](docs/phase-3/3-b-expressions.md).
+- [x] **3-B** — Expressions, templates & extraction, **sans exécution de code dynamique** : la
+  contrainte « ni `eval`, ni `new Function` » interdit d'importer un moteur compatible Jinja2 comme
+  une implémentation JSONPath généraliste. Le moteur embarqué porte donc son **évaluateur maison**
+  (analyseur lexical, parseur à précédence, interpréteur d'AST) — **une** brique au service de
+  **trois** usages : le rendu `{{ }}`, la vérité `isTruthy` de `when`/`assert`, et le prédicat
+  `where`. Sont reproduits à la lettre la **règle de l'expression nue** (une chaîne qui *est* une
+  expression rend l'objet brut : une liste reste une liste), `StrictUndefined` (une variable absente
+  lève, elle ne rend pas une chaîne vide), la sérialisation à la `str()` de Python (`True`, `None`,
+  `[1, 2]`), et les deux véracités qui cohabitent (native dans une expression, règle Aetherius
+  autour). Extraction **JSON** (sous-ensemble JSONPath) et **HTML** hors navigateur (pile
+  `htmlparser2`/`css-select`, pseudo-éléments `parsel` `::text`/`::attr` compris), prédicat `where`
+  restreint à la même grammaire que la liste blanche d'AST du Python — appels, indexation, filtres et
+  attributs `__` refusés des deux côtés. Bénéfice collatéral de la contrainte : l'interpréteur n'a
+  **rien** à offrir à un attaquant, ce qui rend acceptable le jalon 3-F. Limites **écrites et
+  testées** : XPath refusé **à la validation** (jamais au milieu d'un run), JSONPath hors
+  sous-ensemble, filtre inconnu et date hors `YYYY-MM-DD` refusés proprement. Le corpus de
+  conformance gagne ses premiers cas d'**exécution** (`expression`, `extraction`, `truthy`) et
+  devient la vraie mesure de la parité ; une garde `no-dynamic-code` rescanne les dépendances.
+  [docs/embedded.md](docs/embedded.md#expressions-et-extraction),
+  [docs/phase-3/3-b-expressions.md](docs/phase-3/3-b-expressions.md).
 - [ ] **3-C** — Runtime asynchrone & **Act I (Vector)** sur `fetch` : premier Blueprint qui tourne
   réellement sur un téléphone. [docs/phase-3/3-c-vector.md](docs/phase-3/3-c-vector.md).
 - [ ] **3-D** — **Act II (Continuum)** sur WebView : agent JavaScript injecté, RPC corrélée, locators,

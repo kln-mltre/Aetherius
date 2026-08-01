@@ -1,0 +1,18 @@
+{
+  "name": "extract-jsonpath-recursive-wildcard-limit",
+  "kind": "extraction",
+  "description": "Limite declaree. La descente recursive par nom ('..champ') est identique sur les deux moteurs ; '..*' ne l'est pas : jsonpath-ng ne descend PAS dans les elements d'une liste, donc '$..*' rend la liste sans ses items. Plutot que de reproduire cette forme au juge pour une construction qu'aucun Blueprint n'utilise, le moteur embarque la refuse par son nom. La divergence est ici, ecrite, plutot que dans un resultat partiel que personne ne verifierait.",
+  "body": "{\"a\": {\"b\": 1}, \"c\": [2, 3]}",
+  "spec": { "everything": { "from": "json", "path": "$..*" } },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": { "everything": [{ "b": 1 }, [2, 3], 1] }
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": ["recursive descent onto '*'", "name the field"]
+    }
+  }
+}

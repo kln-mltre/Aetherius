@@ -1,0 +1,32 @@
+{
+  "name": "extract-jsonpath-filter-limit",
+  "kind": "extraction",
+  "description": "Limite declaree : le moteur Python s'appuie sur jsonpath-ng[ext], tres complet ; le moteur embarque n'implemente que le sous-ensemble utile. Un filtre [?...] echoue BRUYAMMENT plutot que de rendre un resultat partiel — un resultat partiel, personne ne le verifie.",
+  "body": "[{\"id\": 1}, {\"id\": 2}]",
+  "spec": {
+    "big": {
+      "from": "json",
+      "path": "$[?(@.id > 1)]"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "big": [
+          {
+            "id": 2
+          }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "filter expressions",
+        "not supported by the embedded engine"
+      ]
+    }
+  }
+}

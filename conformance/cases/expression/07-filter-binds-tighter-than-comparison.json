@@ -1,0 +1,27 @@
+{
+  "name": "expr-precedence-filter-comparison",
+  "kind": "expression",
+  "description": "Piege de precedence : `x | length > 0` est `(x | length) > 0`. Forme reelle, tiree de examples/vector/jsonplaceholder-flow.",
+  "context": {
+    "steps": {
+      "fetch": {
+        "users": [
+          1,
+          2,
+          3
+        ]
+      }
+    }
+  },
+  "value": "{{ steps.fetch.users | length > 0 }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": true
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": true
+    }
+  }
+}

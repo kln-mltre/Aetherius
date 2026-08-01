@@ -1,0 +1,46 @@
+{
+  "name": "extract-html-text",
+  "kind": "extraction",
+  "description": "Le pseudo-element ::text de parsel (pas du CSS standard) : il selectionne les noeuds texte ENFANTS DIRECTS, chacun un resultat separe. 'Hello ' et ' world' encadrent un <b> et comptent donc pour deux. Forme reelle de examples/vector/quotes-watch.",
+  "body": "<html><body>\n  <div class=\"quote\"><span class=\"text\">Hello <b>bold</b> world</span><small class=\"author\">Ada</small></div>\n  <div class=\"quote\"><span class=\"text\">Second</span><small class=\"author\">Alan</small></div>\n  <a class=\"next\" href=\"/page/2/\" data-id=\"7\">Next</a>\n</body></html>",
+  "spec": {
+    "quotes": {
+      "from": "html",
+      "selector": "div.quote span.text::text"
+    },
+    "authors": {
+      "from": "html",
+      "selector": "div.quote small.author::text"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "quotes": [
+          "Hello ",
+          " world",
+          "Second"
+        ],
+        "authors": [
+          "Ada",
+          "Alan"
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "quotes": [
+          "Hello ",
+          " world",
+          "Second"
+        ],
+        "authors": [
+          "Ada",
+          "Alan"
+        ]
+      }
+    }
+  }
+}

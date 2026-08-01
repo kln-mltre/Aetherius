@@ -19,6 +19,7 @@ import {
   isEmbeddedAct,
 } from "./capabilities.js";
 import { contractCapabilities, introducingAct, nestedStepFields } from "./contract.js";
+import { checkPortableParams } from "./portability.js";
 import type { Blueprint, StepModel } from "./types.js";
 
 const EMBEDDED_ACT_LIST = EMBEDDED_ACTS.join(", ");
@@ -58,6 +59,8 @@ function validateStep(step: StepModel, inheritedAct: string, path: string): void
   if (!embeddedCapabilities(act).has(step.action)) {
     throw rejection(step, act, path);
   }
+
+  checkPortableParams(step, stepLabel(step), path);
 
   for (const field of nestedStepFields(step.action)) {
     const nested = step[field];

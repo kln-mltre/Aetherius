@@ -1,0 +1,86 @@
+{
+  "name": "truthy-table",
+  "kind": "truthy",
+  "description": "La regle de verite partagee par `when` et `assert`, table exhaustive. Elle a l'air bizarre et elle l'est : la valeur est convertie en chaine, minusculee, puis comparee a true/1/yes. Le True de Python devient 'True', qui est vrai ; le nombre 2 devient '2', qui est faux. Un portage 'intelligent' vers la veracite native de JavaScript ferait diverger `when` sur des cas reels — c'est pour cela que ce cas est obligatoire.",
+  "values": [
+    true,
+    "True",
+    "true",
+    "TRUE",
+    " yes ",
+    "1",
+    1,
+    false,
+    "False",
+    "false",
+    "0",
+    "",
+    "no",
+    null,
+    2,
+    -1,
+    [],
+    [
+      1
+    ],
+    {},
+    {
+      "a": 1
+    },
+    "on"
+  ],
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  }
+}

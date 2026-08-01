@@ -1,0 +1,30 @@
+{
+  "name": "extract-quoted-field",
+  "kind": "extraction",
+  "description": "Un nom de champ entre quotes : la forme que prennent les en-tetes HTTP dans examples/vector/http-headers-identity.",
+  "body": "{\"headers\": {\"Accept-Language\": \"fr-FR\", \"User-Agent\": \"ua\"}}",
+  "spec": {
+    "lang": {
+      "from": "json",
+      "path": "$.headers.'Accept-Language'"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "lang": [
+          "fr-FR"
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "lang": [
+          "fr-FR"
+        ]
+      }
+    }
+  }
+}

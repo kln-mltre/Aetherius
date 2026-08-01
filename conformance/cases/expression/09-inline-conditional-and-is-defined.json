@@ -1,0 +1,19 @@
+{
+  "name": "expr-conditional-defined",
+  "kind": "expression",
+  "description": "Le ternaire est paresseux et `is defined` observe une variable absente sans lever. Forme reelle : les outputs de examples/vector/confirm-before-post apres un step saute.",
+  "context": {
+    "steps": {}
+  },
+  "value": "{{ steps.publish.post_id if steps.publish is defined else None }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": null
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": null
+    }
+  }
+}

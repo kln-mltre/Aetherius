@@ -1,0 +1,31 @@
+{
+  "name": "extract-where-dunder-refused",
+  "kind": "extraction",
+  "description": "Tentative d'evasion : l'acces aux attributs magiques, porte d'entree du graphe d'objets Python (item.__class__.__globals__). Refuse nommement des deux cotes.",
+  "body": "[{\"id\": \"1\", \"start\": \"2026-09-07T08:00\", \"eventCategory\": \"Cours\"}, {\"id\": \"2\", \"start\": \"2026-09-07T10:00\", \"eventCategory\": \"Vacances\"}, {\"id\": \"3\", \"start\": \"2026-09-07T14:00\", \"eventCategory\": \"TD\"}]",
+  "spec": {
+    "events": {
+      "from": "json",
+      "path": "$[*]",
+      "where": "item.__class__ == 1"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Disallowed dunder attribute",
+        "__class__"
+      ]
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Disallowed dunder attribute",
+        "__class__"
+      ]
+    }
+  }
+}

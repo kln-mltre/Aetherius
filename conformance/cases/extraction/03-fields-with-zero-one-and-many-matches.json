@@ -1,0 +1,49 @@
+{
+  "name": "extract-fields-arity",
+  "kind": "extraction",
+  "description": "Un `fields` sans correspondance rend null, une seule rend la valeur, plusieurs rendent la liste. Les trois arites dans un seul cas.",
+  "body": "[{\"id\": 1, \"tags\": [\"a\", \"b\"]}]",
+  "spec": {
+    "rows": {
+      "from": "json",
+      "path": "$[*]",
+      "fields": {
+        "id": "$.id",
+        "missing": "$.nope",
+        "tags": "$.tags[*]"
+      }
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "rows": [
+          {
+            "id": 1,
+            "missing": null,
+            "tags": [
+              "a",
+              "b"
+            ]
+          }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "rows": [
+          {
+            "id": 1,
+            "missing": null,
+            "tags": [
+              "a",
+              "b"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

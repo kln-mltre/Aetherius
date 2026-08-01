@@ -14,7 +14,7 @@ import datetime
 import re
 from typing import Any
 
-from jinja2 import StrictUndefined, TemplateError as _Jinja2Error, Undefined as _Undefined
+from jinja2 import StrictUndefined, Undefined as _Undefined
 from jinja2.sandbox import SandboxedEnvironment
 
 from ..errors import TemplateError
@@ -87,12 +87,20 @@ def render_value(value: Any, ctx: dict[str, Any]) -> Any:
                 if isinstance(result, _Undefined):
                     raise TemplateError(f"Undefined variable in expression: {m.group(1).strip()!r}")
                 return result
-            except _Jinja2Error as exc:
+            except TemplateError:
+                # A filter already raised the typed error; keep its message rather than nest it.
+                raise
+            except Exception as exc:
+                # Not only jinja2's own errors: a filter applied to the wrong type raises a plain
+                # TypeError from the standard library, which would otherwise escape untyped and be
+                # reported as a crash instead of a Blueprint mistake.
                 raise TemplateError(f"Template expression failed: {exc}") from exc
         # Multi-part string: render as text.
         try:
             return _env.from_string(value).render(ctx)
-        except _Jinja2Error as exc:
+        except TemplateError:
+            raise
+        except Exception as exc:
             raise TemplateError(f"Template rendering failed: {exc}") from exc
     if isinstance(value, dict):
         return {k: render_value(v, ctx) for k, v in value.items()}

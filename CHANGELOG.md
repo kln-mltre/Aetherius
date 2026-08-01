@@ -8,6 +8,46 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 3-B — Expressions, templates & extraction**
+  ([docs/embedded.md](docs/embedded.md#expressions-et-extraction)) : le moteur embarqué sait rendre
+  les `{{ }}` d'un Blueprint et en extraire des données, **sans exécution de code dynamique**.
+  - **Un évaluateur maison, trois usages.** La contrainte « ni `eval`, ni `new Function` » interdit
+    d'importer un moteur compatible Jinja2 comme une implémentation JSONPath généraliste : le paquet
+    porte son analyseur lexical, son parseur à précédence et son interpréteur d'AST
+    (`sdks/engine/src/expr/`), **une seule** brique au service du rendu, de la vérité `isTruthy` de
+    `when`/`assert`, et du prédicat `where` — les dupliquer serait la garantie qu'ils divergent.
+    Bénéfice collatéral : l'interpréteur n'a **rien** à offrir à un attaquant (ni fonctions natives,
+    ni prototypes, ni globales), ce qui rend acceptable le jalon 3-F où les Blueprints arriveront du
+    réseau.
+  - **Les pièges de parité, reproduits à la lettre** : la **règle de l'expression nue** (une chaîne
+    qui *est* exactement une expression rend l'objet brut — sans quoi tous les `outputs` rendant une
+    collection continueraient de réussir, avec une chaîne à la place des données) ; `StrictUndefined`
+    (une variable absente lève, elle ne rend pas une chaîne vide) avec un marqueur *paresseux*, sans
+    quoi `is defined` et la branche `else` d'un ternaire seraient impossibles ; la sérialisation à la
+    `str()` de Python (`True`, `None`, `[1, 2]`) ; et les **deux véracités** qui cohabitent — native
+    à l'intérieur d'une expression, règle Aetherius autour, si bien que le nombre `2` est vrai dans
+    une expression et faux dans un `when`.
+  - **Extraction JSON et HTML** (`sdks/engine/src/extraction/`) : sous-ensemble JSONPath maison
+    (`$`, champs cités, `[*]`, indices négatifs, tranches, descente récursive) ; extraction HTML hors
+    navigateur sur la pile `htmlparser2`/`domutils`/`css-select` — premières dépendances d'exécution
+    du paquet, retenues parce qu'elles ne génèrent pas de code —, pseudo-éléments `parsel` `::text`
+    et `::attr(...)` compris ; prédicat `where` restreint à la **même grammaire** que la liste
+    blanche d'AST du moteur Python, appels, indexation, filtres, littéraux de liste et attributs
+    `__` refusés des deux côtés, avant toute évaluation.
+  - **Les limites sont écrites *et* testées.** XPath est refusé **à la validation** (`portability.ts`)
+    et non au milieu d'un run : `selector_type` est une enum du schéma, donc refusable statiquement
+    sans risque de faux positif. À l'inverse, un JSONPath hors sous-ensemble échoue à l'extraction —
+    un parseur plus strict que `jsonpath-ng` refuserait des Blueprints corrects, et un faux refus est
+    pire qu'un échec propre. Filtre inconnu, date hors `YYYY-MM-DD` et `..*` (la seule construction
+    JSONPath dont la forme réelle n'est pas celle qu'on croit : `jsonpath-ng` ne descend pas dans les
+    éléments d'une liste) échouent en nommant ce qui est supporté.
+  - **Le corpus de conformance gagne ses premiers cas d'exécution** : trois familles (`expression`,
+    `extraction`, `truthy`) rejouées par les deux moteurs et comparées en valeur, harnais étendus par
+    un dispatcher sur `kind` (`validation` par défaut, les cas de 3-A sont inchangés). Il devient à
+    partir d'ici la vraie mesure de la parité.
+  - **Garde « pas de code dynamique »** : `no-dynamic-code.test.js` rescanne le closure des
+    dépendances d'exécution résolu depuis le lockfile — une montée de version qui introduirait
+    `eval` ou `new Function` se verrait au build, pas sur l'appareil.
 - **Jalon 3-A — Socle TypeScript & parité** ([docs/embedded.md](docs/embedded.md)) : le moteur
   embarqué **charge, valide et refuse** un Blueprint à l'identique du moteur Python. Rien ne
   s'exécute encore — c'est une fondation, comme le store 1.5-A et le substrat 2-A.
@@ -57,6 +97,13 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
   que rien ne s'exécute.
 
 ### Corrigé
+- **`render_value` laissait échapper des exceptions non typées.** Un filtre appliqué à une valeur du
+  mauvais type (`{{ 3 | first }}`, `{{ liste | add_days(7) }}`) remonte un `TypeError` de la
+  bibliothèque standard, que la fonction ne rattrapait pas — elle ne captait que les erreurs propres
+  à jinja2. Une faute de frappe dans un Blueprint était donc rapportée comme un plantage du moteur au
+  lieu d'une erreur de Blueprint. Toute exception est désormais enveloppée en `TemplateError`
+  (l'invariant « les erreurs sont typées et jamais avalées »), sans toucher aux messages existants.
+  Trouvé par la sonde de parité du jalon 3-B : le moteur embarqué, lui, levait déjà l'erreur typée.
 - **`@aetherius/client` ignorait deux types d'événement** (`input_requested` / `input_provided`),
   pourtant définis par `contracts/events.schema.json` depuis le jalon 2-E : une application qui
   streamait un run avec un `confirm` recevait des événements que ses types ne décrivaient pas. La
@@ -64,6 +111,12 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
   au contrat — dans **les deux** paquets, c'est son absence qui avait laissé la dérive s'installer.
 
 ### Modifié
+- **La construction des specs d'extraction quitte le driver Vector** pour
+  `core/extraction/dispatch.py` (`dispatch_extract`) : le corpus de conformance emprunte ainsi le
+  vrai chemin de production plutôt qu'une copie, et le moteur embarqué a un module jumeau à mettre en
+  regard. Déplacement pur, avec son test miroir ; les deux paramètres que la méthode recevait sans
+  jamais s'en servir (`content_type`, `renderer`) disparaissent. Aucun changement de comportement —
+  en particulier, une spec d'extraction n'est toujours pas rendue par le moteur de templates.
 - **`FLOW_NESTED_FIELDS` déménage** de `core/blueprint/validator.py` vers `core/actions/base.py`, à
   côté de `FLOW_ACTIONS` : c'est la forme des actions de flux, pas une règle de validation, et le
   générateur du contrat ne doit pas importer le validateur. Ré-exporté depuis son ancien module ;

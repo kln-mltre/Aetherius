@@ -1,0 +1,49 @@
+{
+  "name": "extract-jsonpath-fields",
+  "kind": "extraction",
+  "description": "La forme de examples/vector/ukit-planning-week : $[*] avec `where` et `fields`. Une extraction rend TOUJOURS une liste, meme pour une seule correspondance — c'est pourquoi les Blueprints ecrivent `| first`.",
+  "body": "[{\"id\": \"1\", \"start\": \"2026-09-07T08:00\", \"eventCategory\": \"Cours\"}, {\"id\": \"2\", \"start\": \"2026-09-07T10:00\", \"eventCategory\": \"Vacances\"}, {\"id\": \"3\", \"start\": \"2026-09-07T14:00\", \"eventCategory\": \"TD\"}]",
+  "spec": {
+    "events": {
+      "from": "json",
+      "path": "$[*]",
+      "where": "item.eventCategory != 'Vacances'",
+      "fields": {
+        "id": "$.id",
+        "category": "$.eventCategory"
+      }
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "events": [
+          {
+            "id": "1",
+            "category": "Cours"
+          },
+          {
+            "id": "3",
+            "category": "TD"
+          }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "events": [
+          {
+            "id": "1",
+            "category": "Cours"
+          },
+          {
+            "id": "3",
+            "category": "TD"
+          }
+        ]
+      }
+    }
+  }
+}

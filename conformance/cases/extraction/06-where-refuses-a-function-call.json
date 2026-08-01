@@ -1,0 +1,29 @@
+{
+  "name": "extract-where-call-refused",
+  "kind": "extraction",
+  "description": "Tentative d'evasion : un appel de fonction dans le predicat. Refuse avant toute evaluation par les deux moteurs — cote Python par la liste blanche d'AST, cote embarque par la meme restriction de grammaire (l'interpreteur maison n'a de toute facon rien a offrir a un attaquant).",
+  "body": "[{\"id\": \"1\", \"start\": \"2026-09-07T08:00\", \"eventCategory\": \"Cours\"}, {\"id\": \"2\", \"start\": \"2026-09-07T10:00\", \"eventCategory\": \"Vacances\"}, {\"id\": \"3\", \"start\": \"2026-09-07T14:00\", \"eventCategory\": \"TD\"}]",
+  "spec": {
+    "events": {
+      "from": "json",
+      "path": "$[*]",
+      "where": "open('/etc/passwd') == 1"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Disallowed construct"
+      ]
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Disallowed construct"
+      ]
+    }
+  }
+}

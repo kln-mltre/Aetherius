@@ -1,0 +1,25 @@
+{
+  "name": "expr-precedence-not-filter",
+  "kind": "expression",
+  "description": "Piege de precedence : `not x | first` est `not (x | first)`. Forme reelle, tiree de examples/vector/jsonplaceholder-todo-alert.",
+  "context": {
+    "steps": {
+      "fetch": {
+        "completed": [
+          false
+        ]
+      }
+    }
+  },
+  "value": "{{ not steps.fetch.completed | first }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": true
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": true
+    }
+  }
+}

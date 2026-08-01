@@ -1,0 +1,45 @@
+{
+  "name": "expr-operators",
+  "kind": "expression",
+  "description": "`in`, `and`/`or`/`not`, comparaisons et acces indexe. La forme `in` est celle de examples/vector/books-restock-notify.",
+  "context": {
+    "steps": {
+      "check": {
+        "availability": [
+          "In stock (22 available)"
+        ]
+      }
+    },
+    "n": 3,
+    "items": [
+      10,
+      20
+    ]
+  },
+  "value": {
+    "membership": "{{ 'In stock' in (steps.check.availability | first) }}",
+    "logic": "{{ n > 1 and not (n > 5) }}",
+    "indexing": "{{ items[1] }}",
+    "equality": "{{ items == [10, 20] }}"
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "membership": true,
+        "logic": true,
+        "indexing": 20,
+        "equality": true
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "membership": true,
+        "logic": true,
+        "indexing": 20,
+        "equality": true
+      }
+    }
+  }
+}

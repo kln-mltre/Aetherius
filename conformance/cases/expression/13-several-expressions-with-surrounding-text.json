@@ -1,0 +1,20 @@
+{
+  "name": "expr-multiple-interpolations",
+  "kind": "expression",
+  "description": "La meme chaine avec du texte devant s'interpole normalement — c'est la forme utilisee dans les vrais Blueprints.",
+  "context": {
+    "a": 1,
+    "b": 2
+  },
+  "value": "x {{ a }} y {{ b }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": "x 1 y 2"
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": "x 1 y 2"
+    }
+  }
+}

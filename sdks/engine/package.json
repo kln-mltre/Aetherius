@@ -24,6 +24,12 @@
     "conformance": "npm run build && node --test test/conformance.test.js"
   },
   "license": "CC-BY-NC-4.0",
+  "dependencies": {
+    "css-select": "^7.0.0",
+    "domhandler": "^6.0.0",
+    "domutils": "^4.0.2",
+    "htmlparser2": "^12.0.0"
+  },
   "devDependencies": {
     "@types/node": "^20.12.0",
     "ajv": "^8.20.0",

@@ -1,0 +1,20 @@
+{
+  "name": "expr-python-str",
+  "kind": "expression",
+  "description": "Un booleen interpole s'ecrit 'True', pas 'true'. La difference est invisible jusqu'a ce qu'un serveur distant refuse le formulaire.",
+  "context": {
+    "flag": true,
+    "nothing": null
+  },
+  "value": "flag: {{ flag }} none: {{ nothing }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": "flag: True none: None"
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": "flag: True none: None"
+    }
+  }
+}

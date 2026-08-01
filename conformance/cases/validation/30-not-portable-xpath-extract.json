@@ -1,0 +1,37 @@
+{
+  "name": "not-portable-xpath-extract",
+  "description": "Divergence assumee : hors navigateur, XPath demande un moteur a lui seul — l'exemple livre books-restock-notify utilise normalize-space(//p[contains(@class, ...)]), une expression XPath 1.0 complete avec fonctions. Reproduire lxml serait disproportionne face a l'usage. Le refus tombe A LA VALIDATION, pas au milieu du run : un Blueprint qui ne peut pas tourner doit le dire avant de demarrer.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.portable.xpath",
+    "act": "vector",
+    "steps": [
+      {
+        "id": "check",
+        "action": "http.request",
+        "url": "https://example.test/product",
+        "extract": {
+          "title": { "from": "html", "selector": "h1::text" },
+          "availability": {
+            "from": "html",
+            "selector": "normalize-space(//p[contains(@class, 'availability')])",
+            "selector_type": "xpath"
+          }
+        }
+      }
+    ]
+  },
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": [
+        "'availability'",
+        "selector_type='xpath'",
+        "no XPath engine without a DOM",
+        "at steps[0]"
+      ]
+    }
+  }
+}

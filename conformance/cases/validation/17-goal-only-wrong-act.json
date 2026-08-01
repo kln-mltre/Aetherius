@@ -1,0 +1,22 @@
+{
+  "name": "goal-only-wrong-act",
+  "description": "Un Blueprint sans steps qui n'est pas phantom est une erreur d'ecriture des deux cotes : les steps sont la surface des autres Acts.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.act.goal-only-vector",
+    "act": "vector",
+    "goal": "faire la chose"
+  },
+  "expect": {
+    "python": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["goal-only Blueprint", "act='phantom'"]
+    },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["goal-only Blueprint", "act='phantom'"]
+    }
+  }
+}

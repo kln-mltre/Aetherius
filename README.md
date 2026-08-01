@@ -361,8 +361,9 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 - **SDK Python** : l'import in-process direct (`import aetherius`, sans daemon) ; le client remote
   mince est différé.
 - **Contrats** ([`contracts/`](contracts/)) : JSON Schema du Blueprint + OpenAPI du daemon + schéma
-  d'événements = source de vérité ; les types des SDK s'y conforment (gardés par des tests). C'est
-  aussi ce qui rend un **second moteur** possible sans dupliquer les décisions (Phase 3).
+  d'événements + dictionnaire d'actions généré (`actions.json`) = source de vérité ; les types des
+  SDK s'y conforment (gardés par des tests). C'est aussi ce qui rend un **second moteur** possible
+  sans dupliquer les décisions (Phase 3).
 
 Détails, sécurité et « Tester le daemon » : [docs/daemon.md](docs/daemon.md).
 
@@ -417,7 +418,9 @@ src/aetherius/
   server/      daemon FastAPI (routes/jobs/schemas) + scheduler (triggers/misfire/alerts)
   cli/         commandes scriptables (run/validate/serve/record, groupe schedule)
   config/      settings
-contracts/     blueprint.schema.json, openapi.yaml, events.schema.json  (source de vérité)
+contracts/     blueprint.schema.json, openapi.yaml, events.schema.json,
+               actions.json (généré depuis le registre d'actions)  (source de vérité)
+conformance/   corpus partagé rejoué par les deux moteurs (`make conformance`)
 deploy/        recette always-on : Dockerfile, docker-compose.yml, service systemd
 sdks/          workspace npm + python
   client/        @aetherius/client — pilote le daemon depuis TypeScript
@@ -461,7 +464,9 @@ Le `Makefile` est le point d'entrée unique — les mêmes cibles servent en loc
 ```bash
 make check                # avant de commit : format + lint (ruff) + types (mypy) + tests (pytest)
 make test                 # tests seuls, avec couverture
-make check-all            # tout le dépôt : Python + SDK TypeScript
+make check-all            # tout le dépôt : Python + workspace TypeScript
+make conformance          # le corpus partagé rejoué sur les deux moteurs (Phase 3)
+make contracts            # régénère contracts/actions.json depuis le registre d'actions
 make help                 # liste des cibles
 ```
 
@@ -706,11 +711,26 @@ en TypeScript, qui rejoue les **mêmes** Blueprints directement sur l'appareil �
 mobiles, où héberger un daemon signifierait faire sortir toutes les requêtes d'une seule IP (et donc
 construire une infrastructure de proxies pour compenser) et faire transiter les identifiants de
 l'utilisateur par une machine tierce. Périmètre : **Acts I et II uniquement**, le flux, et `confirm`.
-Le squelette (workspace npm `sdks/`, stubs typés) est en place.
+Le socle est posé (jalon 3-A) : on charge, valide et refuse un Blueprint côté TypeScript, et deux
+gardes empêchent les moteurs de diverger. Référence d'usage : [docs/embedded.md](docs/embedded.md).
 
-- [ ] **3-A** — Socle TypeScript & parité : modèle de Blueprint, validation en deux temps, erreurs
-  typées, bus d'événements, interface `ActDriver` asynchrone ; contrat généré `contracts/actions.json`
-  et **harnais de conformance** rejouant un corpus partagé sur les deux moteurs.
+- [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
+  Blueprint à l'identique du moteur Python. Validation **en deux temps** — JSON Schema **précompilé
+  au build** (Hermes ne supporte ni `eval` ni `new Function` : la compilation devient une étape de
+  build dont la sortie est du JavaScript ordinaire, Ajv restant une dépendance de build) puis
+  sémantique par act, récursive dans les branches de flux avec chemin lisible (`steps[3].then[0]`)
+  et héritage de l'`act` par step. Erreurs typées, bus d'événements (exception d'un sink journalisée
+  et avalée), `Result` et `ActDriver` asynchrone. **Trois gardes anti-dérive** : `contracts/actions.json`
+  **généré** depuis le registre d'actions (`make contracts`, gardé byte-for-byte, plugins exclus) et
+  inliné dans le paquet ; la table des capacités embarquées, prouvée **sous-ensemble strict**
+  d'`ACT_CAPABILITIES` ; et le **corpus de conformance** ([`conformance/`](conformance/README.md),
+  `make conformance` branché en CI) rejoué par les deux moteurs, où chaque cas déclare ce que
+  **chacun** doit faire du Blueprint — les divergences assumées (`upload`, `drag`, `screenshot`,
+  `notify`, Acts III/IV) y sont écrites noir sur blanc. Un refus distingue « mauvais act » de « non
+  portable sur appareil » de « act non embarquable » : confondre les trois enverrait l'auteur
+  corriger ce qui n'est pas cassé. Dérive réelle corrigée au passage : `@aetherius/client` ignorait
+  `input_requested`/`input_provided` depuis 2-E, les deux paquets ont désormais leur garde
+  d'énumération. [docs/embedded.md](docs/embedded.md),
   [docs/phase-3/3-a-socle-ts.md](docs/phase-3/3-a-socle-ts.md).
 - [ ] **3-B** — Expressions, templates & extraction, **sans exécution de code dynamique** (contrainte
   du moteur JS mobile) : sous-ensemble Jinja2, règle de l'expression nue, prédicat `where`, JSONPath,

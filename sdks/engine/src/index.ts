@@ -5,11 +5,17 @@
  * Blueprint, runtime, extraction, evenements, erreurs) et l'Act I (Vector) sur `fetch`. L'Act II
  * (Continuum), qui a besoin d'une WebView, vit dans `@aetherius/react-native`.
  *
- * Squelette Phase 3 : seules les interfaces sont posees. Voir docs/phase-3/README.md.
+ * Etat (jalon 3-A) : le socle est pose — on peut charger, valider et refuser un Blueprint. Rien ne
+ * s'execute encore ; le runtime arrive au jalon 3-C. Voir docs/embedded.md.
  */
 
 export * from "./blueprint/types.js";
+export * from "./blueprint/capabilities.js";
+export * from "./blueprint/contract.js";
+export * from "./blueprint/loader.js";
+export * from "./blueprint/schema.js";
+export * from "./blueprint/validator.js";
 export * from "./driver.js";
 export * from "./errors.js";
-export * from "./events.js";
+export * from "./events/index.js";
 export * from "./result.js";

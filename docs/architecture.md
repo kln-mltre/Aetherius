@@ -6,7 +6,8 @@ les parties au fil de l'implémentation.
 ## Couches
 
 1. **Contrats** (`contracts/`) — source de vérité langage-agnostique : `blueprint.schema.json`,
-   `openapi.yaml`, `events.schema.json`. Tout le reste s'y conforme.
+   `openapi.yaml`, `events.schema.json`, et `actions.json` (projection **générée** du dictionnaire
+   d'actions, `make contracts`). Tout le reste s'y conforme.
 2. **Cœur** (`src/aetherius/core/`) — indépendant du moteur : modèle de Blueprint, dictionnaire
    d'actions, runtime, extraction, bus d'événements, erreurs typées, protocole `ActDriver`.
 3. **Acts** (`src/aetherius/acts/`) — quatre drivers interchangeables (Vector, Continuum, Oracle,
@@ -33,9 +34,12 @@ sur un appareil mobile, là où le daemon ne convient pas (les requêtes doivent
 l'utilisateur, et ses identifiants ne doivent pas transiter par une machine tierce).
 
 Ce moteur couvre les **Acts I et II** ; les Acts cognitifs, la planification et l'outillage restent
-l'apanage du moteur Python. Deux gardes empêchent la dérive : `contracts/actions.json` (projection
-générée du registre d'actions) et un corpus de conformance rejoué par les deux moteurs
-(`make conformance`). Cadrage et jalons : [phase-3/](phase-3/README.md).
+l'apanage du moteur Python. Trois gardes, en place depuis le jalon 3-A, empêchent la dérive :
+`contracts/actions.json` (projection générée du registre d'actions, consommée par le moteur
+TypeScript), la table des capacités embarquées prouvée **sous-ensemble strict** de
+`ACT_CAPABILITIES`, et un corpus de conformance rejoué par les deux moteurs (`make conformance`).
+Le socle livré est décrit dans [embedded.md](embedded.md) ; cadrage et jalons :
+[phase-3/](phase-3/README.md).
 
 ## Invariants
 

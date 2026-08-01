@@ -1,0 +1,9 @@
+{
+  "name": "example-vector-confirm",
+  "description": "Le human-in-the-loop fait partie du perimetre embarque : l'exemple 'confirm' passe des deux cotes.",
+  "blueprint_path": "examples/vector/confirm-before-post.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

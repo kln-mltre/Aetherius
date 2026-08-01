@@ -1,0 +1,33 @@
+{
+  "name": "nested-branch-path",
+  "description": "Une action hors de portee enfouie dans une branche 'then' est refusee avant le run, avec un chemin lisible.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.flow.nested",
+    "act": "vector",
+    "steps": [
+      { "action": "emit", "event": "A" },
+      {
+        "action": "if",
+        "condition": "{{ true }}",
+        "then": [
+          { "action": "emit", "event": "B" },
+          { "id": "shot", "action": "screenshot", "path": "out.png" }
+        ],
+        "else": [{ "action": "emit", "event": "C" }]
+      }
+    ]
+  },
+  "expect": {
+    "python": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["steps[1].then[1]"]
+    },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["steps[1].then[1]"]
+    }
+  }
+}

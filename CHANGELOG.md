@@ -8,6 +8,37 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 3-A — Socle TypeScript & parité** ([docs/embedded.md](docs/embedded.md)) : le moteur
+  embarqué **charge, valide et refuse** un Blueprint à l'identique du moteur Python. Rien ne
+  s'exécute encore — c'est une fondation, comme le store 1.5-A et le substrat 2-A.
+  - **Validation en deux temps.** JSON Schema d'abord, sémantique par act ensuite, avec deux erreurs
+    distinctes : un message qui dit *à quel niveau* le document est invalide vaut mieux qu'un message
+    qui dit qu'il l'est. La validation sémantique descend dans `then`/`else`/`steps`, hérite l'`act`
+    d'un step dans ses branches, et rapporte un chemin lisible (`steps[3].then[1]`).
+  - **Le schéma est précompilé, pas interprété.** Hermes ne supporte ni `eval` ni `new Function`, et
+    un validateur JSON Schema généraliste construit ses fonctions de validation exactement comme ça :
+    la compilation devient une **étape de build** (`sdks/engine/scripts/compile-schema.mjs`) dont la
+    sortie est du JavaScript ordinaire, avec les contrats inlinés (un téléphone n'a pas de checkout)
+    et leurs empreintes SHA-256 pour détecter un artefact périmé. Ajv reste une dépendance **de
+    build** : son unique helper runtime est inliné, et le script échoue bruyamment si un helper
+    inconnu apparaît plutôt que d'émettre un module qui casserait sur l'appareil.
+  - **`contracts/actions.json`** : nouveau contrat **généré** depuis le registre d'actions
+    (`make contracts`) — résumé et paramètres de chaque action, `ACT_CAPABILITIES`, actions de flux
+    et carte des champs portant des steps imbriqués. Gardé byte-for-byte par
+    `tests/contracts/test_actions_contract.py` ; les actions de plugin en sont exclues, un contrat
+    ne pouvant dépendre de ce qui est installé sur la machine du générateur.
+  - **Corpus de conformance** ([`conformance/`](conformance/README.md)) : 25 cas, chacun déclarant ce
+    que **chaque** moteur doit faire du Blueprint. Les divergences assumées (`upload`, `drag`,
+    `screenshot`, `notify`, Acts III/IV) y sont écrites cas par cas, plutôt que laissées à la
+    comparaison manuelle de deux tables. Rejoué par `make conformance` (branché en CI) et, pour
+    chaque moitié, par `make test` et `npm test`. Le harnais lui-même est testé : un exécuteur qui
+    rapporterait tous les cas comme passants transformerait une suite verte en affirmation fausse.
+  - **Trois refus, trois messages** : « mauvais act » (l'auteur corrige son `act`), « valide mais non
+    portable sur appareil » (le Blueprint est juste, il appartient au moteur Python), « act non
+    embarquable » (le message vise l'act, pas l'action). L'act d'origine d'une action est **dérivé**
+    de la table des capacités, pas redéclaré.
+  - Bus d'événements (exception d'un sink journalisée et avalée, logger injectable), sinks, et
+    énumération d'événements exposée **en valeur** pour être comparable au contrat.
 - **Phase 3 — Embarqué : le moteur sur l'appareil (squelette)**
   ([docs/phase-3/](docs/phase-3/README.md)) : cadrage, décisions d'architecture et **sept
   spécifications de jalon** (3-A à 3-G) pour un **second moteur**, écrit en TypeScript, qui rejoue
@@ -25,7 +56,18 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
   `Result`, `ActDriver` asynchrone, joint `WebViewHost`, `SecretResolver`) ; ils sont `private` tant
   que rien ne s'exécute.
 
+### Corrigé
+- **`@aetherius/client` ignorait deux types d'événement** (`input_requested` / `input_provided`),
+  pourtant définis par `contracts/events.schema.json` depuis le jalon 2-E : une application qui
+  streamait un run avec un `confirm` recevait des événements que ses types ne décrivaient pas. La
+  liste est complétée et, surtout, exposée en valeur (`RUN_EVENT_TYPES`) avec un test de conformité
+  au contrat — dans **les deux** paquets, c'est son absence qui avait laissé la dérive s'installer.
+
 ### Modifié
+- **`FLOW_NESTED_FIELDS` déménage** de `core/blueprint/validator.py` vers `core/actions/base.py`, à
+  côté de `FLOW_ACTIONS` : c'est la forme des actions de flux, pas une règle de validation, et le
+  générateur du contrat ne doit pas importer le validateur. Ré-exporté depuis son ancien module ;
+  aucun appelant n'a changé.
 - **`sdks/typescript/` renommé en `sdks/client/`** — un répertoire nommait un langage là où les
   autres nomment un rôle, ce qui n'était plus tenable avec trois paquets TypeScript. Références mises
   à jour : `Makefile`, `.github/workflows/release.yml`, `docs/daemon.md`, `sdks/python/README.md`.

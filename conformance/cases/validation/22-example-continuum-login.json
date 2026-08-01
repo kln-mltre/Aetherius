@@ -1,0 +1,9 @@
+{
+  "name": "example-continuum-login",
+  "description": "Un parcours de login Continuum reel (navigate/fill/click/wait_for/extract) : entierement portable sur WebView.",
+  "blueprint_path": "examples/continuum/quotes-login.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

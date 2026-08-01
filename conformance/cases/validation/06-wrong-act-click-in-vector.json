@@ -1,0 +1,22 @@
+{
+  "name": "wrong-act-click-in-vector",
+  "description": "Action de navigateur sous act='vector' : les deux moteurs nomment l'act a adopter.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.act.click",
+    "act": "vector",
+    "steps": [{ "id": "go", "action": "click", "selector": "#submit" }]
+  },
+  "expect": {
+    "python": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'click'", "act='vector'", "requires act='continuum' or higher", "steps[0]"]
+    },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'click'", "act='vector'", "requires act='continuum' or higher", "steps[0]"]
+    }
+  }
+}

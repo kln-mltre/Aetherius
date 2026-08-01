@@ -4,7 +4,8 @@ Après la **Phase 1** (socle réutilisable, Acts I–II), la **Phase 1.5** (socl
 planification, alertes, réactivité, furtivité) et la **Phase 2** (Acts cognitifs, composition,
 human-in-the-loop) — toutes livrées — la Phase 3 change d'axe. Elle n'ajoute **aucune capacité** au
 vocabulaire des Blueprints : elle livre un **second moteur**, écrit en TypeScript, qui rejoue les
-**mêmes Blueprints** directement sur l'appareil de l'utilisateur.
+**mêmes Blueprints** directement sur l'appareil de l'utilisateur. Référence d'usage du socle livré :
+[docs/embedded.md](../embedded.md).
 
 Périmètre volontairement resserré : **Acts I (Vector) et II (Continuum) uniquement**. Oracle et
 Phantom restent l'apanage du moteur Python.
@@ -139,9 +140,10 @@ Deux adaptations pour un jalon TypeScript :
   « sondes réalistes dures » exigées par [CONTRIBUTING](../../CONTRIBUTING.md) gardent tout leur
   sens : un portail réel, pas seulement `quotes.toscrape.com`.
 
-> **Note de portée du squelette.** Comme en Phase 2, tout ce qui toucherait la table des
-> `capabilities`, les contrats (`contracts/*.json|yaml`), l'enum `EventType` ou le dispatch d'un
-> driver est **différé au jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Le
-> squelette posé aujourd'hui reste au niveau **interface + documentation** : le workspace npm, trois
-> paquets dont deux vides et `private`, des stubs typés qui compilent. En particulier
-> `contracts/actions.json` n'existe pas encore : c'est le premier livrable de 3-A.
+> **Note de portée.** Comme en Phase 2, tout ce qui toucherait la table des `capabilities`, les
+> contrats (`contracts/*.json|yaml`), l'enum `EventType` ou le dispatch d'un driver est **différé au
+> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Le jalon **3-A est livré** :
+> `contracts/actions.json` existe (généré depuis le registre Python et gardé), le corpus de
+> conformance est en place sous [`conformance/`](../../conformance/README.md), et `make conformance`
+> rejoue les deux moteurs. Référence d'usage du socle : [docs/embedded.md](../embedded.md). Aucun
+> contrat existant n'a été modifié : un fichier a été **ajouté**, rien n'a bougé.

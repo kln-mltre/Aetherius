@@ -14,6 +14,7 @@ from typing import Callable
 from pydantic import ValidationError
 
 from ..actions.base import ACT_CAPABILITIES
+from ..actions.base import FLOW_NESTED_FIELDS as FLOW_NESTED_FIELDS  # re-export (public surface)
 from ..actions.registry import plugin_actions
 from ..errors import BlueprintValidationError
 from .models import Blueprint, StepModel
@@ -42,14 +43,6 @@ _CAPABILITY_ORIGIN: dict[str, str] = {
 # Acts allowed in a self-healing escalation chain: escalation is a browser-Act concept, and
 # Continuum is the floor it escalates *from* (see docs/composition.md).
 FALLBACK_ACTS: frozenset[str] = frozenset({"oracle", "phantom"})
-
-# Step fields holding nested step lists, per flow action. Shared with the runtime's act pre-scan
-# (core/runtime/drivers.py) so both walk the same tree shape.
-FLOW_NESTED_FIELDS: dict[str, tuple[str, ...]] = {
-    "if": ("then", "else"),
-    "repeat": ("steps",),
-    "for_each": ("steps",),
-}
 
 
 def validate_for_act(blueprint: Blueprint) -> None:

@@ -1,9 +1,16 @@
 # Jalon 3-A — Socle TypeScript & parité
 
-**Statut : à faire.** Fondation de la Phase 3 : le socle que consomment tous les jalons suivants.
-N'apporte **aucune capacité utilisateur seule** (comme le store 1.5-A et le substrat de cognition
-2-A) ; c'est la brique sans laquelle les deux Acts embarqués dupliqueraient tout, et sans laquelle
-rien ne garantirait que les deux moteurs restent d'accord.
+**Statut : livré.** Doc de référence : [docs/embedded.md](../embedded.md). Le moteur embarqué sait
+charger, valider et **refuser** un Blueprint, à l'identique du moteur Python : validation en deux
+temps (schéma Ajv précompilé au build, puis sémantique par act), erreurs typées, bus d'événements,
+`ActDriver` asynchrone. Trois gardes anti-dérive sont en place — `contracts/actions.json` généré et
+gardé, la table des capacités embarquées prouvée sous-ensemble strict, et le **corpus de
+conformance** (`make conformance`, branché en CI) rejoué par les deux moteurs. La dérive réelle du
+SDK `@aetherius/client` (deux types d'événement manquants depuis 2-E) est corrigée au passage.
+Fondation de la Phase 3 : n'apporte **aucune capacité utilisateur seule** (comme le store 1.5-A et
+le substrat de cognition 2-A) ; c'est la brique sans laquelle les deux Acts embarqués
+dupliqueraient tout, et sans laquelle rien ne garantirait que les deux moteurs restent d'accord.
+Ce document conserve la spécification d'origine du jalon.
 
 ## Objectif
 

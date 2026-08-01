@@ -1,0 +1,14 @@
+{
+  "name": "model-empty-steps",
+  "description": "Une liste 'steps' vide satisfait l'anyOf du schema ; c'est la regle de modele qui la refuse. Le moteur embarque n'a pas de pydantic et doit reproduire la regle a la main : ce cas est ce qui le garantit.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.model.empty",
+    "act": "vector",
+    "steps": []
+  },
+  "expect": {
+    "python": { "outcome": "rejected", "error": "BlueprintSchemaError", "message_contains": ["'steps' or 'goal'"] },
+    "embedded": { "outcome": "rejected", "error": "BlueprintSchemaError", "message_contains": ["'steps' or 'goal'"] }
+  }
+}

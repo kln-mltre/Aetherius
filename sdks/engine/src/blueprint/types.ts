@@ -1,16 +1,16 @@
 /**
  * Modele de Blueprint, miroir TypeScript de `src/aetherius/core/blueprint/models.py`.
  *
- * Squelette Phase 3 : les types sont poses, la validation (Ajv precompile depuis
- * `contracts/blueprint.schema.json`, puis validation semantique par act) arrive au jalon 3-A.
- * Voir docs/phase-3/3-a-socle-ts.md.
+ * La validation en deux temps qui produit ces types vit a cote : structurelle dans
+ * [`loader.ts`](./loader.ts) (schema precompile), semantique dans [`validator.ts`](./validator.ts).
  */
 
-/** Les quatre Acts declares par le contrat. Le moteur embarque n'en execute que deux. */
+/**
+ * Les quatre Acts declares par le contrat. Le moteur embarque n'en execute que deux : la liste de
+ * ceux-la (`EMBEDDED_ACTS`) et la table des capacites correspondante vivent dans
+ * [`capabilities.ts`](./capabilities.ts), avec les raisons de chaque exclusion.
+ */
 export type ActName = "vector" | "continuum" | "oracle" | "phantom";
-
-/** Acts que le moteur embarque sait executer ; les autres echouent a la validation semantique. */
-export const EMBEDDED_ACTS = ["vector", "continuum"] as const satisfies readonly ActName[];
 
 export type InputKind = "string" | "number" | "integer" | "boolean" | "object" | "array" | "path";
 

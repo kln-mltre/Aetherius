@@ -1,0 +1,21 @@
+{
+  "name": "step-act-oracle-not-embeddable",
+  "description": "Composition multi-Act : un seul step escalade vers oracle. Cote Python le run melange les Acts ; cote embarque le Blueprint entier est refuse, en nommant le step fautif.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.act.step-oracle",
+    "act": "continuum",
+    "steps": [
+      { "action": "navigate", "url": "https://example.test" },
+      { "id": "look", "act": "oracle", "action": "read", "vision": "the price" }
+    ]
+  },
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["Act 'oracle' is not supported by the embedded engine", "step 'look'"]
+    }
+  }
+}

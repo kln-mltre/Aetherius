@@ -1,0 +1,9 @@
+{
+  "name": "example-vector-flow",
+  "description": "Un exemple livre, avec if/for_each imbriques : les deux moteurs l'acceptent a l'identique.",
+  "blueprint_path": "examples/vector/jsonplaceholder-flow.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

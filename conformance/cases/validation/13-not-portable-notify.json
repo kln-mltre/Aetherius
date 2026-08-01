@@ -1,0 +1,20 @@
+{
+  "name": "not-portable-notify",
+  "description": "Divergence assumee : l'application mobile possede deja ses notifications ; le moteur n'en envoie pas a sa place.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.portable.notify",
+    "act": "vector",
+    "steps": [
+      { "id": "warn", "action": "notify", "channel": { "kind": "webhook", "url": "https://example.test/hook" }, "message": "hi" }
+    ]
+  },
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'notify'", "not by the embedded engine", "notifications"]
+    }
+  }
+}

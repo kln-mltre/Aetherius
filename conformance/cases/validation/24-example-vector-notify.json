@@ -1,0 +1,13 @@
+{
+  "name": "example-vector-notify",
+  "description": "Divergence assumee : la surveillance de restock alerte par 'notify', que l'application mobile assure elle-meme.",
+  "blueprint_path": "examples/vector/books-restock-notify.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'notify'", "not by the embedded engine"]
+    }
+  }
+}

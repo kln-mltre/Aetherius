@@ -1,0 +1,13 @@
+{
+  "name": "example-phantom-goal",
+  "description": "Divergence assumee : l'exemple Phantom livre est goal-only, donc hors perimetre embarque.",
+  "blueprint_path": "examples/phantom/quotes-find-author.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["Act 'phantom' is not supported by the embedded engine"]
+    }
+  }
+}

@@ -6,7 +6,7 @@
 PY := python3
 TS_DIR := sdks
 
-.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts conformance check check-all screenshots screenshots-check dist release-check
+.PHONY: help install-dev lint format format-check typecheck test test-fast test-browser test-ts contracts conformance check check-all screenshots screenshots-check dist release-check
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -40,9 +40,13 @@ test-ts: ## Typecheck, build and test the npm workspace (client SDK + embedded e
 	npm --prefix $(TS_DIR) install
 	npm --prefix $(TS_DIR) test
 
+contracts: ## Regenerate the generated contracts (contracts/actions.json) from the action registry
+	$(PY) -m aetherius.core.actions.contract
+
 conformance: ## Replay the shared Blueprint corpus on both engines (Python + TypeScript)
-	@echo "Conformance harness: pending milestone 3-A (see docs/phase-3/3-a-socle-ts.md)."
-	@exit 1
+	pytest tests/conformance -q
+	npm --prefix $(TS_DIR) install
+	npm --prefix $(TS_DIR) run conformance --workspace @aetherius/engine
 
 screenshots: ## Regenerate the Console SVG screenshots under docs/screenshots/
 	$(PY) -m aetherius.console.screenshots

@@ -1,0 +1,14 @@
+{
+  "name": "unknown-action",
+  "description": "Une action qu'aucun act ne declare est refusee, sans indice d'act trompeur.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.action.unknown",
+    "act": "vector",
+    "steps": [{ "id": "oops", "action": "teleport" }]
+  },
+  "expect": {
+    "python": { "outcome": "rejected", "error": "BlueprintValidationError", "message_contains": ["'teleport'"] },
+    "embedded": { "outcome": "rejected", "error": "BlueprintValidationError", "message_contains": ["'teleport'", "not a known action"] }
+  }
+}

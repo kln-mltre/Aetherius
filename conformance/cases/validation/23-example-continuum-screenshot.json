@@ -1,0 +1,13 @@
+{
+  "name": "example-continuum-screenshot",
+  "description": "Divergence assumee : cet exemple livre prend une capture d'ecran, hors perimetre embarque.",
+  "blueprint_path": "examples/continuum/books-catalog.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'screenshot'", "not by the embedded engine"]
+    }
+  }
+}

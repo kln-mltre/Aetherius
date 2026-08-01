@@ -1,0 +1,14 @@
+{
+  "name": "schema-unknown-act",
+  "description": "Un act hors de l'enumeration du schema est une violation structurelle.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.schema.act",
+    "act": "wandering",
+    "steps": [{ "action": "emit", "event": "X" }]
+  },
+  "expect": {
+    "python": { "outcome": "rejected", "error": "BlueprintSchemaError", "message_contains": ["act"] },
+    "embedded": { "outcome": "rejected", "error": "BlueprintSchemaError", "message_contains": ["/act"] }
+  }
+}

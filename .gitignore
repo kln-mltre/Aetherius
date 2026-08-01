@@ -18,6 +18,8 @@ htmlcov/
 node_modules/
 sdks/*/dist/
 *.tsbuildinfo
+# Generated at build time from contracts/ (precompiled JSON Schema validator + inlined contracts).
+sdks/engine/src/generated/
 
 # Aetherius runtime artifacts
 src/aetherius/models/store/*

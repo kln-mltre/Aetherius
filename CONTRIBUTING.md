@@ -26,11 +26,18 @@ Cibles utiles :
 make test                 # tests seuls, avec couverture
 make lint                 # ruff
 make typecheck            # mypy (strict)
-make check-all            # tout le dépôt : Python + SDK TypeScript
+make check-all            # tout le dépôt : Python + workspace TypeScript
+make conformance          # le corpus partagé rejoué sur les deux moteurs
+make contracts            # régénère contracts/actions.json depuis le registre d'actions
 make help                 # liste des cibles
 ```
 
 Ouvre une branche par changement, garde `make check` vert, et découpe en commits lisibles.
+
+**Si le changement touche le moteur embarqué** (`sdks/engine`, `sdks/react-native`), la porte est
+`make check-all` **et** `make conformance` : le second moteur ne vaut que s'il reste d'accord avec le
+premier. Voir [docs/embedded.md](docs/embedded.md) et
+[conformance/README.md](conformance/README.md).
 
 ## Définition de « terminé »
 
@@ -61,7 +68,8 @@ est vrai. On ne saute pas une étape en attendant qu'on la réclame :
   importée au niveau module — elles sont chargées à la demande dans les Acts.
 - Les contrats (`contracts/`) sont la source de vérité ; le code et les SDK s'y conforment.
 - Le dictionnaire d'actions (`core/actions/registry.py`) est l'unique source ; le catalogue du
-  builder en est une projection (pas de duplication).
+  builder et `contracts/actions.json` en sont des projections (pas de duplication). Après toute
+  évolution du registre ou de la table des capacités : `make contracts`, et commiter le résultat.
 - Commentaires sobres, orientés « pourquoi » ; pas d'emoji dans le code ni les logs. Le formatage et
   le lint sont gérés par ruff (`make format`).
 
@@ -124,6 +132,6 @@ Règles :
 
 ## Intégration continue
 
-La CI (`.github/workflows/ci.yml`) rejoue exactement les cibles `make` sur Python 3.11 et 3.12 et
-compile le SDK TypeScript. Il n'y a pas de logique de test hors du `Makefile` : ce qui passe en local
-passe en CI, et inversement.
+La CI (`.github/workflows/ci.yml`) rejoue exactement les cibles `make` sur Python 3.11 et 3.12,
+compile le workspace TypeScript et rejoue `make conformance`. Il n'y a pas de logique de test hors du
+`Makefile` : ce qui passe en local passe en CI, et inversement.

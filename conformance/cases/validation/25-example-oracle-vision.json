@@ -1,0 +1,13 @@
+{
+  "name": "example-oracle-vision",
+  "description": "Divergence assumee : l'exemple Oracle livre reste l'apanage du moteur Python.",
+  "blueprint_path": "examples/oracle/quotes-vision-demo.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["Act 'oracle' is not supported by the embedded engine"]
+    }
+  }
+}

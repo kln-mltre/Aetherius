@@ -1,0 +1,896 @@
+{
+  "version": "1.0",
+  "description": "Generated from the Aetherius action registry (src/aetherius/core/actions/). Do not edit by hand: run 'make contracts'.",
+  "actions": {
+    "assert": {
+      "summary": "Fail the run unless a rendered condition is truthy.",
+      "params": [
+        {
+          "name": "condition",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Expression that must be truthy.",
+          "placeholder": "{{ steps.week.status_code == 200 }}"
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Message shown when the assertion fails.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "back": {
+      "summary": "Go back one entry in the browser history.",
+      "params": []
+    },
+    "click": {
+      "summary": "Click an element.",
+      "params": [
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Target element selector.",
+          "placeholder": "#submit"
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "confirm": {
+      "summary": "Park the run until a human approves or rejects (console, daemon API, or notification).",
+      "params": [
+        {
+          "name": "message",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "What the human is being asked to approve.",
+          "placeholder": "Buy {{ inputs.product }} for {{ steps.price.value }}?"
+        },
+        {
+          "name": "title",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Optional short title for the request.",
+          "placeholder": ""
+        },
+        {
+          "name": "timeout_ms",
+          "kind": "integer",
+          "required": false,
+          "default": 300000,
+          "help": "How long to wait for a decision before applying on_timeout (mandatory bound).",
+          "placeholder": ""
+        },
+        {
+          "name": "on_timeout",
+          "kind": "string",
+          "required": false,
+          "default": "reject",
+          "help": "On expiry: 'approve', 'reject', or 'fail:CODE'. Deny-by-default.",
+          "placeholder": "reject"
+        },
+        {
+          "name": "channel",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Optional notify channel to alert on: webhook, discord, telegram, ntfy.",
+          "placeholder": "ntfy"
+        },
+        {
+          "name": "target",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Channel address for the alert (topic, chat id, webhook URL). Usually a secret.",
+          "placeholder": "{{ secrets.ntfy_topic }}"
+        },
+        {
+          "name": "config",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "Full channel config for multi-key channels; superset of 'target'.",
+          "placeholder": "{\"bot_token\": \"{{ secrets.tg_token }}\", \"chat_id\": \"{{ secrets.tg_chat }}\"}"
+        },
+        {
+          "name": "level",
+          "kind": "string",
+          "required": false,
+          "default": "warning",
+          "help": "Severity of the request notification: info, warning or error.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "drag": {
+      "summary": "Drag one element onto another.",
+      "params": [
+        {
+          "name": "source",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Selector to drag from.",
+          "placeholder": ""
+        },
+        {
+          "name": "target",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Selector to drop onto.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "emit": {
+      "summary": "Emit a progress event with a message.",
+      "params": [
+        {
+          "name": "message",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Event message.",
+          "placeholder": "LOGIN_SUCCESS"
+        }
+      ]
+    },
+    "evaluate": {
+      "summary": "Run injected JavaScript in the page and return its result (Act II).",
+      "params": [
+        {
+          "name": "script",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "JavaScript expression or function.",
+          "placeholder": "() => document.title"
+        },
+        {
+          "name": "arg",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "Optional argument passed to the script.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "extract": {
+      "summary": "Read values from the current page's DOM into named outputs (Act II).",
+      "params": [
+        {
+          "name": "outputs",
+          "kind": "object",
+          "required": true,
+          "default": null,
+          "help": "Map of output name to a selector spec (as: text/number/html/attr/list, or each/fields for records).",
+          "placeholder": "{\"title\": {\"selector\": \"h1\", \"as\": \"text\"}}"
+        }
+      ]
+    },
+    "fill": {
+      "summary": "Set an input's value in one shot (clears it first).",
+      "params": [
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Target element selector.",
+          "placeholder": "#submit"
+        },
+        {
+          "name": "value",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Value to set.",
+          "placeholder": "{{ inputs.query }}"
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "for_each": {
+      "summary": "Run nested steps once per item.",
+      "params": [
+        {
+          "name": "items",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Expression yielding the list to iterate.",
+          "placeholder": ""
+        },
+        {
+          "name": "as",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Loop variable name (default: item).",
+          "placeholder": ""
+        },
+        {
+          "name": "steps",
+          "kind": "array",
+          "required": true,
+          "default": null,
+          "help": "Steps to run per item.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "forward": {
+      "summary": "Go forward one entry in the browser history.",
+      "params": []
+    },
+    "hover": {
+      "summary": "Move the pointer over an element.",
+      "params": [
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Target element selector.",
+          "placeholder": "#submit"
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "http.request": {
+      "summary": "Send an HTTP request and optionally extract from the response (Act I).",
+      "params": [
+        {
+          "name": "method",
+          "kind": "string",
+          "required": false,
+          "default": "GET",
+          "help": "HTTP method.",
+          "placeholder": "POST"
+        },
+        {
+          "name": "url",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Request URL.",
+          "placeholder": "{{ vars.domain }}/api"
+        },
+        {
+          "name": "headers",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "Request headers.",
+          "placeholder": "{\"Accept\": \"application/json\"}"
+        },
+        {
+          "name": "params",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "Query-string parameters.",
+          "placeholder": ""
+        },
+        {
+          "name": "form",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "URL-encoded form body (mutually exclusive with json).",
+          "placeholder": ""
+        },
+        {
+          "name": "json",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "JSON body (mutually exclusive with form).",
+          "placeholder": ""
+        },
+        {
+          "name": "expect",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "Response assertions.",
+          "placeholder": "{\"status\": 200}"
+        },
+        {
+          "name": "extract",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "Named JSONPath/CSS extractions from the response.",
+          "placeholder": "{\"items\": {\"from\": \"json\", \"path\": \"$[*]\"}}"
+        }
+      ]
+    },
+    "if": {
+      "summary": "Run nested steps conditionally.",
+      "params": [
+        {
+          "name": "condition",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Expression deciding the branch.",
+          "placeholder": ""
+        },
+        {
+          "name": "then",
+          "kind": "array",
+          "required": true,
+          "default": null,
+          "help": "Steps to run when the condition holds.",
+          "placeholder": ""
+        },
+        {
+          "name": "else",
+          "kind": "array",
+          "required": false,
+          "default": null,
+          "help": "Steps to run otherwise.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "navigate": {
+      "summary": "Open a URL in the browser.",
+      "params": [
+        {
+          "name": "url",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Absolute URL to open.",
+          "placeholder": "https://example.com"
+        },
+        {
+          "name": "wait_until",
+          "kind": "string",
+          "required": false,
+          "default": "load",
+          "help": "Load state to wait for: load, domcontentloaded, networkidle or commit.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "notify": {
+      "summary": "Send an alert to a notification channel (webhook, Discord, Telegram, ntfy).",
+      "params": [
+        {
+          "name": "channel",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Channel kind: webhook, discord, telegram or ntfy (plugins may add more).",
+          "placeholder": "discord"
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Alert body.",
+          "placeholder": "Back in stock: {{ inputs.product }}"
+        },
+        {
+          "name": "title",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Optional alert title.",
+          "placeholder": ""
+        },
+        {
+          "name": "level",
+          "kind": "string",
+          "required": false,
+          "default": "info",
+          "help": "Severity: info, warning or error.",
+          "placeholder": ""
+        },
+        {
+          "name": "target",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Channel address (webhook URL, chat id, topic). Usually a secret.",
+          "placeholder": "{{ secrets.discord_webhook }}"
+        },
+        {
+          "name": "url",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Optional deep link attached to the alert (the product page, ...).",
+          "placeholder": ""
+        },
+        {
+          "name": "config",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "Full channel config for multi-key channels; superset of 'target'.",
+          "placeholder": "{\"bot_token\": \"{{ secrets.tg_token }}\", \"chat_id\": \"{{ secrets.tg_chat }}\"}"
+        }
+      ]
+    },
+    "press": {
+      "summary": "Press a keyboard key, optionally focused on an element.",
+      "params": [
+        {
+          "name": "key",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Key name.",
+          "placeholder": "Enter"
+        },
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Element to focus before pressing (optional).",
+          "placeholder": ""
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "read": {
+      "summary": "Read data off the screen described in natural language (Act III+).",
+      "params": [
+        {
+          "name": "vision",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Natural-language description of the data to read.",
+          "placeholder": "the list of prices in the results table"
+        },
+        {
+          "name": "schema",
+          "kind": "object",
+          "required": false,
+          "default": null,
+          "help": "JSON Schema of an object shaping the reply; omit for a free-form value returned under 'data'.",
+          "placeholder": "{\"type\": \"object\", \"properties\": {\"prices\": {\"type\": \"array\"}}}"
+        }
+      ]
+    },
+    "reload": {
+      "summary": "Reload the current page.",
+      "params": []
+    },
+    "repeat": {
+      "summary": "Run nested steps a fixed number of times.",
+      "params": [
+        {
+          "name": "times",
+          "kind": "integer",
+          "required": true,
+          "default": null,
+          "help": "How many iterations.",
+          "placeholder": ""
+        },
+        {
+          "name": "steps",
+          "kind": "array",
+          "required": true,
+          "default": null,
+          "help": "Steps to repeat.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "screenshot": {
+      "summary": "Capture a screenshot artifact of the page or an element (Act II).",
+      "params": [
+        {
+          "name": "name",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "File name for the artifact (defaults to the step id).",
+          "placeholder": ""
+        },
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Element to capture; omit for the whole page.",
+          "placeholder": ""
+        },
+        {
+          "name": "full_page",
+          "kind": "boolean",
+          "required": false,
+          "default": false,
+          "help": "Capture the full scrollable page when no selector is given.",
+          "placeholder": ""
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "scroll": {
+      "summary": "Scroll an element into view, or scroll the page by a delta.",
+      "params": [
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Element to scroll into view (optional).",
+          "placeholder": ""
+        },
+        {
+          "name": "dx",
+          "kind": "number",
+          "required": false,
+          "default": null,
+          "help": "Horizontal wheel delta when no selector is given.",
+          "placeholder": ""
+        },
+        {
+          "name": "dy",
+          "kind": "number",
+          "required": false,
+          "default": null,
+          "help": "Vertical wheel delta when no selector is given.",
+          "placeholder": ""
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "select": {
+      "summary": "Choose one or more options in a <select> element.",
+      "params": [
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Target element selector.",
+          "placeholder": "#submit"
+        },
+        {
+          "name": "values",
+          "kind": "array",
+          "required": true,
+          "default": null,
+          "help": "Option value(s) to select.",
+          "placeholder": "[\"option-1\"]"
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "set": {
+      "summary": "Store a rendered value under this step's id, for later interpolation.",
+      "params": [
+        {
+          "name": "value",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Value to store.",
+          "placeholder": "{{ inputs.group }}"
+        }
+      ]
+    },
+    "type": {
+      "summary": "Type text character by character (for fields that react to each keystroke).",
+      "params": [
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Target element selector.",
+          "placeholder": "#submit"
+        },
+        {
+          "name": "text",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Text to type.",
+          "placeholder": ""
+        },
+        {
+          "name": "delay_ms",
+          "kind": "number",
+          "required": false,
+          "default": null,
+          "help": "Delay between keystrokes, in milliseconds.",
+          "placeholder": ""
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "upload": {
+      "summary": "Set the file(s) of a file input.",
+      "params": [
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Target element selector.",
+          "placeholder": "#submit"
+        },
+        {
+          "name": "file",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Path to the file to upload.",
+          "placeholder": "{{ inputs.video }}"
+        },
+        {
+          "name": "selector_type",
+          "kind": "string",
+          "required": false,
+          "default": "css",
+          "help": "How to read 'selector': css (default), xpath or text.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "wait": {
+      "summary": "Pause for a fixed duration, or a random one drawn from a range.",
+      "params": [
+        {
+          "name": "ms",
+          "kind": "number",
+          "required": false,
+          "default": null,
+          "help": "Milliseconds to wait.",
+          "placeholder": "1000"
+        },
+        {
+          "name": "min_ms",
+          "kind": "number",
+          "required": false,
+          "default": null,
+          "help": "With max_ms and no ms: lower bound of a uniform random wait.",
+          "placeholder": ""
+        },
+        {
+          "name": "max_ms",
+          "kind": "number",
+          "required": false,
+          "default": null,
+          "help": "With min_ms and no ms: upper bound of a uniform random wait.",
+          "placeholder": ""
+        }
+      ]
+    },
+    "wait_for": {
+      "summary": "Block until a selector reaches a state (Act II).",
+      "params": [
+        {
+          "name": "selector",
+          "kind": "string",
+          "required": true,
+          "default": null,
+          "help": "Selector to wait for.",
+          "placeholder": ".results"
+        },
+        {
+          "name": "state",
+          "kind": "string",
+          "required": false,
+          "default": "visible",
+          "help": "Target state: visible, attached, hidden or detached.",
+          "placeholder": ""
+        },
+        {
+          "name": "timeout_ms",
+          "kind": "number",
+          "required": false,
+          "default": null,
+          "help": "Give up after this many milliseconds.",
+          "placeholder": ""
+        },
+        {
+          "name": "on_timeout",
+          "kind": "string",
+          "required": false,
+          "default": null,
+          "help": "Named failure on timeout, e.g. 'fail:LOGIN_FAILED'.",
+          "placeholder": ""
+        }
+      ]
+    }
+  },
+  "act_capabilities": {
+    "vector": [
+      "assert",
+      "confirm",
+      "emit",
+      "extract",
+      "for_each",
+      "http.request",
+      "if",
+      "notify",
+      "repeat",
+      "set",
+      "wait"
+    ],
+    "continuum": [
+      "assert",
+      "back",
+      "click",
+      "confirm",
+      "drag",
+      "emit",
+      "evaluate",
+      "extract",
+      "fill",
+      "for_each",
+      "forward",
+      "hover",
+      "http.request",
+      "if",
+      "navigate",
+      "notify",
+      "press",
+      "reload",
+      "repeat",
+      "screenshot",
+      "scroll",
+      "select",
+      "set",
+      "type",
+      "upload",
+      "wait",
+      "wait_for"
+    ],
+    "oracle": [
+      "assert",
+      "back",
+      "click",
+      "confirm",
+      "drag",
+      "emit",
+      "evaluate",
+      "extract",
+      "fill",
+      "for_each",
+      "forward",
+      "hover",
+      "http.request",
+      "if",
+      "navigate",
+      "notify",
+      "press",
+      "read",
+      "reload",
+      "repeat",
+      "screenshot",
+      "scroll",
+      "select",
+      "set",
+      "type",
+      "upload",
+      "wait",
+      "wait_for"
+    ],
+    "phantom": [
+      "assert",
+      "back",
+      "click",
+      "confirm",
+      "drag",
+      "emit",
+      "evaluate",
+      "extract",
+      "fill",
+      "for_each",
+      "forward",
+      "hover",
+      "http.request",
+      "if",
+      "navigate",
+      "notify",
+      "press",
+      "read",
+      "reload",
+      "repeat",
+      "screenshot",
+      "scroll",
+      "select",
+      "set",
+      "type",
+      "upload",
+      "wait",
+      "wait_for"
+    ]
+  },
+  "flow_actions": [
+    "for_each",
+    "if",
+    "repeat"
+  ],
+  "flow_nested_fields": {
+    "for_each": [
+      "steps"
+    ],
+    "if": [
+      "then",
+      "else"
+    ],
+    "repeat": [
+      "steps"
+    ]
+  }
+}

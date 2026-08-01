@@ -2,7 +2,7 @@
   "name": "@aetherius/engine",
   "version": "0.4.0",
   "private": true,
-  "description": "Moteur Aetherius embarque : coeur neutre plateforme + Act I (Vector) sur fetch. Squelette Phase 3.",
+  "description": "Moteur Aetherius embarque : coeur neutre plateforme + Act I (Vector) sur fetch. Socle du jalon 3-A.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,12 +17,16 @@
     "node": ">=20"
   },
   "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "prebuild": "npm run clean && node scripts/compile-schema.mjs",
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build"
+    "test": "npm run build && node --test test/",
+    "conformance": "npm run build && node --test test/conformance.test.js"
   },
   "license": "CC-BY-NC-4.0",
   "devDependencies": {
     "@types/node": "^20.12.0",
+    "ajv": "^8.20.0",
     "typescript": "^5.4.0"
   }
 }

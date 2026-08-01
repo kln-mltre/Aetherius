@@ -1,0 +1,14 @@
+{
+  "name": "vector-minimal",
+  "description": "Le plus petit Blueprint executable : accepte par les deux moteurs.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.minimal",
+    "act": "vector",
+    "steps": [{ "id": "ping", "action": "emit", "event": "READY" }]
+  },
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

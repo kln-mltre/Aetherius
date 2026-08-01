@@ -12,6 +12,30 @@ Le paquet est **neutre plateforme** — il ne connait ni React Native, ni Node. 
 `fetch`. L'**Act II (Continuum)**, qui exige une WebView, vit dans
 [`@aetherius/react-native`](../react-native).
 
-> **Etat : squelette.** Seules les interfaces sont posees ; rien ne s'execute encore. Le cadrage,
-> les decisions d'architecture et les sept jalons sont dans
-> [`docs/phase-3/`](../../docs/phase-3/README.md).
+> **Etat : socle pose (jalon 3-A).** On peut charger, valider et refuser un Blueprint, a l'identique
+> du moteur Python. Rien ne s'execute encore : le runtime et l'Act I arrivent au jalon 3-C. Le
+> paquet reste `private`.
+
+```ts
+import { parseBlueprint, validateForAct } from "@aetherius/engine";
+
+const blueprint = parseBlueprint(text, "planning.blueprint.json"); // structurel
+validateForAct(blueprint);                                        // semantique, par act
+```
+
+## Build
+
+Le validateur de schema est **precompile** : le moteur JS mobile refuse `eval` et `new Function`,
+donc la compilation est une etape de build dont la sortie est du JavaScript ordinaire. `npm run
+build` regenere `src/generated/` depuis `contracts/` avant d'appeler `tsc` ; ces fichiers sont
+git-ignores.
+
+```bash
+npm --prefix sdks install
+npm --prefix sdks run build --workspace @aetherius/engine
+npm --prefix sdks test  --workspace @aetherius/engine
+```
+
+Reference d'usage, table des capacites embarquees et limites connues :
+[`docs/embedded.md`](../../docs/embedded.md). Cadrage et jalons :
+[`docs/phase-3/`](../../docs/phase-3/README.md).

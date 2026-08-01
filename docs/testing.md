@@ -34,7 +34,8 @@ tests/
 │   ├── conftest.py  # fixture `plugin_action` : action plugin de test, nettoyée en teardown
 │   └── core/blueprint/test_models.py   <->  src/aetherius/core/blueprint/models.py
 ├── integration/     # traversées multi-modules, runtime, daemon
-├── contracts/       # garde les contrats (schémas JSON, OpenAPI, events)
+├── contracts/       # garde les contrats (schémas JSON, OpenAPI, events, actions)
+├── conformance/     # moitié Python du corpus partagé (voir « Conformance » plus bas)
 └── fixtures/        # données de test statiques (voir fixtures/README.md)
 ```
 
@@ -103,6 +104,28 @@ et à mesure que les Acts et le runtime sont implémentés.
 
 Les contrats (`contracts/`) sont la source de vérité. `tests/contracts/` vérifie que le schéma de
 Blueprint est un JSON Schema valide, que **chaque** exemple de `examples/` s'y conforme, que le
-contrat OpenAPI du daemon est bien formé (et déclare les routes implémentées), et que les événements
-d'un run **sérialisés** se conforment à `events.schema.json`. Toute évolution d'un contrat doit garder
-ces tests verts.
+contrat OpenAPI du daemon est bien formé (et déclare les routes implémentées), que les événements
+d'un run **sérialisés** se conforment à `events.schema.json`, et que `actions.json` — projection
+générée du registre d'actions — n'a pas divergé de celui-ci (`make contracts` le régénère). Toute
+évolution d'un contrat doit garder ces tests verts.
+
+## Conformance
+
+Aetherius a deux moteurs : le Python et l'embarqué TypeScript (Phase 3). Le **corpus de
+conformance** ([`conformance/`](../conformance/README.md)) fige ce que « le même Blueprint » veut
+dire — un cas, un Blueprint, et ce que **chacun** des deux moteurs doit en faire, divergences
+assumées comprises.
+
+```bash
+make conformance     # rejoue le corpus sur les deux moteurs
+```
+
+- La moitié Python vit dans `tests/conformance/` (marker `contracts`) : elle est donc rejouée par
+  `make test`, pas seulement par la cible dédiée. Une divergence trouvée à chaque run vaut mieux
+  qu'une divergence trouvée quand quelqu'un pense à lancer la bonne commande.
+- La moitié TypeScript est `sdks/engine/test/conformance.test.js`, rejouée par `npm test`.
+- Le harnais lui-même est testé (`tests/conformance/test_harness.py`) : un exécuteur qui
+  rapporterait tous les cas comme passants transformerait une suite verte en affirmation fausse.
+
+Ajouter un cas ne demande de toucher aucun exécuteur : les deux découvrent les fichiers. Le format
+et la procédure sont dans [`conformance/README.md`](../conformance/README.md).

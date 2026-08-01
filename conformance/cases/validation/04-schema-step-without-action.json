@@ -1,0 +1,14 @@
+{
+  "name": "schema-step-without-action",
+  "description": "'action' est requis sur un step : le schema le refuse avant toute semantique.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.schema.step",
+    "act": "vector",
+    "steps": [{ "id": "orphan", "url": "https://example.test" }]
+  },
+  "expect": {
+    "python": { "outcome": "rejected", "error": "BlueprintSchemaError", "message_contains": ["action"] },
+    "embedded": { "outcome": "rejected", "error": "BlueprintSchemaError", "message_contains": ["action"] }
+  }
+}

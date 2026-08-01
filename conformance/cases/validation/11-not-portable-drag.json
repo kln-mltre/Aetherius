@@ -1,0 +1,18 @@
+{
+  "name": "not-portable-drag",
+  "description": "Divergence assumee : une WebView n'a pas de sequence de glisser-deposer de confiance.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.portable.drag",
+    "act": "continuum",
+    "steps": [{ "id": "move", "action": "drag", "selector": "#a", "target": "#b" }]
+  },
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'drag'", "not by the embedded engine"]
+    }
+  }
+}

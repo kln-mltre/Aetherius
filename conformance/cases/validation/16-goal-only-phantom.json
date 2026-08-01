@@ -1,0 +1,19 @@
+{
+  "name": "goal-only-phantom",
+  "description": "Divergence assumee : un Blueprint sans 'steps' est le contrat de Phantom, et Phantom n'est pas embarquable. Le moteur embarque ne joue que du scripte.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.act.goal-only",
+    "act": "phantom",
+    "goal": "trouver la citation la plus courte de la page",
+    "options": { "agent": { "max_steps": 12 } }
+  },
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["Act 'phantom' is not supported by the embedded engine"]
+    }
+  }
+}

@@ -12,7 +12,7 @@
  */
 
 import type { ActName, Blueprint, StepModel } from "./blueprint/types.js";
-import type { EventBus } from "./events.js";
+import type { EventBus } from "./events/index.js";
 
 /** Applique le rendu d'expressions a une valeur (chaine, tableau ou objet). Jalon 3-B. */
 export type Renderer = (value: unknown) => unknown;

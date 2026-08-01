@@ -114,6 +114,16 @@ FLOW_ACTIONS: frozenset[Capability] = frozenset(
     {Capability.IF, Capability.REPEAT, Capability.FOR_EACH}
 )
 
+# Step fields holding nested step lists, per flow action: the shape of the step tree. Everything
+# that walks a Blueprint recursively reads it from here — the semantic validator, the runtime's act
+# pre-scan (core/runtime/drivers.py) and the generated contract consumed by the embedded TypeScript
+# engine (contracts/actions.json) — so the three never disagree on what "a nested step" is.
+FLOW_NESTED_FIELDS: dict[str, tuple[str, ...]] = {
+    Capability.IF.value: ("then", "else"),
+    Capability.REPEAT.value: ("steps",),
+    Capability.FOR_EACH.value: ("steps",),
+}
+
 
 # Actions listed in ACT_CAPABILITIES but not yet dispatched by the Act's driver: declaring them
 # keeps the capability table forward-looking, but the builder must flag them "not runnable yet".

@@ -1,0 +1,9 @@
+{
+  "name": "parse-malformed-json",
+  "description": "Du JSON invalide echoue au chargement, pas a la validation : l'erreur dit a quel niveau.",
+  "blueprint_text": "{ \"aetherius\": \"1.0\", \"name\": ",
+  "expect": {
+    "python": { "outcome": "rejected", "error": "BlueprintLoadError" },
+    "embedded": { "outcome": "rejected", "error": "BlueprintLoadError" }
+  }
+}

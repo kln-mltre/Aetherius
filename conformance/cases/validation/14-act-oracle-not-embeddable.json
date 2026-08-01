@@ -1,0 +1,21 @@
+{
+  "name": "act-oracle-not-embeddable",
+  "description": "Divergence assumee : les Acts cognitifs restent au moteur Python. Le message vise l'act, pas l'action — sinon l'auteur corrigerait le mauvais endroit.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.act.oracle",
+    "act": "oracle",
+    "steps": [
+      { "action": "navigate", "url": "https://example.test" },
+      { "id": "look", "action": "read", "vision": "the price" }
+    ]
+  },
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["Act 'oracle' is not supported by the embedded engine", "vector, continuum"]
+    }
+  }
+}

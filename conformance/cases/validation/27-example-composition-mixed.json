@@ -1,0 +1,13 @@
+{
+  "name": "example-composition-mixed",
+  "description": "Divergence assumee : la composition multi-Act livree escalade un step vers oracle. Cote embarque, l'escalade cognitive n'existe pas.",
+  "blueprint_path": "examples/composition/quotes-mixed-read.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["Act 'oracle' is not supported by the embedded engine", "step 'screen'"]
+    }
+  }
+}

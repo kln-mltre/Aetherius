@@ -1,0 +1,21 @@
+{
+  "name": "nested-inherits-step-act",
+  "description": "Un step de flux qui escalade l'act transmet cet act a ses branches : le clic devient legitime.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.flow.inherit",
+    "act": "vector",
+    "steps": [
+      {
+        "action": "if",
+        "act": "continuum",
+        "condition": "{{ true }}",
+        "then": [{ "action": "click", "selector": "#go" }]
+      }
+    ]
+  },
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

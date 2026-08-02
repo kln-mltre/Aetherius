@@ -38,9 +38,6 @@ training/runs/
 .env.*
 !.env.example
 
-# Documentation miroir des projets consommateurs (copiee ici pour le contexte, pas versionnee)
-doc-ukit/
-
 # OS / editor / tooling
 .DS_Store
 .idea/

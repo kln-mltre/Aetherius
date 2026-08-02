@@ -431,6 +431,7 @@ examples/      Blueprints de démonstration (par Act + plugins/ + mobile/ : mote
                son application de démonstration)
 training/      entraînement des modèles Oracle (hors runtime)
 legacy_examples/  code de référence des projets d'origine (UKit, TikTok) + carte de provenance
+docs-ukit/     pointeur vers UKit, le projet consommateur (doc complète sur son dépôt)
 ```
 
 Principe : chaque fichier de logique reste sous ~300 lignes ; typage strict (pydantic) ; erreurs

@@ -43,3 +43,5 @@ training/runs/
 .idea/
 .vscode/
 .claude/
+# Workspace multi-depots : encode un chemin local vers le depot voisin, propre a chaque poste.
+*.code-workspace

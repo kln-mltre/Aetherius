@@ -18,13 +18,15 @@ import { AetheriusError, RunError } from "../errors.js";
 import { SimpleEventBus } from "../events/bus.js";
 import { HandlerSink, formatEvent } from "../events/sinks.js";
 import type { Sink } from "../events/models.js";
-import type { FetchLike } from "../http.js";
+import type { AbortSignalLike, FetchLike } from "../http.js";
 import type { Result, RunStatus, StepResult } from "../result.js";
 import { renderValue } from "../template.js";
+import type { ApprovalGateway } from "./approvals.js";
+import { throwIfCancelled } from "./cancel.js";
 import { nowIso } from "./clock.js";
 import { createContext, resolveInputs, resolveSecrets, templateContext } from "./context.js";
 import { DriverManager } from "./drivers.js";
-import { runSteps } from "./steps.js";
+import { StepFailed, runSteps } from "./steps.js";
 
 export interface RunOptions {
   readonly inputs?: Readonly<Record<string, unknown>>;
@@ -37,6 +39,15 @@ export interface RunOptions {
   readonly env?: Readonly<Record<string, string>>;
   /** Overrides the host's `fetch` — how the test suite runs Act I without a network. */
   readonly fetch?: FetchLike;
+  /**
+   * The decision channel `confirm` steps consult. Omitted means *unattended*: `confirm` applies its
+   * `on_timeout` policy at once, deny-by-default, exactly as a Python library run does.
+   */
+  readonly approvals?: ApprovalGateway;
+  /**
+   * Cancels the run. No Python twin — see `runtime/cancel.ts` for why a device needs one.
+   */
+  readonly signal?: AbortSignalLike;
 }
 
 export class RunEngine {
@@ -52,6 +63,8 @@ export class RunEngine {
       inputs: resolveInputs(blueprint, options.inputs),
       secrets: resolveSecrets(blueprint.secrets, options.secrets),
       ...(options.env !== undefined ? { env: { ...options.env } } : {}),
+      ...(options.approvals !== undefined ? { approvals: options.approvals } : {}),
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
     });
 
     const bus = new SimpleEventBus();
@@ -61,7 +74,9 @@ export class RunEngine {
     const manager = new DriverManager(host);
 
     // Eager root bind: the Blueprint's own driver starts before the first step, so a run that
-    // cannot even set up its Act fails before claiming to have started.
+    // cannot even set up its Act fails before claiming to have started. A caller who cancelled
+    // before this point gets nothing set up at all — no WebView is created to be torn down.
+    throwIfCancelled(options.signal);
     await manager.resolveDriver(blueprint.act, ctx);
 
     bus.emit({
@@ -75,6 +90,7 @@ export class RunEngine {
     const stepResults: StepResult[] = [];
     let status: RunStatus = "success";
     let error: string | undefined;
+    let cause: AetheriusError | undefined;
 
     try {
       // A goal-only Blueprint is the Phantom contract; the validator already refused it here.
@@ -86,6 +102,11 @@ export class RunEngine {
         await manager.teardownAll(ctx);
         throw new RunError(`Unexpected error during run ${runId}: ${error}`, thrown);
       }
+      // The typed error, kept alongside its message: an application branches on the *kind* of
+      // failure, and a message string would force it to parse prose. `StepFailed` is unwrapped —
+      // it is an internal marker, and reporting it would tell an application only that "a step
+      // failed", which is the loss of information `failure.ts` exists to prevent.
+      cause = thrown instanceof StepFailed ? thrown.original : thrown;
     }
     await manager.teardownAll(ctx);
 
@@ -112,6 +133,7 @@ export class RunEngine {
       outputs,
       step_results: stepResults,
       ...(error !== undefined ? { error } : {}),
+      ...(cause !== undefined ? { cause } : {}),
       started_at: startedAt,
       finished_at: nowIso(),
     };

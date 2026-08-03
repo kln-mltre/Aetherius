@@ -72,6 +72,23 @@ Le Blueprint est fourni de l'une de ces trois façons, exclusives :
 | `blueprint_path` | Chemin depuis la racine du dépôt, pour rejouer un vrai `examples/`. |
 | `blueprint_text` | Texte brut, pour éprouver l'étape de *parsing* (JSON malformé). |
 
+### `requires` : quand un cas a besoin d'un navigateur
+
+Un cas peut déclarer `"requires": "browser"` (jalon 3-D). Cela veut dire deux choses différentes de
+chaque côté, et c'est bien le sujet :
+
+- **côté Python**, Playwright et un vrai Chromium. Le cas se **skippe proprement** sans l'extra
+  `[browser]`, comme tout test marqué `browser` ; le job de CI qui rejoue `make conformance`
+  installe l'extra précisément pour que la comparaison ait lieu ;
+- **côté embarqué**, une WebView. `@aetherius/engine` est neutre plateforme et n'en a pas : son
+  exécuteur **délègue** ces cas, et c'est celui de `@aetherius/react-native` qui les joue, sur un
+  hôte adossé à jsdom.
+
+Les deux exécuteurs JavaScript se **recouvrent** au lieu de se partager le corpus — celui de
+`@aetherius/react-native` rejoue *tout* — pour qu'aucun cas ne puisse tomber entre les deux à cause
+d'une étiquette oubliée. Et chacun échoue si plus aucun cas ne déclare `requires: browser` : une
+suite qui skipperait toute la moitié Act II ressemblerait exactement à une suite qui passe.
+
 ### `expression`
 
 `value` est rendue contre `context` (le contexte de template : `inputs`, `secrets`, `vars`,
@@ -132,6 +149,7 @@ le reste.
 | `headers` | En-têtes de réponse (un `Set-Cookie`, un `Location`, …). |
 | `body` | Corps littéral ; `Content-Type: text/plain` par défaut. |
 | `json` | Corps sérialisé en JSON compact ; `Content-Type: application/json` par défaut. |
+| `html` | Corps littéral servi en `text/html` — ce qu'un navigateur exige pour parser un document au lieu d'en montrer la source. |
 | `echo` | Répond par une description JSON de la requête reçue : `method`, `path`, `query`, `body`, `headers`. |
 
 `echo` est l'outil de parité le plus utile du corpus : le **Blueprint** extrait lui-même le corps, la
@@ -183,8 +201,11 @@ nouvelle question ne doit pas pouvoir n'être posée qu'à un seul moteur.
 | Moteur | Exécuteur | Serveur de fixtures (`run`) |
 |--------|-----------|------------------------------|
 | Python | [`tests/conformance/`](../tests/conformance/) — rejoué aussi par `make test`. | [`tests/conformance/server.py`](../tests/conformance/server.py) |
-| Embarqué | [`sdks/engine/test/conformance.test.js`](../sdks/engine/test/conformance.test.js) — rejoué aussi par `npm test`. | [`sdks/engine/test/fixture-server.mjs`](../sdks/engine/test/fixture-server.mjs) |
+| Embarqué | [`sdks/engine/test/conformance.test.js`](../sdks/engine/test/conformance.test.js) — rejoué aussi par `npm test`. Délègue les cas `requires: browser`. | [`sdks/engine/test/fixture-server.mjs`](../sdks/engine/test/fixture-server.mjs) |
+| Embarqué + Act II | [`sdks/react-native/test/conformance.test.js`](../sdks/react-native/test/conformance.test.js) — rejoue le corpus **entier**, driver WebView enregistré sur un hôte jsdom. | idem (le harnais du moteur est importé, pas recopié) |
 
-Les deux chargent le même répertoire et appliquent la même comparaison. Un exécuteur qui
-« passerait » un cas qu'il ne sait pas lire serait un faux vert : chacun vérifie que le corpus n'est
-pas vide, que chaque cas nomme bien son moteur, et un `kind` inconnu échoue au lieu de passer.
+Tous chargent le même répertoire et appliquent la même comparaison — le troisième **importe** le
+harnais du second plutôt que d'en dupliquer la logique. Un exécuteur qui « passerait » un cas qu'il
+ne sait pas lire serait un faux vert : chacun vérifie que le corpus n'est pas vide, que chaque cas
+nomme bien son moteur, qu'il reste des cas `requires: browser`, et un `kind` inconnu échoue au lieu
+de passer.

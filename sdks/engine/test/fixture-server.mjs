@@ -9,6 +9,7 @@
  * Route vocabulary (see conformance/README.md):
  *
  *     "GET /users":  { status: 200, json: [...], headers: {...} }
+ *     "GET /home":   { html: "<!doctype html>…" }
  *     "POST /login": { status: 302, body: "", headers: { Location: "/home" } }
  *     "POST /echo":  { echo: true }
  */
@@ -29,6 +30,11 @@ function render(route, request) {
   if (Object.prototype.hasOwnProperty.call(route, "json")) {
     body = JSON.stringify(route.json);
     setDefault(headers, "Content-Type", "application/json");
+  } else if (Object.prototype.hasOwnProperty.call(route, "html")) {
+    // A browser needs the right content type to parse a document rather than show its source;
+    // `body` stays text/plain so the Act I cases are untouched.
+    body = String(route.html);
+    setDefault(headers, "Content-Type", "text/html; charset=utf-8");
   } else {
     body = String(route.body ?? "");
     setDefault(headers, "Content-Type", "text/plain; charset=utf-8");

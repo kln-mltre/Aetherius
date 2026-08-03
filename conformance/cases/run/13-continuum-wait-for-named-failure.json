@@ -1,0 +1,72 @@
+{
+  "name": "run-continuum-wait-for-named-failure",
+  "kind": "run",
+  "requires": "browser",
+  "description": "Concu pour echouer : un selecteur qui n'apparaitra jamais, avec `on_timeout: fail:LOGIN_FAILED`. Les deux moteurs doivent echouer proprement — statut `failed`, aucun `outputs` publie, un evenement `error` sur le step nomme — et non rester bloques. C'est la difference entre un Blueprint qui dit ce qui s'est passe et une WebView qui attend indefiniment.",
+  "server": {
+    "GET /": {
+      "html": "<!doctype html><html><body><p id=\"present\">rien d'autre</p></body></html>"
+    }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.continuum.timeout",
+    "act": "continuum",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "options": { "timeout_ms": 15000 },
+    "steps": [
+      { "action": "navigate", "url": "{{ inputs.base_url }}/" },
+      {
+        "id": "porte",
+        "action": "wait_for",
+        "selector": "#jamais-la",
+        "timeout_ms": 1200,
+        "on_timeout": "fail:LOGIN_FAILED"
+      },
+      { "id": "apres", "action": "extract", "outputs": { "x": { "selector": "#present", "as": "text" } } }
+    ],
+    "outputs": { "x": "{{ steps.apres.x }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "message_contains": ["wait_for timed out", "#jamais-la"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [
+          { "step_id": null, "action": "navigate", "status": "success" },
+          { "step_id": "porte", "action": "wait_for", "status": "failed" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": "porte" },
+          { "type": "error", "step_id": "porte" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "message_contains": ["wait_for timed out", "#jamais-la"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [
+          { "step_id": null, "action": "navigate", "status": "success" },
+          { "step_id": "porte", "action": "wait_for", "status": "failed" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": "porte" },
+          { "type": "error", "step_id": "porte" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

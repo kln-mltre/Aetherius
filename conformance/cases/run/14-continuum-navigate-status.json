@@ -1,0 +1,39 @@
+{
+  "name": "run-continuum-navigate-status",
+  "kind": "run",
+  "requires": "browser",
+  "description": "Divergence declaree, et la plus subtile du jalon : `navigate` reussit des deux cotes, mais une WebView n'expose aucun code de statut HTTP pour son document principal. Le moteur Python publie `status`, le moteur embarque **n'ecrit pas la cle** — donc lire `{{ steps.home.status }}` leve une TemplateError au step qui la lit, au lieu de rendre `null` en silence. Rendre `null` aurait fait passer un `assert` a cote de la verite : une donnee fausse, pas une erreur.",
+  "server": {
+    "GET /": { "html": "<!doctype html><html><body><h1 id=\"t\">ok</h1></body></html>" }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.continuum.status",
+    "act": "continuum",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "options": { "timeout_ms": 15000 },
+    "steps": [{ "id": "home", "action": "navigate", "url": "{{ inputs.base_url }}/" }],
+    "outputs": { "status": "{{ steps.home.status }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "status": 200 },
+        "steps": [{ "step_id": "home", "action": "navigate", "status": "success" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "home" },
+          { "type": "step_finished", "step_id": "home" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "TemplateError",
+      "message_contains": ["status"]
+    }
+  }
+}

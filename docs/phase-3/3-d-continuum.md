@@ -1,8 +1,16 @@
 # Jalon 3-D — Act II (Continuum) sur WebView
 
-**Statut : à faire.** Le jalon le plus volumineux de la phase. C'est celui qui remplace les WebView
-cachées écrites à la main : là où une application pilote aujourd'hui un portail avec des gabarits de
-chaîne JavaScript, elle décrira un Blueprint.
+**Statut : livré.** Doc de référence :
+[docs/embedded.md](../embedded.md#act-ii--continuum-sur-webview). Le jalon le plus volumineux de la
+phase, et celui qui remplace les WebView cachées écrites à la main : là où une application pilotait
+un portail avec des gabarits de chaîne JavaScript, elle décrit un Blueprint. Le protocole de l'agent,
+la table des capacités non portables, le modèle de session et les sondes jouées sont documentés ;
+`@aetherius/react-native` est sorti de `private`.
+
+Reste à observer **sur un téléphone** (écrit ici plutôt que supposé) : le mode debug qui rend la
+WebView visible, la persistance de session entre deux lancements, et le parcours authentifiant réel
+depuis le réseau de l'appareil. Tout le reste — agent, RPC, auto-attente, extraction, conformance,
+sonde CAS réelle — a été vérifié depuis un poste, dont un vrai Chromium.
 
 ## Objectif
 

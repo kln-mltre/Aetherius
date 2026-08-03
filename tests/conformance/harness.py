@@ -12,6 +12,10 @@ added at 3-C, plays a whole Blueprint against a local fixture server and compare
 step results and the event stream. Adding a *case* touches no executor; adding a *kind* touches
 both, on purpose.
 
+A case may also declare ``requires``. ``"browser"`` (milestone 3-D) means the case exercises Act II:
+here that is Playwright and a real Chromium, and on the embedded side a WebView — which is why those
+cases are replayed by the ``@aetherius/react-native`` executor rather than the engine's.
+
 See conformance/README.md for the case format.
 """
 
@@ -60,6 +64,12 @@ class Case:
     @property
     def kind(self) -> str:
         return str(self.data.get("kind", "validation"))
+
+    @property
+    def requires(self) -> str | None:
+        """A surface the case needs. ``"browser"`` means Playwright here, a WebView there."""
+        raw = self.data.get("requires")
+        return str(raw) if raw is not None else None
 
     @property
     def expectation(self) -> dict[str, Any]:

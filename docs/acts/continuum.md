@@ -10,6 +10,13 @@ scrape la scolarité après login CAS. Les sélecteurs, autrefois codés en dur 
 deviennent des données du Blueprint ; les événements (`LOGIN_SUCCESS`, `PROGRESS`, …) sont émis par
 le bus.
 
+> **Un jumeau embarqué.** Depuis le jalon 3-D, le même Act tourne **sur l'appareil**, en TypeScript,
+> dans une WebView cachée pilotée par un agent injecté (`@aetherius/react-native`). Le vocabulaire du
+> Blueprint est identique ; les écarts assumés — `upload`, `drag`, `screenshot`, le `status` de
+> `navigate`, les nouvelles fenêtres — sont écrits et testés dans
+> [docs/embedded.md](../embedded.md#act-ii--continuum-sur-webview). Le corpus de conformance rejoue
+> des Blueprints `continuum` sur les deux moteurs.
+
 Modules : [`src/aetherius/acts/continuum/`](../../src/aetherius/acts/continuum/) —
 `driver.py` (dispatch + screenshot), `browser.py` (cycle de vie Playwright), `actions.py` (mapping
 action → opération page), `bridge.py` (extraction DOM, `wait_for`, `evaluate`).
@@ -81,6 +88,15 @@ Tout step accepte aussi la garde **`when`** (sauté si l'expression rend faux). 
 `wait_for` attend qu'un sélecteur atteigne un état. En cas de dépassement, si `on_timeout` vaut
 `"fail:CODE"`, le step lève une `StepTimeoutError` portant `code=CODE` (ex. `LOGIN_FAILED`) ; le
 moteur émet alors un événement `error` et clôt le run en échec avec ce code.
+
+**Un sélecteur périmé est un échec propre, pas un bug du moteur.** Une action (`click`, `fill`, …)
+dont la cible n'apparaît jamais épuise le délai de Playwright ; la temporisation qui en résulte est
+traduite en `StepTimeoutError` typée (`bridge.as_step_timeout`) au lieu de s'échapper et d'être
+enveloppée en `RunError`. La différence est visible de l'appelant : le run **échoue** avec un message
+qui nomme l'action, au lieu de mourir sur une erreur inattendue. Une exception **non** temporelle
+garde son propre chemin — tout traduire aurait caché un vrai défaut derrière un message rassurant.
+Le moteur embarqué classe le même échec de la même façon (voir
+[docs/embedded.md](../embedded.md#le-modèle-derreur)).
 
 ### Extraction DOM
 

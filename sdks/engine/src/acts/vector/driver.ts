@@ -35,6 +35,7 @@ export class VectorDriver implements ActDriver {
       // "unset" there too.
       timeoutMs: options.timeout_ms || undefined,
       retries: options.retries,
+      signal: ctx.signal,
     });
     await this.client.setup();
   }

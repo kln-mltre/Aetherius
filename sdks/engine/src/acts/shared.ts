@@ -6,16 +6,21 @@
  * them instead of carrying its own copy — Python does it with a mixin, this engine with a lookup,
  * because a driver here composes a client rather than inheriting one.
  *
+ * `confirm` lives in its own file: it is the one shared action with a lifecycle (open, park, close)
+ * and two events of its own.
+ *
  * `notify` is deliberately absent: the embedded engine refuses it at validation (the application
  * already owns its notifications). See `blueprint/capabilities.ts`.
  */
 
 import type { Renderer, RunContext } from "../driver.js";
-import { ActionError, StatusAssertionError, StepTimeoutError } from "../errors.js";
+import { ActionError, StatusAssertionError } from "../errors.js";
 import type { EventBus } from "../events/index.js";
 import { isTruthy } from "../expr/index.js";
-import { nowIso, sleep } from "../runtime/clock.js";
+import { cancellableSleep } from "../runtime/cancel.js";
+import { nowIso } from "../runtime/clock.js";
 import type { StepModel } from "../blueprint/types.js";
+import { actionConfirm } from "./confirm.js";
 
 export type SharedHandler = (
   step: StepModel,
@@ -23,12 +28,6 @@ export type SharedHandler = (
   bus: EventBus,
   render: Renderer,
 ) => Promise<Record<string, unknown>>;
-
-/**
- * Mandatory upper bound for a parked `confirm` (5 min), as in Python: a Blueprint may shorten it
- * through `timeout_ms`, but a run never parks forever.
- */
-const DEFAULT_CONFIRM_TIMEOUT_MS = 300_000;
 
 const HANDLERS: Readonly<Record<string, SharedHandler>> = {
   set: actionSet,
@@ -92,7 +91,7 @@ async function actionEmit(
 
 async function actionWait(
   step: StepModel,
-  _ctx: RunContext,
+  ctx: RunContext,
   _bus: EventBus,
   render: Renderer,
 ): Promise<Record<string, unknown>> {
@@ -109,44 +108,9 @@ async function actionWait(
     }
     ms = low + Math.random() * (high - low);
   }
-  if (ms > 0) await sleep(ms);
+  // Cancellable: a thirty-second `wait` must not be how long it takes to leave a screen.
+  if (ms > 0) await cancellableSleep(ms, ctx.signal);
   return {};
-}
-
-/**
- * `confirm` with nobody to answer.
- *
- * The human rendezvous — a native modal — is milestone 3-E. What this engine already owes is the
- * *unattended* path Python takes when no approval gateway is attached: apply `on_timeout` at once,
- * deny by default. Leaving the action unimplemented instead would let a Blueprint pass validation
- * and then die mid-run, which is precisely what the embedded engine promises never to do.
- */
-async function actionConfirm(
-  step: StepModel,
-  _ctx: RunContext,
-  _bus: EventBus,
-  render: Renderer,
-): Promise<Record<string, unknown>> {
-  const message = String(render(step["message"] ?? "") || "");
-  const onTimeout = String(render(step["on_timeout"] ?? "reject") || "reject");
-  // Read even though nothing waits on it: a Blueprint whose timeout is unusable should say so here
-  // and not at 3-E, when the value suddenly starts being honoured.
-  milliseconds(render(step["timeout_ms"] ?? DEFAULT_CONFIRM_TIMEOUT_MS), "confirm: 'timeout_ms'");
-
-  if (onTimeout.startsWith("fail:")) {
-    const code = onTimeout.slice("fail:".length);
-    throw new StepTimeoutError(
-      `confirm timed out awaiting a decision: ${JSON.stringify(message)}`,
-      code === "" ? undefined : code,
-    );
-  }
-  const approved = onTimeout === "approve";
-  return {
-    approved,
-    decision: approved ? "approved" : "rejected",
-    value: null,
-    decided_by: "timeout",
-  };
 }
 
 /** `StatusAssertionError`'s message, built the way `core/errors.py` builds it. */

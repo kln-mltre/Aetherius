@@ -42,8 +42,18 @@ export interface FetchRequestInit {
 
 export type FetchLike = (url: string, init?: FetchRequestInit) => Promise<FetchResponse>;
 
+/**
+ * Un signal d'annulation, decrit structurellement — comme `fetch` lui-meme.
+ *
+ * Les deux ecouteurs sont **optionnels** : le controleur du delai d'une requete n'est lu qu'a
+ * travers `aborted` et son `signal` part directement dans `fetch`, tandis que l'annulation d'un run
+ * (jalon 3-E) a besoin d'etre notifiee pour liberer une attente en cours. Les declarer optionnels
+ * evite d'exiger un `AbortSignal` complet la ou un booleen suffit.
+ */
 export interface AbortSignalLike {
   readonly aborted: boolean;
+  addEventListener?: (type: "abort", listener: () => void) => void;
+  removeEventListener?: (type: "abort", listener: () => void) => void;
 }
 
 export interface AbortControllerLike {

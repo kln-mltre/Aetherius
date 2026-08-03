@@ -11,6 +11,8 @@ import type { Blueprint, InputSpec } from "../blueprint/types.js";
 import type { RunContext } from "../driver.js";
 import { BlueprintValidationError } from "../errors.js";
 import type { Context } from "../expr/index.js";
+import type { AbortSignalLike } from "../http.js";
+import type { ApprovalGateway } from "./approvals.js";
 
 export interface ContextInit {
   readonly runId: string;
@@ -18,6 +20,8 @@ export interface ContextInit {
   readonly inputs: Record<string, unknown>;
   readonly secrets: Record<string, string>;
   readonly env?: Record<string, string>;
+  readonly approvals?: ApprovalGateway;
+  readonly signal?: AbortSignalLike;
 }
 
 export function createContext(init: ContextInit): RunContext {
@@ -30,6 +34,8 @@ export function createContext(init: ContextInit): RunContext {
     stepOutputs: {},
     env: init.env ?? {},
     scope: {},
+    ...(init.approvals !== undefined ? { approvals: init.approvals } : {}),
+    ...(init.signal !== undefined ? { signal: init.signal } : {}),
   };
 }
 
@@ -86,16 +92,18 @@ export function resolveInputs(
 /**
  * The values behind a Blueprint's declared secret names.
  *
- * Caller-supplied only: there is no environment and no `.env` on a device, and the OS keychain is
- * the host's business (milestone 3-E). An unresolved secret is *omitted*, exactly as in Python —
- * the template engine is what surfaces the error, at the step that actually reads it.
+ * Caller-supplied only, by design: there is no environment and no `.env` on a device. Reading the
+ * OS keychain is the *facade's* job (`@aetherius/react-native`, milestone 3-E) — it walks the
+ * declared names through a `SecretResolver` and hands the result down here, exactly as Python's
+ * `resolve_secrets` runs before the engine rather than inside it. An unresolved secret is
+ * *omitted*: the template engine surfaces the error, at the step that actually reads it.
  */
 export function resolveSecrets(
   _declared: readonly string[] | undefined,
   provided: Readonly<Record<string, string>> | undefined,
 ): Record<string, string> {
-  // The declared list is taken but unused: it is what a resolver will consult at milestone 3-E,
-  // and keeping the signature now means the call site will not have to change then.
+  // The declared list is taken but unused: it keeps this signature honest about what a caller must
+  // have consulted, and lets the engine stay the one place that decides what lands in the context.
   return { ...(provided ?? {}) };
 }
 

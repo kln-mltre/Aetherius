@@ -1,0 +1,60 @@
+{
+  "name": "run-confirm-timeout-fails",
+  "kind": "run",
+  "description": "La semantique d'arret dur de confirm : on_timeout 'fail:CODE' fait echouer le run proprement, avec le code nomme, au lieu de laisser passer. C'est le pendant du refus par defaut du cas run-unattended-confirm — l'un continue sans rien faire de sensible, l'autre s'arrete net — et les deux moteurs doivent trancher pareil, sans quoi un Blueprint concu pour bloquer publierait quand meme d'un cote.",
+  "server": { "POST /publish": { "json": { "ok": true } } },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.confirm.hard",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "ask",
+        "action": "confirm",
+        "message": "Publier ?",
+        "timeout_ms": 500,
+        "on_timeout": "fail:NO_ANSWER"
+      },
+      {
+        "id": "publish",
+        "action": "http.request",
+        "method": "POST",
+        "url": "{{ inputs.base_url }}/publish"
+      }
+    ],
+    "outputs": { "decision": "{{ steps.ask.decision }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "message_contains": ["confirm timed out awaiting a decision"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [{ "step_id": "ask", "action": "confirm", "status": "failed" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "ask" },
+          { "type": "error", "step_id": "ask" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "message_contains": ["confirm timed out awaiting a decision"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [{ "step_id": "ask", "action": "confirm", "status": "failed" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "ask" },
+          { "type": "error", "step_id": "ask" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

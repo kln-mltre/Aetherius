@@ -47,6 +47,9 @@ conformance: ## Replay the shared Blueprint corpus on both engines (Python + Typ
 	pytest tests/conformance -q
 	npm --prefix $(TS_DIR) install
 	npm --prefix $(TS_DIR) run conformance --workspace @aetherius/engine
+	# Act II needs a WebView, which the neutral engine has not got: the same corpus is replayed
+	# by the package that owns the driver, on a jsdom-backed host.
+	npm --prefix $(TS_DIR) run conformance --workspace @aetherius/react-native
 
 screenshots: ## Regenerate the Console SVG screenshots under docs/screenshots/
 	$(PY) -m aetherius.console.screenshots

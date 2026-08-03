@@ -1,8 +1,41 @@
 # Jalon 3-E — Intégration applicative
 
-**Statut : à faire.** Le moteur tourne ; ce jalon décide de **ce qu'une application voit de lui**.
-C'est la surface publique du moteur embarqué — celle qu'on ne pourra plus changer sans casser ses
-consommateurs.
+**Statut : livré.** Doc de référence :
+[docs/embedded.md](../embedded.md#la-surface-applicative). Le moteur tournait ; ce jalon décide de
+**ce qu'une application voit de lui** — la surface publique du moteur embarqué, celle qu'on ne pourra
+plus changer sans casser ses consommateurs.
+
+Livré : la façade `Aetherius` (mêmes noms que le SDK daemon), la résolution des secrets par un
+magasin **injecté** (le trousseau de l'OS par défaut) et le masquage des valeurs sur le chemin de
+sortie, `confirm` en modal natif avec la sémantique exacte du jalon 2-E, l'annulation d'un run, et le
+modèle d'erreur `describeFailure` — le point le plus structurant, puisque c'est lui qui rend une
+source en panne distinguable d'une réponse vide.
+
+Deux défauts du jalon 3-D trouvés par les sondes et corrigés au passage : l'auto-attente ne
+s'appliquait pas à une cible **absente** (un `click` échouait en 6 ms au lieu d'attendre, là où
+Playwright attend), et un sélecteur périmé se présentait comme un bug du moteur — **des deux côtés**,
+le moteur Python laissant même échapper la temporisation Playwright en `RunError`. Détail et
+correctifs : [docs/embedded.md](../embedded.md#sondes-du-jalon-3-e).
+
+**Joué sur un iPhone** (Expo Go SDK 54, téléphone en 5G) : le parcours complet
+`quotes-login-confirm` — trousseau, modal réel, secret masqué dans le flux, `connecte: 1` —, le CAS
+de l'université de bout en bout depuis le réseau du téléphone, le corps `form` de UKit contre le vrai
+serveur ADE, et `carried: true` sur la sonde de session. La campagne a trouvé **deux défauts du jalon
+3-D** que rien hors appareil ne pouvait produire (voir
+[docs/embedded.md](../embedded.md#sondes-du-jalon-3-e)), et la seconde passe les a vérifiés corrigés
+là où ils s'étaient manifestés. Elle a du même coup fermé les points laissés ouverts aux jalons 3-C
+(corps `form` sur appareil) et 3-D (portail authentifiant réel).
+
+**La vérification sur appareil est complète** : parcours nominal, refus au modal, expiration pendant
+que l'application dort, annulation qui libère la WebView, persistance de session, `LOGIN_FAILED` sur
+de mauvais identifiants, et mode avion. Elle a coûté **quatre correctifs du moteur** — redirection,
+horloge de la WebView, cycle de vie de la vue persistante, navigation vers la page déjà affichée —
+et deux du banc lui-même. Aucun n'était atteignable depuis un double : deux tenaient à des
+comportements d'iOS (minuteurs gelés hors écran, cookie de session lié au contexte de navigation) que
+seule une exécution réelle révèle.
+
+Le reste — façade, secrets, hygiène, `confirm`, concurrence, modèle d'erreur — est gardé par la suite
+de tests, le corpus de conformance et les sondes contre de vraies sources.
 
 ## Objectif
 

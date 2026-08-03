@@ -1,0 +1,17 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.session.persist.probe",
+  "description": "Act II : la session survit-elle au run, et au redemarrage de l'application ? La sonde ne se connecte pas — elle ouvre la page et compte le lien de deconnexion. 1 = la session est encore la, 0 = elle ne l'est pas. Comme session-cookie-probe, elle rapporte au lieu d'echouer : c'est ce qui la rend lisible d'un coup d'oeil. Ne declare volontairement pas options.session.persist, pour que la bascule de l'application de demonstration decide.",
+  "act": "continuum",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": { "timeout_ms": 20000 },
+  "steps": [
+    { "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "id": "etat",
+      "action": "extract",
+      "outputs": { "connecte": { "selector": "a[href='/logout']", "as": "count" } }
+    }
+  ],
+  "outputs": { "connecte": "{{ steps.etat.connecte }}" }
+}

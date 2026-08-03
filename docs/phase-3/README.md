@@ -116,8 +116,8 @@ exécutable.
 | 3-A | [3-a-socle-ts.md](3-a-socle-ts.md) | — | Socle du moteur TypeScript : modèle de Blueprint, validation en deux temps (schéma précompilé puis sémantique), erreurs typées, bus d'événements, `Result`, interface `ActDriver`. Nouveau contrat généré `contracts/actions.json` et **harnais de conformance**. Fondation : aucune capacité utilisateur seule. |
 | 3-B | [3-b-expressions.md](3-b-expressions.md) | 3-A | Les deux mini-langages, sans `eval` : rendu d'expressions (sous-ensemble Jinja2, règle de l'expression nue, `StrictUndefined`, filtres de date), `isTruthy`, prédicat `where`, JSONPath, et l'extraction JSON/HTML. |
 | 3-C | [3-c-vector.md](3-c-vector.md) | 3-B | Runtime asynchrone (moteur de run, exécuteur de steps, garde `when`, actions de flux) et **Act I — Vector** sur `fetch`. Premier Blueprint qui tourne réellement sur un téléphone. |
-| 3-D | [3-d-continuum.md](3-d-continuum.md) | 3-C | **Act II — Continuum** sur WebView : agent injecté, RPC corrélée, locators, auto-attente, extraction DOM, `wait_for` avec `fail:CODE`, sessions et cookies, mode debug. Le jalon le plus volumineux. |
-| 3-E | [3-e-integration.md](3-e-integration.md) | 3-D | La surface applicative : façade `Aetherius`, `SecretResolver` sur le trousseau, hygiène des secrets, flux d'événements pour l'UI, action `confirm` en modal natif, et un modèle d'erreur qui distingue enfin « source en panne » de « réponse vide ». |
+| 3-D | [3-d-continuum.md](3-d-continuum.md) | 3-C | **Act II — Continuum** sur WebView : agent injecté, RPC corrélée, locators, auto-attente, extraction DOM, `wait_for` avec `fail:CODE`, sessions et cookies, mode debug. Le jalon le plus volumineux. **Livré.** |
+| 3-E | [3-e-integration.md](3-e-integration.md) | 3-D | La surface applicative : façade `Aetherius`, `SecretResolver` sur le trousseau, hygiène des secrets, flux d'événements pour l'UI, action `confirm` en modal natif, annulation, et un modèle d'erreur qui distingue enfin « source en panne » de « réponse vide ». **Livré.** |
 | 3-F | [3-f-delivery.md](3-f-delivery.md) | 3-E | **Livraison des Blueprints** : socle embarqué dans le binaire, surcouche distante avec cache, contrôle d'intégrité, repli et interrupteur d'arrêt. Corriger un site cassé sans publier sur les stores — le vrai gain produit. |
 | 3-G | [3-g-reference.md](3-g-reference.md) | 3-F | Blueprints de référence exécutables sous `examples/mobile/` (API publiques et un parcours SSO complet) et **guide de migration** : comment un service HTTP et une WebView cachée deviennent des Blueprints. |
 
@@ -142,10 +142,13 @@ Deux adaptations pour un jalon TypeScript :
 
 > **Note de portée.** Comme en Phase 2, tout ce qui toucherait la table des `capabilities`, les
 > contrats (`contracts/*.json|yaml`), l'enum `EventType` ou le dispatch d'un driver est **différé au
-> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les jalons **3-A à 3-C sont
+> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les jalons **3-A à 3-E sont
 > livrés** : `contracts/actions.json` existe (généré depuis le registre Python et gardé), les deux
-> mini-langages sont là, et un Blueprint `vector` **s'exécute** sur l'appareil. Le corpus de
-> conformance vit sous [`conformance/`](../../conformance/README.md) et `make conformance` rejoue les
-> deux moteurs — depuis 3-C sur des **runs entiers**, pas seulement des verdicts. Référence d'usage :
+> mini-langages sont là, les Blueprints `vector` **et** `continuum` **s'exécutent** sur l'appareil, et
+> une application les consomme par une **façade** (secrets, `confirm`, annulation, modèle d'erreur).
+> Le corpus de conformance vit sous [`conformance/`](../../conformance/README.md) et
+> `make conformance` rejoue les deux moteurs — depuis 3-C sur des **runs entiers**, pas seulement des
+> verdicts, et depuis 3-D sur des runs **navigateur** (un cas déclare alors `requires: "browser"`,
+> et un troisième exécuteur, celui de `@aetherius/react-native`, les joue). Référence d'usage :
 > [docs/embedded.md](../embedded.md). Aucun contrat existant n'a été modifié : un fichier a été
 > **ajouté** au jalon 3-A, rien n'a bougé depuis.

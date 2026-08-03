@@ -1,0 +1,21 @@
+{
+  "// note": [
+    "L'agent injecte est le seul code de ce paquet qui tourne DANS la page, pas dans Hermes :",
+    "il a donc besoin de la lib DOM, que le reste du paquet n'a surtout pas (les types de la",
+    "WebView sont declares structurellement, comme ceux de `fetch` cote moteur).",
+    "esbuild assemble l'agent sans le typer ; c'est ce projet-ci qui le type, sans rien emettre."
+  ],
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2017", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": []
+  },
+  "include": ["src/webview/agent", "src/webview/protocol.ts"]
+}

@@ -21,7 +21,7 @@ from ...network import resolve_identity
 from ...stealth.policy import StealthPolicy, build_policy
 from ...stealth.session.store import resolve_profile_dir, run_dir
 from .actions import PAGE_ACTIONS, _locator
-from .bridge import evaluate, extract, wait_for
+from .bridge import as_step_timeout, evaluate, extract, wait_for
 from .browser import BrowserSession
 from .human_actions import HUMAN_ACTIONS, humanized_actions
 
@@ -64,6 +64,24 @@ class ContinuumDriver(SharedActionsMixin):
             self._session = None
 
     def run_step(
+        self,
+        step: StepModel,
+        ctx: RunContext,
+        bus: EventBus,
+        renderer: Callable[[Any], Any],
+    ) -> dict[str, Any]:
+        try:
+            return self._dispatch(step, ctx, bus, renderer)
+        except Exception as exc:
+            # A Playwright locator timeout means the page no longer matches the Blueprint: a clean,
+            # typed run failure, not an engine bug re-raised through RunError. Anything else keeps
+            # its own path — swallowing an unexpected exception here would hide a real defect.
+            typed = as_step_timeout(exc, step.action)
+            if typed is None:
+                raise
+            raise typed from exc
+
+    def _dispatch(
         self,
         step: StepModel,
         ctx: RunContext,

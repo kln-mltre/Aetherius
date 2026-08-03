@@ -1,0 +1,360 @@
+{
+  "name": "run-continuum-evaluate-and-flow",
+  "kind": "run",
+  "requires": "browser",
+  "description": "Le JS injecte et le flux, ensemble : `evaluate` sous ses deux formes (fonction appelee avec son `arg`, et expression nue), et une boucle `for_each` sur les valeurs extraites — donc les chemins de step imbriques d'un Act navigateur. Fige aussi que l'`arg` d'`evaluate` traverse en JSON alors que le `script`, lui, est du code par contrat : c'est la seule exception a la regle du jalon, et elle est ici comparee entre les deux moteurs. Les steps imbriques portent leur chemin (`boucle[0].dire`) alors que l'evenement `progress` d'`emit` porte l'identifiant nu (`dire`) : l'asymetrie vient du moteur Python et se lit ici plutot que dans deux implementations. La sortie s'appelle `elements` et non `items` : cote Python, `{{ steps.x.items }}` rend la *methode* `dict.items` (Jinja2 resout l'attribut avant la cle), divergence figee a part par le cas `expr-dict-method-shadows-key`.",
+  "server": {
+    "GET /": {
+      "html": "<!doctype html><html><body><span class=\"item\">un</span><span class=\"item\">deux</span><span class=\"item\">trois</span></body></html>"
+    }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.continuum.evaluate",
+    "act": "continuum",
+    "inputs": {
+      "base_url": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "options": {
+      "timeout_ms": 15000
+    },
+    "steps": [
+      {
+        "action": "navigate",
+        "url": "{{ inputs.base_url }}/"
+      },
+      {
+        "id": "compte",
+        "action": "evaluate",
+        "script": "(arg) => document.querySelectorAll(arg.selecteur).length",
+        "arg": {
+          "selecteur": ".item"
+        }
+      },
+      {
+        "id": "titre",
+        "action": "evaluate",
+        "script": "document.title || 'sans titre'"
+      },
+      {
+        "id": "lus",
+        "action": "extract",
+        "outputs": {
+          "elements": {
+            "selector": ".item",
+            "as": "list"
+          }
+        }
+      },
+      {
+        "id": "boucle",
+        "action": "for_each",
+        "items": "{{ steps.lus.elements }}",
+        "as": "item",
+        "steps": [
+          {
+            "id": "dire",
+            "action": "emit",
+            "event": "vu {{ item }}"
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "compte": "{{ steps.compte.result }}",
+      "titre": "{{ steps.titre.result }}",
+      "elements": "{{ steps.lus.elements }}"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "compte": 3,
+          "titre": "sans titre",
+          "elements": [
+            "un",
+            "deux",
+            "trois"
+          ]
+        },
+        "steps": [
+          {
+            "step_id": null,
+            "action": "navigate",
+            "status": "success"
+          },
+          {
+            "step_id": "compte",
+            "action": "evaluate",
+            "status": "success"
+          },
+          {
+            "step_id": "titre",
+            "action": "evaluate",
+            "status": "success"
+          },
+          {
+            "step_id": "lus",
+            "action": "extract",
+            "status": "success"
+          },
+          {
+            "step_id": "boucle[0].dire",
+            "action": "emit",
+            "status": "success"
+          },
+          {
+            "step_id": "boucle[1].dire",
+            "action": "emit",
+            "status": "success"
+          },
+          {
+            "step_id": "boucle[2].dire",
+            "action": "emit",
+            "status": "success"
+          },
+          {
+            "step_id": "boucle",
+            "action": "for_each",
+            "status": "success"
+          }
+        ],
+        "events": [
+          {
+            "type": "progress",
+            "step_id": null
+          },
+          {
+            "type": "step_started",
+            "step_id": null
+          },
+          {
+            "type": "step_finished",
+            "step_id": null
+          },
+          {
+            "type": "step_started",
+            "step_id": "compte"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "compte"
+          },
+          {
+            "type": "step_started",
+            "step_id": "titre"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "titre"
+          },
+          {
+            "type": "step_started",
+            "step_id": "lus"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "lus"
+          },
+          {
+            "type": "step_started",
+            "step_id": "boucle"
+          },
+          {
+            "type": "step_started",
+            "step_id": "boucle[0].dire"
+          },
+          {
+            "type": "progress",
+            "step_id": "dire"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "boucle[0].dire"
+          },
+          {
+            "type": "step_started",
+            "step_id": "boucle[1].dire"
+          },
+          {
+            "type": "progress",
+            "step_id": "dire"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "boucle[1].dire"
+          },
+          {
+            "type": "step_started",
+            "step_id": "boucle[2].dire"
+          },
+          {
+            "type": "progress",
+            "step_id": "dire"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "boucle[2].dire"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "boucle"
+          },
+          {
+            "type": "done",
+            "step_id": null
+          }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "compte": 3,
+          "titre": "sans titre",
+          "elements": [
+            "un",
+            "deux",
+            "trois"
+          ]
+        },
+        "steps": [
+          {
+            "step_id": null,
+            "action": "navigate",
+            "status": "success"
+          },
+          {
+            "step_id": "compte",
+            "action": "evaluate",
+            "status": "success"
+          },
+          {
+            "step_id": "titre",
+            "action": "evaluate",
+            "status": "success"
+          },
+          {
+            "step_id": "lus",
+            "action": "extract",
+            "status": "success"
+          },
+          {
+            "step_id": "boucle[0].dire",
+            "action": "emit",
+            "status": "success"
+          },
+          {
+            "step_id": "boucle[1].dire",
+            "action": "emit",
+            "status": "success"
+          },
+          {
+            "step_id": "boucle[2].dire",
+            "action": "emit",
+            "status": "success"
+          },
+          {
+            "step_id": "boucle",
+            "action": "for_each",
+            "status": "success"
+          }
+        ],
+        "events": [
+          {
+            "type": "progress",
+            "step_id": null
+          },
+          {
+            "type": "step_started",
+            "step_id": null
+          },
+          {
+            "type": "step_finished",
+            "step_id": null
+          },
+          {
+            "type": "step_started",
+            "step_id": "compte"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "compte"
+          },
+          {
+            "type": "step_started",
+            "step_id": "titre"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "titre"
+          },
+          {
+            "type": "step_started",
+            "step_id": "lus"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "lus"
+          },
+          {
+            "type": "step_started",
+            "step_id": "boucle"
+          },
+          {
+            "type": "step_started",
+            "step_id": "boucle[0].dire"
+          },
+          {
+            "type": "progress",
+            "step_id": "dire"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "boucle[0].dire"
+          },
+          {
+            "type": "step_started",
+            "step_id": "boucle[1].dire"
+          },
+          {
+            "type": "progress",
+            "step_id": "dire"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "boucle[1].dire"
+          },
+          {
+            "type": "step_started",
+            "step_id": "boucle[2].dire"
+          },
+          {
+            "type": "progress",
+            "step_id": "dire"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "boucle[2].dire"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "boucle"
+          },
+          {
+            "type": "done",
+            "step_id": null
+          }
+        ]
+      }
+    }
+  }
+}

@@ -8,6 +8,210 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 3-E — Intégration applicative**
+  ([docs/embedded.md](docs/embedded.md#la-surface-applicative)) : ce que l'application voit du
+  moteur embarqué. C'est la surface publique — celle qu'on ne pourra plus changer sans casser ses
+  consommateurs.
+  - **La façade `Aetherius`** (`sdks/react-native/src/aetherius.ts`) se lit **exactement** comme le
+    SDK daemon : `client.run(blueprint, { inputs, secrets, onEvent })`, deux canaux de sortie
+    identiques (un `Result` pour un échec de run, une exception pour ce qui l'a empêché de démarrer).
+    Le choix d'architecture — embarquer un moteur ou piloter un daemon — ne doit pas se voir dans le
+    code appelant, sinon passer de l'un à l'autre voudrait dire réécrire l'application.
+  - **Les secrets ne quittent pas l'appareil.** Le magasin est **injecté**, jamais importé : le
+    paquet décrit structurellement ce dont il a besoin (`getItemAsync`), donc `expo-secure-store`,
+    `react-native-keychain` ou un magasin maison s'y branchent sans qu'aucune dépendance n'entre dans
+    le binaire. Un mapper `key` permet de réutiliser les clés existantes d'une application. Seuls les
+    noms **déclarés** par le Blueprint sont demandés au resolver, une valeur passée à l'appel gagne
+    (l'ordre de `docs/secrets.md`), et un secret introuvable est *omis* — c'est le rendu qui le
+    signale, au step qui le lit.
+  - **L'hygiène est testée, pas seulement documentée** : les valeurs résolues sont masquées dans le
+    `message` et le `data` de chaque événement, dans `Result.error` et dans `cause.message`. Le
+    moteur tenait déjà l'invariant principal par construction (un `step_skipped` publie l'expression
+    `when` **brute**), mais deux chemins restaient ouverts — le message d'un `assert` est **rendu**
+    avant d'être levé, et une URL en échec peut porter un secret interpolé. La limite est écrite
+    plutôt que découverte : le masquage se fait **par valeur**, donc un « secret » d'un ou deux
+    caractères masquerait ces caractères partout.
+  - **`confirm` en modal natif.** Côté Python il a fallu quatre surfaces pour poser une question à un
+    humain ; sur un téléphone il y en a une seule et elle est évidente. Sémantique du jalon 2-E
+    reprise à la lettre : le run reste vivant et **garé**, son statut ne change pas, le délai est
+    **obligatoire** et `on_timeout` vaut **refus** par défaut — une application mise en arrière-plan
+    ne répondra jamais, et le comportement sûr doit être celui qui arrive tout seul. L'échéance est
+    tenue en **heure murale** et pas seulement par un minuteur, parce qu'iOS gèle les minuteurs d'une
+    application endormie : c'est ce qui rend « une décision arrivée après l'expiration est ignorée »
+    vrai sur un appareil et pas seulement en test. `useApprovalRequest` est la primitive,
+    `<AetheriusConfirm />` l'habillage par défaut.
+  - **L'annulation est un besoin, pas un raffinement** : sans elle, une WebView cachée survit à
+    l'écran qui l'a demandée. Aucun statut n'est inventé — un run annulé est un run `failed` dont la
+    `cause` est une `RunCancelledError`. Trois grains d'observation, et il en faut trois (entre deux
+    steps, pendant une attente, pendant une opération en vol) : n'en tenir qu'un ferait attendre
+    l'annulation jusqu'à trente secondes.
+  - **Une WebView, un run Act II à la fois.** Deux runs `continuum` concurrents se corrompaient
+    **en silence** (le second remontait la vue sous le premier, le premier `teardown` la détruisait
+    sous le second) : le second est désormais refusé par une `DependencyError` qui nomme le conflit.
+    Refuser plutôt que mettre en file est délibéré — une file cacherait un `confirm` garé tenant
+    l'unique vue derrière un délai inexpliqué. Les runs `vector` restent concurrents.
+  - **Le modèle d'erreur, point le plus structurant du jalon.** `describeFailure` traduit la
+    hiérarchie typée en huit familles d'écran, de sorte qu'**une source en panne et une réponse
+    légitimement vide cessent d'être indiscernables** — le défaut classique des couches de service
+    mobiles, où « aucun résultat » peut masquer un service indisponible. Le code d'un
+    `fail:LOGIN_FAILED` remonte intact jusqu'à l'appelant ; un run réussi aux `outputs` vides ne
+    produit **aucun** échec. Pour que la classe survive à un run, le `Result` embarqué porte un champ
+    de plus que le `Result` Python — `cause`, l'erreur typée derrière `error` — parce qu'obliger une
+    application à analyser de la prose serait exactement le défaut combattu.
+  - **Deux défauts du jalon 3-D trouvés par les sondes et corrigés.** (1) **L'auto-attente ne
+    s'appliquait pas à une cible absente** : `matchStrict` levait sur zéro correspondance et
+    court-circuitait le `waitFor` qui l'entourait, donc un `click`/`fill` sur un élément pas encore
+    rendu échouait en **6 ms** au lieu d'attendre — un portail qui rend son formulaire 300 ms après
+    le chargement marchait sur le poste et échouait sur le téléphone. Zéro est désormais un « pas
+    **encore** là » (on attend), seule l'ambiguïté est refusée tout de suite. (2) **Un sélecteur
+    périmé se présentait comme un bug du moteur** : `ExtractionError` des deux côtés, avec un
+    `selectorError` dédié dans l'agent et, **côté Python**, la traduction d'une temporisation
+    Playwright en `StepTimeoutError` typée (`bridge.as_step_timeout`) — elle s'échappait jusqu'ici en
+    `RunError`, si bien que les deux moteurs ne rendaient même pas le même *genre* d'issue pour le
+    cas le plus banal de l'Act II.
+  - **Une redirection ne tue plus l'opération suivante.** Trouvé *et vérifié corrigé* sur un
+    téléphone : un login POSTe,
+    le portail répond 302, la vue charge deux fois, et l'opération en vol perdait son document —
+    donc **aucun Blueprint ne pouvait attendre quoi que ce soit après un login**, l'essentiel de ce
+    que l'Act II sert à faire. Une opération qui perd son document est désormais **rejouée sur le
+    nouveau**, dans la limite du délai du step, avec une classe dédiée (`DocumentLostError`) plutôt
+    qu'un message à reconnaître. Invisible sur le double jsdom, qui suit les redirections lui-même
+    et ne produit donc jamais deux documents. Le parcours qui échouait rend désormais
+    `decision: "approved"`, `connecte: 1` sur l'appareil, et le CAS de l'université est joué de bout
+    en bout depuis le réseau du téléphone — ce qui **ferme le point laissé ouvert au jalon 3-D**.
+  - **L'échéance d'une opération appartient à l'appelant, pas à la page.** iOS *throttle*, et peut
+    suspendre, les minuteurs d'une WKWebView hors écran — et ce moteur l'y garde délibérément. Sur un
+    vrai téléphone, un `wait_for` expirait sans que l'agent ne réponde jamais : seul le délai de
+    l'appelant se déclenchait, en `ActionError`, donc « erreur interne » pour un simple mot de passe
+    faux. Un silence au-delà de l'échéance devient désormais l'expiration de l'attente **avec le code
+    que le Blueprint a nommé** (`fail:LOGIN_FAILED`), via une classe dédiée `NoAnswerError`.
+  - **Vérifié sur un iPhone, de bout en bout** : parcours applicatif complet (trousseau, modal,
+    secret masqué, `connecte: 1`), refus, expiration pendant que l'application dort, annulation,
+    persistance de session, `LOGIN_FAILED` sur de mauvais identifiants au CAS de l'université, mode
+    avion, corps `form` contre le vrai serveur ADE. La campagne a coûté **quatre correctifs du
+    moteur** que rien hors appareil ne pouvait produire — deux d'entre eux tenant à des
+    comportements d'iOS (minuteurs gelés dans une WebView hors écran, cookie de session lié au
+    contexte de navigation). Elle ferme au passage les points laissés ouverts aux jalons 3-C et 3-D.
+  - **Une session persistante garde sa vue.** `persist: true` ne persistait rien : la WebView était
+    détruite à la fin de chaque run, donc recréée, et un **cookie de session** (sans `Expires`, ce
+    qu'un login pose) ne franchit pas cette frontière — il vit avec le contexte de navigation, pas
+    sur disque. `dispose()` ne libère plus la vue que pour `persist: false`, et le coût est écrit :
+    une WebView cachée survit au run tant que les options de session ne changent pas. Corollaire que
+    la première tentative a manqué : une vue gardée **affiche encore sa dernière page**, donc un
+    `navigate` vers cette page ne déclenchait aucun chargement et le run attendait un document jamais
+    annoncé — la décision « recharger ou charger » porte désormais sur l'URL seule, et non sur la
+    présence de l'agent, absent entre deux runs par construction. Autre corollaire documenté : un cookie de session meurt quand même avec le processus, ce qui est la sémantique
+    HTTP et non une limite du moteur — une procédure de vérification qui exigeait le contraire a été
+    corrigée.
+  - **Un secret absent ne dit plus « la page a changé ».** `TemplateError` sort de la famille `data`
+    pour une famille `config` — « une donnée d'entrée manque ». La page allait très bien : c'est le
+    trousseau qui était vide, et les deux appellent des écrans opposés. L'application de
+    démonstration lit désormais le trousseau et le signale **avant** de lancer.
+  - **Une WebView qui n'arrive pas à charger le dit** : le composant relaie l'échec de chargement à
+    l'hôte, qui fait échouer le run sur un `NetworkError` — donc `unavailable`. Sans ce signal, un
+    téléphone hors ligne affichait « erreur interne », le run ayant seulement constaté qu'aucun agent
+    ne s'était annoncé.
+  - **Exemple exécutable** : `examples/mobile/quotes-login-confirm.blueprint.json` (trousseau +
+    `confirm` + échec nommé, jouable des deux côtés) et `session-persist-probe` (le pendant Act II de
+    la sonde de session : elle **rapporte** l'état de la session au lieu d'échouer, ce qui rend enfin
+    observable la persistance entre deux lancements — le point laissé ouvert par le jalon 3-D).
+    L'application de démonstration passe à la façade et **raccourcit** en gagnant des capacités ;
+    elle porte deux bascules (`options.debug`, `options.session.persist`) et embarque les deux
+    Blueprints qui ferment les points restés ouverts aux jalons 3-C (`ukit-inf601a5-test`, le seul
+    corps `form` du banc) et 3-D (`bordeaux-cas-login`, un portail authentifiant réel). Corpus de
+    conformance : le cas `run-confirm-timeout-fails` fige la sémantique d'arrêt dur de `confirm` sur
+    les deux moteurs.
+- **Jalon 3-D — Act II (Continuum) sur WebView**
+  ([docs/embedded.md](docs/embedded.md#act-ii--continuum-sur-webview)) : un Blueprint
+  `act: "continuum"` tourne **sur l'appareil**. C'est le jalon qui remplace les WebView cachées
+  écrites à la main.
+  - **Le vrai livrable est un protocole, pas « du JavaScript qu'on injecte »**
+    (`sdks/react-native/src/webview/protocol.ts`) : vocabulaire d'opérations fermé, paramètres
+    **encodés en JSON**, réponses corrélées par identifiant, délais tenus par l'appelant. **Aucun
+    paramètre n'entre jamais dans la source d'un script** — la classe de bug la plus courante des
+    WebView artisanales (un mot de passe contenant une apostrophe qui casse le script) devient
+    impossible par construction. Un test l'affirme structurellement : l'ordre injecté doit matcher un
+    **gabarit constant** dont la seule partie variable est un littéral JSON bien formé, ce qui reste
+    vrai pour des valeurs hostiles que personne n'a imaginées. `evaluate` est l'unique exception,
+    isolée dans son propre fichier parce que son `script` *est* du code par contrat ; son `arg`, lui,
+    traverse en JSON.
+  - **L'auto-attente, écrite une fois** (`webview/agent/waiting.ts`) : tenter immédiatement, sinon
+    observer le document (`MutationObserver` **et** sondage — un observateur ne se déclenche pas
+    quand une feuille de style rend un élément visible), et à l'échéance produire un échec
+    **explicite** plutôt que rester bloqué. Avant d'agir, la cible doit être rattachée, visible,
+    activée et **stable**. C'est la couche qui évite de semer des attentes fixes dans chaque
+    Blueprint — exactement la fragilité que le projet existe pour supprimer.
+  - **Le mode strict de Playwright reproduit avec son asymétrie** : agir sur plusieurs
+    correspondances est une **erreur** (un Blueprint devenu ambigu échoue lisiblement au lieu de
+    cliquer sur le mauvais bouton), tandis qu'attendre et lire prennent la première. Locators CSS,
+    XPath (`document.evaluate` existe dans une WebView) et texte.
+  - **Le vocabulaire `as:` à la lettre** (`webview/agent/read.ts`) : un écart n'y casse pas un run,
+    il produit une **donnée fausse**. Nombre extrait par expression régulière avec virgule décimale,
+    texte détouré, `count` qui compte tout, `list`, `each`/`fields` résolus **dans** leur conteneur —
+    y compris la reproduction qui surprend : dans un `extract`, `selector_type` ne bascule que vers
+    XPath, tout le reste est lu en CSS, comme `_resolve` côté Python.
+  - **Le cycle de vie de navigation**, le piège majeur du jalon, traité par un état explicite : prêt
+    veut dire *l'agent s'est annoncé sur la génération courante*, jamais « un événement de chargement
+    a eu lieu ». Une réponse d'un document remplacé est **jetée** ; un clic qui a *causé* la
+    navigation réussit, une lecture qui a perdu sa page échoue. La navigation appartient à l'hôte,
+    pas à l'agent : deux autorités sur le même état, et le perdant est celui qui lit quand le
+    document est remplacé sous lui.
+  - **Capacités non portables refusées à la validation** (`upload`, `drag`, `screenshot`), plus le
+    cas subtil du **`status` de `navigate`** : une WebView n'en expose aucun, donc la clé **n'est pas
+    publiée** — lire `{{ steps.nav.status }}` **lève** au step qui la lit au lieu de rendre `null`,
+    qui aurait fait passer un `assert` à côté de la vérité.
+  - **Sessions et debug** : `options.session.persist` choisit entre le magasin de la plateforme (pas
+    de re-login, mais l'état survit au run) et une vue incognito (départ propre) ; `options.debug`
+    **rend la WebView visible**, l'équivalent mobile de la fenêtre de navigateur du mode debug
+    Python. Les nouvelles fenêtres sont **interdites** plutôt que suivies — divergence assumée.
+  - **L'agent est assemblé au build** (esbuild, dépendance de *build* — même posture qu'Ajv pour le
+    schéma) en une chaîne unique injectable, à partir de modules TypeScript typés séparément. Le
+    bundle porte l'empreinte de ses sources : un artefact périmé se voit en test.
+  - **Le corpus de conformance gagne le champ `requires`** et un **troisième exécuteur** : un cas
+    `continuum` demande Playwright côté Python et une WebView côté embarqué, donc c'est celui de
+    `@aetherius/react-native` (hôte adossé à jsdom) qui rejoue le corpus **entier**. Les deux
+    exécuteurs JavaScript se recouvrent plutôt que de se partager le corpus, et chacun échoue si les
+    cas navigateur disparaissent. Cinq cas ajoutés, dont un login par formulaire avec un mot de passe
+    hostile et la divergence déclarée de `navigate.status`.
+  - **L'agent joué dans un vrai Chromium** et comparé à Playwright sur la même page
+    (`tests/integration/test_webview_agent.py`) : la comparaison la plus directe entre les deux
+    implémentations, qu'un double jsdom ne peut pas fournir faute de moteur de rendu.
+  - **Sondes dures** : le CAS d'une université réelle, joué de bout en bout par le moteur embarqué —
+    `LOGIN_SUCCESS`, page authentifiée extraite, avec un mot de passe contenant `'`, `!`, `@` et `#`.
+    Et son jumeau conçu pour échouer : mauvais identifiants → `StepTimeoutError` avec
+    `code: LOGIN_FAILED`, run `failed`, `outputs` vide.
+  - **Exemple zéro configuration** :
+    [`examples/mobile/webview-quotes.blueprint.json`](examples/mobile/webview-quotes.blueprint.json),
+    joué par `aetherius run` et par l'application de démonstration, qui monte désormais
+    `<AetheriusWebView />`. `@aetherius/react-native` sort de `private`.
+  - **C'est le conteneur qui est caché, pas la vue.** `react-native-webview` rend un
+    `<View style={[{flex: 1, overflow: 'hidden'}, containerStyle]}>` autour de la vue native :
+    positionner la vue interne hors écran la laisse rognée à néant dans ce conteneur — une WKWebView
+    sans aire de rendu, ce qui fait tuer le processus de contenu web par iOS — pendant que le
+    conteneur, resté en `flex: 1`, mange la mise en page de l'application. La vue garde donc
+    `flex: 1` et `containerStyle` porte la position. `onContentProcessDidTerminate` est écouté :
+    les appels en vol échouent en le disant plutôt que d'attendre une page morte.
+  - **La vue est créée avec l'URL qu'elle doit charger**, jamais sur un `about:blank` remplacé
+    ensuite : ce montage-là **faisait crasher Expo Go** (SDK 54 / RN 0.81) au premier run
+    `continuum`, sans message JavaScript. Un run coûte désormais un chargement au lieu de deux.
+  - **La WebView est créée paresseusement**, au premier run `continuum`, et libérée à la fin : une
+    application qui ne joue que de l'Act I ne porte aucune vue cachée, et un run obtient exactement
+    une création de vue au lieu d'une au démarrage puis d'un remontage. Corollaire figé par un test
+    de régression : **l'hôte survit aux runs qu'il sert** — `dispose()` libère la vue, le
+    `configure()` du run suivant la recrée. L'erreur inverse est invisible au premier run et fatale
+    au second.
+  - **Instance unique de React, imposée par la configuration Metro.** Un paquet du workspace lié en
+    `file:` résout ses peer dependencies depuis `sdks/node_modules`, où npm les installe quoi qu'en
+    dise `peerDependenciesMeta.optional` : deux copies de React, deux dispatchers de hooks, et un
+    `Invalid hook call` qui accuse le composant plutôt que la résolution. Le paquet ne déclare donc
+    aucun runtime React (`@types/react` suffit à le typer, vérifié en cachant le paquet) et la
+    configuration Metro de l'application **reroote** `react`/`react-native`/`react-native-webview`/
+    `scheduler` sur l'application. Vérification consignée dans `examples/mobile/README.md`.
+  - **Divergence trouvée en écrivant les cas, et documentée plutôt que corrigée** : côté Python,
+    Jinja2 résout un attribut avant une clé, donc `{{ steps.x.items }}` rend la *méthode*
+    `dict.items`. Le moteur embarqué n'a ni prototypes ni méthodes natives à offrir — c'est la
+    posture de sécurité du jalon 3-B — et rend la valeur. Figé par le cas
+    `expr-dict-method-shadows-key` ; la forme `steps.x['items']` marche des deux côtés.
 - **Jalon 3-C — Runtime asynchrone & Act I (Vector) sur `fetch`**
   ([docs/embedded.md](docs/embedded.md)) : le moteur embarqué **exécute**. Un Blueprint
   `act: "vector"` tourne réellement sur un téléphone, et la requête part de l'appareil.

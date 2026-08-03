@@ -16,11 +16,12 @@
 import { nestedStepFields } from "../blueprint/contract.js";
 import type { StepModel } from "../blueprint/types.js";
 import type { ActDriver, Renderer, RunContext } from "../driver.js";
-import { AetheriusError } from "../errors.js";
+import { AetheriusError, RunCancelledError } from "../errors.js";
 import type { EventBus, EventLevel, RunEventType } from "../events/index.js";
 import { isTruthy, pythonRepr } from "../expr/index.js";
 import type { RunStatus, StepResult } from "../result.js";
 import { renderValue } from "../template.js";
+import { throwIfCancelled } from "./cancel.js";
 import { monotonicMs, nowIso } from "./clock.js";
 import { templateContext } from "./context.js";
 import { runFlow, type FlowHost } from "./flow.js";
@@ -29,10 +30,20 @@ import { runFlow, type FlowHost } from "./flow.js";
  * Internal marker: a step error already recorded further down (`StepResult` + `error` event).
  *
  * Raised in place of the original so enclosing flow steps record their own failure without
- * emitting a duplicate event. It carries the original message, so the engine handles it like any
- * other `AetheriusError`.
+ * emitting a duplicate event. It carries the original message *and the original error*: the
+ * message is what the `Result` shows, the error is what `describeFailure` reads — without it, every
+ * failure would reach an application as "some step failed", which is exactly the loss of
+ * information this milestone set out to stop.
  */
-export class StepFailed extends AetheriusError {}
+export class StepFailed extends AetheriusError {
+  readonly original: AetheriusError;
+
+  constructor(original: AetheriusError) {
+    super(original.message);
+    // A nested failure keeps the innermost cause: an application wants the reason, not the depth.
+    this.original = original instanceof StepFailed ? original.original : original;
+  }
+}
 
 /** Resolves the live driver for a step's effective act (satisfied by `DriverManager`). */
 export interface DriverResolver {
@@ -79,6 +90,10 @@ class Executor implements FlowHost {
     const inherited = act ?? this.ctx.blueprint.act;
 
     for (const [index, step] of steps.entries()) {
+      // Before the step is recorded, not after: a run the caller cancelled must not leave a trail of
+      // steps marked failed for work that never started.
+      throwIfCancelled(this.ctx.signal);
+
       const stepPath = join(path, step.id ?? `_step_${index}`);
       // Root steps keep their bare id (null when anonymous) so linear Blueprints are untouched;
       // nested steps expose their full path.
@@ -110,6 +125,12 @@ class Executor implements FlowHost {
         this.results.push(result(displayId, step.action, "success", started, { outputs }));
         this.emit("step_finished", displayId, { level: "debug" });
       } catch (error) {
+        if (error instanceof RunCancelledError) {
+          // Cancellation is not a step failure: an interrupted `wait` — or an interrupted WebView
+          // call — leaves nothing to report about the step, and an `error` event here would tell an
+          // application that something broke when the user simply left.
+          throw error;
+        }
         if (error instanceof StepFailed) {
           // A nested step already recorded the failure and emitted `error`: mark this flow step
           // failed too, without a duplicate event.
@@ -123,7 +144,7 @@ class Executor implements FlowHost {
           result(displayId, step.action, "failed", started, { error: error.message }),
         );
         this.emit("error", displayId, { message: error.message, level: "error" });
-        throw new StepFailed(error.message);
+        throw new StepFailed(error);
       }
     }
   }

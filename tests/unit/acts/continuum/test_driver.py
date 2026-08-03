@@ -13,7 +13,7 @@ import pytest
 
 from aetherius.acts.continuum.driver import ContinuumDriver
 from aetherius.core.blueprint.models import Blueprint
-from aetherius.core.errors import ActionError
+from aetherius.core.errors import ActionError, StepTimeoutError
 from aetherius.core.events.bus import EventBus
 from aetherius.core.events.models import EventType, RunEvent
 from aetherius.core.events.sinks import NullSink
@@ -143,4 +143,32 @@ def test_run_step_before_setup_raises() -> None:
     driver = ContinuumDriver()
     bp = _bp([{"action": "click", "selector": "#b"}])
     with pytest.raises(ActionError):
+        driver.run_step(bp.steps[0], _ctx(bp), _null_bus(), lambda v: v)
+
+
+def test_locator_timeout_becomes_a_typed_step_failure() -> None:
+    """A selector that no longer matches is a clean failure, not an engine bug re-raised.
+
+    Playwright raises a bare TimeoutError; without translation the engine wraps it in a RunError and
+    re-raises, so the most common Act II failure — a page that changed — reaches the caller as
+    "something unexpected happened". The embedded engine reports it cleanly, and the two must agree
+    (jalon 3-E, docs/embedded.md).
+    """
+    driver, page = _driver_with_page()
+    page.locator.return_value.click.side_effect = TimeoutError("Locator.click: Timeout 30000ms")
+    bp = _bp([{"action": "click", "selector": "#absent"}])
+
+    with pytest.raises(StepTimeoutError) as excinfo:
+        driver.run_step(bp.steps[0], _ctx(bp), _null_bus(), lambda v: v)
+    assert "never matched what the Blueprint expects" in str(excinfo.value)
+    assert excinfo.value.code is None
+
+
+def test_a_non_timeout_failure_keeps_its_own_path() -> None:
+    # Translating everything would hide a real defect behind a reassuring message.
+    driver, page = _driver_with_page()
+    page.locator.return_value.click.side_effect = ValueError("something else entirely")
+    bp = _bp([{"action": "click", "selector": "#b"}])
+
+    with pytest.raises(ValueError):
         driver.run_step(bp.steps[0], _ctx(bp), _null_bus(), lambda v: v)

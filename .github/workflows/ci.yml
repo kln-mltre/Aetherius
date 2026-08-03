@@ -66,7 +66,11 @@ jobs:
           cache-dependency-path: pyproject.toml
       # The SDK end-to-end test spawns the real daemon, so the package must be importable; the
       # dev extra brings pytest, which the Python half of the conformance harness runs under.
-      - run: python -m pip install -e ".[dev]"
+      # [browser] is here for the corpus alone: the Act II cases play a real Chromium on the Python
+      # side against a WebView on the embedded one, and skipping them would leave the two engines
+      # compared on Act I only — a green suite asserting less than it looks like it does.
+      - run: python -m pip install -e ".[browser,dev]"
+      - run: python -m playwright install --with-deps chromium
       - run: make test-ts
       # The conformance corpus needs both engines; this is the only job that has Python and Node.
       - run: make conformance

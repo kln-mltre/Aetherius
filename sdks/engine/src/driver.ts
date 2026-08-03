@@ -13,7 +13,8 @@
 
 import type { ActName, Blueprint, StepModel } from "./blueprint/types.js";
 import type { EventBus } from "./events/index.js";
-import type { FetchLike } from "./http.js";
+import type { AbortSignalLike, FetchLike } from "./http.js";
+import type { ApprovalGateway } from "./runtime/approvals.js";
 
 /** Applique le rendu d'expressions a une valeur (chaine, tableau ou objet). Jalon 3-B. */
 export type Renderer = (value: unknown) => unknown;
@@ -37,6 +38,15 @@ export interface RunContext {
   readonly env: Readonly<Record<string, string>>;
   /** Variables de boucle injectees par `for_each`, le temps d'une iteration. */
   readonly scope: Record<string, unknown>;
+  /**
+   * Le canal de decision des steps `confirm` (miroir de `ctx.approvals` cote Python). Absent = run
+   * **non surveille** : `confirm` applique sa politique `on_timeout` tout de suite.
+   */
+  readonly approvals?: ApprovalGateway;
+  /**
+   * L'annulation demandee par l'appelant. Sans jumeau Python : voir `runtime/cancel.ts`.
+   */
+  readonly signal?: AbortSignalLike;
 }
 
 /**

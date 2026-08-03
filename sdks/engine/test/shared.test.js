@@ -128,7 +128,29 @@ test("on_timeout: fail:CODE fails the run and names the code", async () => {
   ]);
   assert.equal(result.status, "failed");
   assert.match(result.error, /confirm timed out awaiting a decision/);
-  assert.equal(new StepTimeoutError("x", "NO_ANSWER").code, "NO_ANSWER");
+  // The code survives all the way to the caller: it is the only machine-readable thing a Blueprint
+  // author can put on a failure, and an application branches on it (see failure.test.js).
+  assert.ok(result.cause instanceof StepTimeoutError);
+  assert.equal(result.cause.code, "NO_ANSWER");
+});
+
+test("confirm's notification fields are read and ignored on this engine", async () => {
+  // `channel`/`target` alert a notify channel on the Python engine. The embedded engine has none —
+  // the application owns its notifications, and the decision surface is the modal itself. Ignoring
+  // them rather than refusing keeps the promise "the same Blueprint on both engines".
+  const { result } = await run([
+    {
+      id: "ask",
+      action: "confirm",
+      message: "Publish?",
+      on_timeout: "approve",
+      channel: "ntfy",
+      target: "some-topic",
+      level: "warning",
+    },
+  ]);
+  assert.equal(result.status, "success");
+  assert.equal(outputs(result, "ask").approved, true);
 });
 
 test("a rejected confirm skips the step it guards, without failing the run", async () => {

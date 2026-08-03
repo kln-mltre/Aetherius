@@ -1,8 +1,7 @@
 {
   "name": "@aetherius/react-native",
   "version": "0.4.0",
-  "private": true,
-  "description": "Act II (Continuum) sur WebView + facade applicative pour React Native. Squelette Phase 3.",
+  "description": "Act II (Continuum) sur WebView : agent JavaScript injecte, RPC correlee, auto-attente et extraction DOM, pour React Native.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,9 +12,15 @@
     }
   },
   "files": ["dist"],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "npm run build"
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "prebuild": "npm run clean && node scripts/build-agent.mjs",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.agent.json",
+    "test": "npm run build && node --test test/",
+    "conformance": "npm run build && node --test test/conformance.test.js"
   },
   "license": "CC-BY-NC-4.0",
   "dependencies": {
@@ -32,6 +37,9 @@
     "react-native-webview": { "optional": true }
   },
   "devDependencies": {
+    "@types/react": "^19.0.0",
+    "esbuild": "^0.25.0",
+    "jsdom": "^26.0.0",
     "typescript": "^5.4.0"
   }
 }

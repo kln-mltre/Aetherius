@@ -20,6 +20,8 @@ sdks/*/dist/
 *.tsbuildinfo
 # Generated at build time from contracts/ (precompiled JSON Schema validator + inlined contracts).
 sdks/engine/src/generated/
+# Generated at build time from src/webview/agent/ (the injected agent, as one injectable string).
+sdks/react-native/src/generated/
 
 # Aetherius runtime artifacts
 src/aetherius/models/store/*

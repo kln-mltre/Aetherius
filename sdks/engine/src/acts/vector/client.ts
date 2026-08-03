@@ -24,10 +24,11 @@ import {
   hostAbortController,
   hostFetch,
   headersToObject,
+  type AbortSignalLike,
   type FetchLike,
   type FetchRequestInit,
 } from "../../http.js";
-import { sleep } from "../../runtime/clock.js";
+import { cancellableSleep, throwIfCancelled } from "../../runtime/cancel.js";
 import { NoAuth, type AuthStrategy, type RequestSpec } from "./auth.js";
 import { CookieJar } from "./cookies.js";
 import { encodeJson, urlEncode, urlWithParams } from "./encode.js";
@@ -40,6 +41,12 @@ export interface VectorClientOptions {
   readonly timeoutMs?: number | undefined;
   readonly retries?: RetriesOptions | undefined;
   readonly auth?: AuthStrategy | undefined;
+  /**
+   * The run's cancellation signal. It joins the timeout controller so a request in flight is
+   * dropped when the caller cancels, instead of being waited out — thirty seconds is a long time to
+   * hold a WebView, or a screen, that nobody is looking at any more.
+   */
+  readonly signal?: AbortSignalLike | undefined;
 }
 
 export interface VectorRequest {
@@ -67,6 +74,7 @@ export class VectorClient {
   private readonly timeoutMs: number;
   private readonly retries: RetriesOptions;
   private readonly auth: AuthStrategy;
+  private readonly signal: AbortSignalLike | undefined;
 
   constructor(options: VectorClientOptions = {}) {
     const fetchImpl = options.fetch ?? hostFetch();
@@ -79,6 +87,7 @@ export class VectorClient {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.retries = options.retries ?? { max: 0, backoff: "none" };
     this.auth = options.auth ?? new NoAuth();
+    this.signal = options.signal;
   }
 
   /** Run the strategy's one-time preparation (a login flow, seeding the jar). */
@@ -151,12 +160,14 @@ export class VectorClient {
         // A status is an answer, not a transport failure: only NetworkError (and its TimeoutError
         // subclass) is worth trying again.
         if (attempt >= attempts || !(error instanceof NetworkError)) throw error;
-        await sleep(backoffMs(this.retries.backoff, attempt));
+        await cancellableSleep(backoffMs(this.retries.backoff, attempt), this.signal);
       }
     }
   }
 
   private async attempt(spec: RequestSpec): Promise<VectorResponse> {
+    throwIfCancelled(this.signal);
+
     const Controller = hostAbortController();
     const controller = Controller === undefined ? undefined : new Controller();
     let timedOut = false;
@@ -169,6 +180,11 @@ export class VectorClient {
             timedOut = true;
             controller.abort();
           }, this.timeoutMs);
+
+    // The run's cancellation aborts the same controller: one place decides the request is over,
+    // whichever reason came first.
+    const onCancel = (): void => controller?.abort();
+    if (controller !== undefined) this.signal?.addEventListener?.("abort", onCancel);
 
     const init: FetchRequestInit = {
       method: spec.method,
@@ -190,12 +206,16 @@ export class VectorClient {
         url: response.url ?? spec.url,
       };
     } catch (cause) {
+      // Cancellation first: an aborted fetch looks exactly like a transport failure, and reporting
+      // it as one would put "the source is down" on screen when the user simply left.
+      throwIfCancelled(this.signal);
       if (timedOut) {
         throw new TimeoutError(`Request timed out: ${spec.method} ${spec.url}`);
       }
       throw new NetworkError(`Transport error: ${reason(cause)}`);
     } finally {
       if (timer !== undefined) clearTimeout(timer);
+      this.signal?.removeEventListener?.("abort", onCancel);
     }
   }
 }

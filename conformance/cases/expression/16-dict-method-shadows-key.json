@@ -1,0 +1,15 @@
+{
+  "name": "expr-dict-method-shadows-key",
+  "kind": "expression",
+  "description": "Divergence trouvee en ecrivant les cas du jalon 3-D, et figee ici plutot que corrigee : cote Python, Jinja2 resout un attribut **avant** une cle, donc `{{ steps.x.items }}` rend la methode `dict.items` et non la valeur — le filtre qui suit echoue alors sur un objet non iterable. Le moteur embarque, lui, n'a pas de prototypes a offrir (c'est la posture de securite du jalon 3-B) et rend la valeur. Reproduire la resolution d'attribut de Python signifierait exposer les methodes natives d'un objet a un Blueprint telecharge : le prix est trop eleve pour une bizarrerie qu'on evite en ne nommant pas une sortie `items`, `keys`, `values` ou `get`. La forme `steps.x['items']` marche des deux cotes.",
+  "context": { "steps": { "lus": { "items": ["un", "deux"] } } },
+  "value": "{{ steps.lus.items | length }}",
+  "expect": {
+    "python": {
+      "outcome": "error",
+      "error": "TemplateError",
+      "message_contains": ["builtin_function_or_method"]
+    },
+    "embedded": { "outcome": "rendered", "value": 2 }
+  }
+}

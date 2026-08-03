@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ES2022"],
+    "jsx": "react-jsx",
     "declaration": true,
     "outDir": "dist",
     "rootDir": "src",
@@ -12,7 +13,9 @@
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "types": []
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/webview/agent"]
 }

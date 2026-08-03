@@ -78,6 +78,7 @@ gateway et le run se gare réellement.
 | **CLI / in-process** | `aetherius run` invite sur stdin (`questionary`), sur un thread pour respecter le timeout ; sans TTY, la demande retombe sur son `on_timeout`. |
 | **API daemon** | `POST /v1/runs/{id}/decisions` avec le `token` porté par l'événement `input_requested`. |
 | **Réponse de notification** | Boutons **Approve/Reject** d'une notification **ntfy** qui POSTent la route de décision (voir plus bas). |
+| **Application mobile** | Un **modal natif** (`<AetheriusConfirm />`), sur le moteur embarqué — jalon 3-E. Là où il a fallu quatre surfaces ici, un téléphone n'en a qu'une, et elle est évidente. Même sémantique : run garé, statut inchangé, délai obligatoire, refus par défaut. Voir [docs/embedded.md](embedded.md#confirm-en-modal-natif). |
 
 ![La Console : demande de confirmation garant le run](screenshots/human-in-the-loop.svg)
 

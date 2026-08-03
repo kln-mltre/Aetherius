@@ -127,7 +127,13 @@ make conformance     # rejoue le corpus sur les deux moteurs
 - La moitié Python vit dans `tests/conformance/` (marker `contracts`) : elle est donc rejouée par
   `make test`, pas seulement par la cible dédiée. Une divergence trouvée à chaque run vaut mieux
   qu'une divergence trouvée quand quelqu'un pense à lancer la bonne commande.
-- La moitié TypeScript est `sdks/engine/test/conformance.test.js`, rejouée par `npm test`.
+- La moitié TypeScript a **deux** exécuteurs depuis le jalon 3-D, parce qu'un cas `continuum` a
+  besoin d'une WebView que le moteur neutre n'a pas : `sdks/engine/test/conformance.test.js` rejoue
+  tout sauf les cas `requires: "browser"`, et `sdks/react-native/test/conformance.test.js` rejoue le
+  corpus **entier** avec le driver WebView enregistré. Les deux sont joués par `npm test`.
+- Un cas `requires: "browser"` demande Playwright côté Python : il se skippe proprement sans l'extra
+  `[browser]`, et le job de CI qui rejoue `make conformance` l'installe pour que la comparaison ait
+  bien lieu.
 - Le harnais lui-même est testé (`tests/conformance/test_harness.py`) : un exécuteur qui
   rapporterait tous les cas comme passants transformerait une suite verte en affirmation fausse.
 

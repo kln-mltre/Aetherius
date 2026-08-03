@@ -5,11 +5,15 @@
  * Blueprint, runtime, extraction, evenements, erreurs) et l'Act I (Vector) sur `fetch`. L'Act II
  * (Continuum), qui a besoin d'une WebView, vit dans `@aetherius/react-native`.
  *
- * Etat (jalon 3-C) : un Blueprint `act: "vector"` s'execute reellement — runtime asynchrone, flux,
- * garde `when`, utilitaires partages et requetes HTTP sur `fetch`. L'Act II arrive au jalon 3-D et
- * la facade applicative au jalon 3-E. Voir docs/embedded.md.
+ * Etat (jalon 3-E) : un Blueprint `act: "vector"` s'execute reellement (jalon 3-C), l'Act II vit
+ * dans `@aetherius/react-native` (jalon 3-D), et ce paquet porte desormais les coutures de la
+ * surface applicative : rendez-vous d'approbation pour `confirm`, annulation d'un run, et le modele
+ * d'erreur (`describeFailure`). La facade elle-meme est dans `@aetherius/react-native`, parce que
+ * ses deux implementations par defaut — le trousseau et le modal — sont des faits de plateforme.
+ * Voir docs/embedded.md.
  */
 
+export * from "./acts/confirm.js";
 export * from "./acts/shared.js";
 export * from "./acts/vector/auth.js";
 export * from "./acts/vector/client.js";
@@ -28,8 +32,11 @@ export * from "./errors.js";
 export * from "./events/index.js";
 export * from "./expr/index.js";
 export * from "./extraction/index.js";
+export * from "./failure.js";
 export * from "./http.js";
 export * from "./result.js";
+export * from "./runtime/approvals.js";
+export * from "./runtime/cancel.js";
 export * from "./runtime/context.js";
 export * from "./runtime/drivers.js";
 export * from "./runtime/engine.js";

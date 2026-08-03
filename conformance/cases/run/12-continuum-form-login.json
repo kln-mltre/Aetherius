@@ -1,0 +1,125 @@
+{
+  "name": "run-continuum-form-login",
+  "kind": "run",
+  "requires": "browser",
+  "description": "Le cas qui justifie le jalon : une authentification scriptee. Remplir deux champs avec des secrets, cliquer, suivre la redirection, et lire la page authentifiee. Le mot de passe contient une apostrophe et un guillemet — la valeur qui casse un script injecte ecrit sous forme de gabarit de chaine. Les deux moteurs doivent poster les memes octets et porter la session a travers le 302.",
+  "secrets": { "user": "kylian", "pass": "mot'de\"passe" },
+  "server": {
+    "GET /": {
+      "html": "<!doctype html><html><body><form action=\"/login\" method=\"post\"><input id=\"username\" name=\"username\" value=\"\"><input id=\"password\" name=\"password\" type=\"password\" value=\"\"><input id=\"go\" type=\"submit\" value=\"Entrer\"></form></body></html>"
+    },
+    "POST /login": {
+      "status": 302,
+      "headers": { "Location": "/home", "Set-Cookie": "SESSION=ouvert; Path=/" },
+      "body": ""
+    },
+    "GET /home": {
+      "html": "<!doctype html><html><body><a id=\"logout\" href=\"/logout\">Se deconnecter</a><p id=\"bienvenue\">Bonjour kylian</p></body></html>"
+    }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.continuum.login",
+    "act": "continuum",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "secrets": ["user", "pass"],
+    "options": { "timeout_ms": 15000 },
+    "steps": [
+      { "action": "navigate", "url": "{{ inputs.base_url }}/" },
+      { "action": "fill", "selector": "#username", "value": "{{ secrets.user }}" },
+      { "action": "fill", "selector": "#password", "value": "{{ secrets.pass }}" },
+      { "action": "click", "selector": "#go" },
+      {
+        "action": "wait_for",
+        "selector": "#logout",
+        "timeout_ms": 10000,
+        "on_timeout": "fail:LOGIN_FAILED"
+      },
+      { "action": "emit", "event": "LOGIN_SUCCESS" },
+      {
+        "id": "session",
+        "action": "extract",
+        "outputs": {
+          "bienvenue": { "selector": "#bienvenue", "as": "text" },
+          "connecte": { "selector": "#logout", "as": "count" }
+        }
+      }
+    ],
+    "outputs": {
+      "bienvenue": "{{ steps.session.bienvenue }}",
+      "connecte": "{{ steps.session.connecte }}"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "bienvenue": "Bonjour kylian", "connecte": 1 },
+        "steps": [
+          { "step_id": null, "action": "navigate", "status": "success" },
+          { "step_id": null, "action": "fill", "status": "success" },
+          { "step_id": null, "action": "fill", "status": "success" },
+          { "step_id": null, "action": "click", "status": "success" },
+          { "step_id": null, "action": "wait_for", "status": "success" },
+          { "step_id": null, "action": "emit", "status": "success" },
+          { "step_id": "session", "action": "extract", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "progress", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": "session" },
+          { "type": "step_finished", "step_id": "session" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": { "bienvenue": "Bonjour kylian", "connecte": 1 },
+        "steps": [
+          { "step_id": null, "action": "navigate", "status": "success" },
+          { "step_id": null, "action": "fill", "status": "success" },
+          { "step_id": null, "action": "fill", "status": "success" },
+          { "step_id": null, "action": "click", "status": "success" },
+          { "step_id": null, "action": "wait_for", "status": "success" },
+          { "step_id": null, "action": "emit", "status": "success" },
+          { "step_id": "session", "action": "extract", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": null },
+          { "type": "progress", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": "session" },
+          { "type": "step_finished", "step_id": "session" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

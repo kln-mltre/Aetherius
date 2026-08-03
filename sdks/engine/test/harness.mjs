@@ -10,6 +10,11 @@
  * at 3-C, plays a whole Blueprint against a local fixture server and compares the outputs, the
  * step results and the event stream. Adding a *case* touches no executor; adding a *kind* touches
  * both, on purpose. See conformance/README.md.
+ *
+ * A case may also declare `requires: "browser"` (milestone 3-D): it exercises Act II, which this
+ * package cannot run — the WebView driver lives in `@aetherius/react-native`. This module is
+ * therefore reused by that package's executor, which registers the driver first; the engine's own
+ * executor defers those cases rather than passing them silently.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -49,7 +54,13 @@ function jsonFiles(dir) {
 export function loadCases() {
   return jsonFiles(CORPUS_DIR).map((path) => {
     const data = JSON.parse(readFileSync(path, "utf8"));
-    return { path, name: data.name, kind: data.kind ?? "validation", data };
+    return {
+      path,
+      name: data.name,
+      kind: data.kind ?? "validation",
+      requires: data.requires ?? null,
+      data,
+    };
   });
 }
 

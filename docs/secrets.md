@@ -40,6 +40,15 @@ cognition Claude (Acts III/IV), voir [docs/cognition.md](cognition.md).
 Dans l'écran Runs, un secret déjà résolvable depuis l'environnement est affiché « loaded from .env »
 et peut être laissé vide ; une valeur saisie l'emporte. Le formulaire masque toujours les secrets.
 
+## Sur un appareil
+
+Le moteur embarqué (Phase 3) n'a ni environnement ni `.env` : les secrets viennent du **trousseau de
+l'OS**, par un magasin que l'application **injecte**. L'ordre de priorité est le même qu'ici — une
+valeur passée à l'appel gagne sur le trousseau, et un secret introuvable est omis —, et seuls les
+noms **déclarés** par le Blueprint sont demandés. S'y ajoute un rideau qui masque les valeurs
+résolues dans le flux d'événements et les messages d'échec. Détails :
+[docs/embedded.md](embedded.md#les-secrets-ne-quittent-pas-lappareil).
+
 ## Règle de contribution
 
 Ne jamais committer d'identifiants réels ni les inscrire dans un Blueprint, un test, une fixture ou

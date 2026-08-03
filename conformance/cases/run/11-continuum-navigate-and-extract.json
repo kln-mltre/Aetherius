@@ -1,0 +1,122 @@
+{
+  "name": "run-continuum-navigate-and-extract",
+  "kind": "run",
+  "requires": "browser",
+  "description": "Le parcours nominal de l'Act II sur les deux moteurs : naviguer, attendre un selecteur, lire le DOM. Fige le vocabulaire `as:` — texte detoure, nombre extrait par expression reguliere avec virgule decimale, comptage de toutes les correspondances, liste, et enregistrements `each`/`fields` dont les selecteurs se resolvent dans leur conteneur. Un ecart ici ne casserait pas un run : il produirait une donnee fausse.",
+  "server": {
+    "GET /": {
+      "html": "<!doctype html><html><head><title>Catalogue</title></head><body><h1 id=\"titre\">Catalogue</h1><p class=\"prix\">12,50 EUR</p><ul><li class=\"row\"><span class=\"t\">Alpha</span><span class=\"p\">3,20</span></li><li class=\"row\"><span class=\"t\">Beta</span><span class=\"p\">7</span></li></ul><a id=\"suite\" href=\"/suite\" data-page=\"2\">Page suivante</a><p class=\"cache\" style=\"display:none\">invisible</p></body></html>"
+    }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.continuum.extract",
+    "act": "continuum",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "options": { "timeout_ms": 15000 },
+    "steps": [
+      { "id": "home", "action": "navigate", "url": "{{ inputs.base_url }}/" },
+      { "action": "wait_for", "selector": "#titre", "timeout_ms": 10000 },
+      {
+        "id": "page",
+        "action": "extract",
+        "outputs": {
+          "titre": { "selector": "#titre", "as": "text" },
+          "prix": { "selector": ".prix", "as": "number" },
+          "lignes": { "selector": ".row", "as": "count" },
+          "titres": { "selector": ".row .t", "as": "list" },
+          "page_suivante": { "selector": "#suite", "as": "attr", "attr": "data-page" },
+          "corps": { "selector": "body", "as": "text" },
+          "produits": {
+            "each": ".row",
+            "fields": {
+              "nom": { "selector": ".t", "as": "text" },
+              "prix": { "selector": ".p", "as": "number" }
+            }
+          },
+          "absents": { "selector": ".rien", "as": "count" }
+        }
+      }
+    ],
+    "outputs": {
+      "titre": "{{ steps.page.titre }}",
+      "prix": "{{ steps.page.prix }}",
+      "lignes": "{{ steps.page.lignes }}",
+      "titres": "{{ steps.page.titres }}",
+      "page_suivante": "{{ steps.page.page_suivante }}",
+      "produits": "{{ steps.page.produits }}",
+      "absents": "{{ steps.page.absents }}",
+      "cache_lu": "{{ 'invisible' in steps.page.corps }}"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "titre": "Catalogue",
+          "prix": 12.5,
+          "lignes": 2,
+          "titres": ["Alpha", "Beta"],
+          "page_suivante": "2",
+          "produits": [
+            { "nom": "Alpha", "prix": 3.2 },
+            { "nom": "Beta", "prix": 7 }
+          ],
+          "absents": 0,
+          "cache_lu": false
+        },
+        "steps": [
+          { "step_id": "home", "action": "navigate", "status": "success" },
+          { "step_id": null, "action": "wait_for", "status": "success" },
+          { "step_id": "page", "action": "extract", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "home" },
+          { "type": "step_finished", "step_id": "home" },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": "page" },
+          { "type": "step_finished", "step_id": "page" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "titre": "Catalogue",
+          "prix": 12.5,
+          "lignes": 2,
+          "titres": ["Alpha", "Beta"],
+          "page_suivante": "2",
+          "produits": [
+            { "nom": "Alpha", "prix": 3.2 },
+            { "nom": "Beta", "prix": 7 }
+          ],
+          "absents": 0,
+          "cache_lu": false
+        },
+        "steps": [
+          { "step_id": "home", "action": "navigate", "status": "success" },
+          { "step_id": null, "action": "wait_for", "status": "success" },
+          { "step_id": "page", "action": "extract", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "home" },
+          { "type": "step_finished", "step_id": "home" },
+          { "type": "step_started", "step_id": null },
+          { "type": "step_finished", "step_id": null },
+          { "type": "step_started", "step_id": "page" },
+          { "type": "step_finished", "step_id": "page" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

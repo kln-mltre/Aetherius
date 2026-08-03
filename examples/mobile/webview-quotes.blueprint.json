@@ -1,0 +1,50 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.webview.quotes",
+  "description": "Act II (Continuum) sur appareil : ouvrir une page dans une WebView cachee, attendre le DOM, lire des donnees typees et recouper avec du JS injecte. Zero configuration — le meme fichier tourne sous 'aetherius run' (Playwright) et depuis l'application de demonstration (WebView). Mettre options.debug a true rend la WebView visible sur le telephone, et la fenetre Chromium visible sur un poste.",
+  "act": "continuum",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": { "debug": false, "timeout_ms": 20000 },
+  "steps": [
+    { "id": "home", "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "action": "wait_for",
+      "selector": ".quote",
+      "timeout_ms": 15000,
+      "on_timeout": "fail:PAGE_VIDE"
+    },
+    {
+      "id": "page",
+      "action": "extract",
+      "outputs": {
+        "premiere_citation": { "selector": ".quote .text", "as": "text" },
+        "premier_auteur": { "selector": ".quote .author", "as": "text" },
+        "citations_sur_la_page": { "selector": ".quote", "as": "count" },
+        "etiquettes": { "selector": ".quote:first-child .tag", "as": "list" },
+        "citations": {
+          "each": ".quote",
+          "fields": {
+            "texte": { "selector": ".text", "as": "text" },
+            "auteur": { "selector": ".author", "as": "text" }
+          }
+        }
+      }
+    },
+    {
+      "id": "js",
+      "action": "evaluate",
+      "script": "(arg) => document.querySelectorAll(arg.selecteur).length",
+      "arg": { "selecteur": ".quote .author" }
+    },
+    { "action": "emit", "event": "SCRAPE_OK" }
+  ],
+  "outputs": {
+    "url": "{{ steps.home.url }}",
+    "premiere_citation": "{{ steps.page.premiere_citation }}",
+    "premier_auteur": "{{ steps.page.premier_auteur }}",
+    "citations_sur_la_page": "{{ steps.page.citations_sur_la_page }}",
+    "etiquettes": "{{ steps.page.etiquettes }}",
+    "citations": "{{ steps.page.citations }}",
+    "auteurs_comptes_par_js": "{{ steps.js.result }}"
+  }
+}

@@ -26,6 +26,23 @@ def _is_timeout(exc: Exception) -> bool:
     return type(exc).__name__ == "TimeoutError"
 
 
+def as_step_timeout(exc: Exception, action: str) -> StepTimeoutError | None:
+    """Turn a Playwright locator timeout into a typed step failure, or ``None`` for anything else.
+
+    Without this, a selector that no longer matches escapes as a raw Playwright ``TimeoutError``:
+    the engine wraps it in a ``RunError`` and *re-raises*, so the most common Act II failure — a page
+    that changed — looks like an engine bug rather than a run that failed cleanly. The embedded
+    engine reports it as a clean failure (``ExtractionError``/``StepTimeoutError``), and the two
+    engines must agree on that: found by the milestone 3-E probes, see docs/embedded.md.
+
+    No ``code``: only ``wait_for`` lets a Blueprint name its failure, and it applies its own
+    ``on_timeout`` before reaching here.
+    """
+    if not _is_timeout(exc):
+        return None
+    return StepTimeoutError(f"{action}: the page never matched what the Blueprint expects — {exc}")
+
+
 def failure_code(on_timeout: Any) -> str | None:
     """Parse ``"fail:CODE"`` into ``CODE``; anything else yields no code.
 

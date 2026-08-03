@@ -12,6 +12,7 @@ endpoint would be a corpus that fails when someone's train enters a tunnel.
 Route vocabulary (see conformance/README.md):
 
     "GET /users":  {"status": 200, "json": [...], "headers": {...}}
+    "GET /home":   {"html": "<!doctype html>…"}
     "POST /login": {"status": 302, "body": "", "headers": {"Location": "/home"}}
     "POST /echo":  {"echo": true}
 
@@ -40,6 +41,11 @@ def _render(route: dict[str, Any], request: dict[str, Any]) -> tuple[int, dict[s
     if "json" in route:
         body = json.dumps(route["json"], separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         headers.setdefault("Content-Type", "application/json")
+    elif "html" in route:
+        # A browser needs the right content type to parse a document rather than show its source;
+        # `body` stays text/plain so the Act I cases are untouched.
+        body = str(route["html"]).encode("utf-8")
+        headers.setdefault("Content-Type", "text/html; charset=utf-8")
     else:
         body = str(route.get("body", "")).encode("utf-8")
         headers.setdefault("Content-Type", "text/plain; charset=utf-8")

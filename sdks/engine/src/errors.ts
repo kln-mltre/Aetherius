@@ -52,6 +52,16 @@ export class StepTimeoutError extends AetheriusError {
 /** Une dependance de plateforme manque (par ex. `react-native-webview` pour l'Act II). */
 export class DependencyError extends AetheriusError {}
 
+/**
+ * Le run a ete annule par l'appelant (`RunOptions.signal`).
+ *
+ * Sans jumeau cote Python, qui n'a pas d'annulation : sur mobile, un utilisateur qui quitte un ecran
+ * doit pouvoir interrompre un run et liberer sa WebView. Elle herite d'`AetheriusError` pour prendre
+ * le chemin d'echec **propre** du moteur — le `Result` est rendu et les drivers sont demontes, la ou
+ * une exception etrangere emporterait le run par une `RunError`.
+ */
+export class RunCancelledError extends AetheriusError {}
+
 /** Enveloppe d'une erreur non typee remontee pendant un run. */
 export class RunError extends AetheriusError {
   readonly cause: unknown;

@@ -1,0 +1,45 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.quotes.login.confirm",
+  "description": "Jalon 3-E : le parcours applicatif complet sur appareil — des identifiants venus du trousseau de l'OS, une confirmation humaine avant de les envoyer, et un echec nomme si le portail refuse. Le site de demonstration accepte n'importe quels identifiants, donc l'exemple tourne partout : depuis le telephone (secrets dans SecureStore) comme depuis un poste (aetherius run --secret quotes_user=demo --secret quotes_pass=demo).",
+  "act": "continuum",
+  "secrets": ["quotes_user", "quotes_pass"],
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "options": { "timeout_ms": 20000 },
+  "steps": [
+    { "action": "navigate", "url": "{{ vars.domain }}/login" },
+    { "action": "fill", "selector": "#username", "value": "{{ secrets.quotes_user }}" },
+    { "action": "fill", "selector": "#password", "value": "{{ secrets.quotes_pass }}" },
+    {
+      "id": "approve",
+      "action": "confirm",
+      "title": "Connexion",
+      "message": "Envoyer les identifiants de {{ secrets.quotes_user }} a {{ vars.domain }} ?",
+      "timeout_ms": 60000,
+      "on_timeout": "reject"
+    },
+    {
+      "action": "click",
+      "when": "{{ steps.approve.approved }}",
+      "selector": "input[type=submit]"
+    },
+    {
+      "action": "wait_for",
+      "when": "{{ steps.approve.approved }}",
+      "selector": "a[href='/logout']",
+      "timeout_ms": 15000,
+      "on_timeout": "fail:LOGIN_FAILED"
+    },
+    { "action": "emit", "when": "{{ steps.approve.approved }}", "event": "LOGIN_SUCCESS" },
+    {
+      "id": "session",
+      "action": "extract",
+      "when": "{{ steps.approve.approved }}",
+      "outputs": { "connecte": { "selector": "a[href='/logout']", "as": "count" } }
+    }
+  ],
+  "outputs": {
+    "decision": "{{ steps.approve.decision }}",
+    "connecte": "{{ steps.session.connecte if steps.session is defined else 0 }}"
+  }
+}

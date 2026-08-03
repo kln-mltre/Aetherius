@@ -340,9 +340,10 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 > Deux voies, un seul format de Blueprint. Celle décrite ci-dessous — **piloter** le moteur Python à
 > distance — convient à une application de bureau ou à un service. Pour une application **mobile**,
 > la Phase 3 (en cours) livre la seconde : un **moteur embarqué** en TypeScript qui exécute les mêmes
-> Blueprints directement sur l'appareil, sans daemon ni serveur. L'Act I y tourne déjà
-> ([`@aetherius/engine`](sdks/engine), jalon 3-C). Voir [docs/embedded.md](docs/embedded.md) et
-> [docs/phase-3/](docs/phase-3/README.md).
+> Blueprints directement sur l'appareil, sans daemon ni serveur. L'Act I y tourne
+> ([`@aetherius/engine`](sdks/engine), jalon 3-C) et l'Act II aussi, dans une WebView cachée
+> ([`@aetherius/react-native`](sdks/react-native), jalon 3-D). Voir
+> [docs/embedded.md](docs/embedded.md) et [docs/phase-3/](docs/phase-3/README.md).
 
 ```
 ┌─────────────┐   Blueprint + inputs + secrets    ┌──────────────────────────┐
@@ -715,8 +716,11 @@ mobiles, où héberger un daemon signifierait faire sortir toutes les requêtes 
 construire une infrastructure de proxies pour compenser) et faire transiter les identifiants de
 l'utilisateur par une machine tierce. Périmètre : **Acts I et II uniquement**, le flux, et `confirm`.
 Le socle est posé (jalon 3-A) — on charge, valide et refuse un Blueprint côté TypeScript, et des
-gardes empêchent les moteurs de diverger —, les deux mini-langages sont là (jalon 3-B) et, depuis le
-jalon 3-C, **un Blueprint `vector` s'exécute réellement sur l'appareil**. Référence d'usage :
+gardes empêchent les moteurs de diverger —, les deux mini-langages sont là (jalon 3-B), un Blueprint
+`vector` s'exécute réellement sur l'appareil (jalon 3-C), depuis le jalon 3-D **un Blueprint
+`continuum` aussi**, dans une WebView cachée pilotée par un agent injecté, et depuis le jalon 3-E une
+application le consomme par une **façade** : secrets par le trousseau de l'OS, `confirm` en modal
+natif, annulation, et un modèle d'erreur exploitable. Référence d'usage :
 [docs/embedded.md](docs/embedded.md).
 
 - [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
@@ -781,11 +785,57 @@ jalon 3-C, **un Blueprint `vector` s'exécute réellement sur l'appareil**. Réf
   témoin `device-ip-check` dans [`examples/mobile/`](examples/mobile/README.md) : la même requête
   rend une IP depuis le poste de dev et une autre depuis le téléphone.
   [docs/embedded.md](docs/embedded.md), [docs/phase-3/3-c-vector.md](docs/phase-3/3-c-vector.md).
-- [ ] **3-D** — **Act II (Continuum)** sur WebView : agent JavaScript injecté, RPC corrélée, locators,
-  auto-attente, extraction DOM, sessions. Remplace les WebView cachées écrites à la main.
+- [x] **3-D** — **Act II (Continuum) sur WebView** : un Blueprint `continuum` tourne **sur
+  l'appareil**. C'est le jalon qui remplace les WebView cachées écrites à la main — 323 lignes de
+  JavaScript injecté sous forme de gabarits de chaîne, non typé, invérifiable par le compilateur,
+  avec le même motif d'attente recopié par script et un mot de passe interpolé entre apostrophes.
+  Le vrai livrable n'est pas « du JavaScript qu'on injecte » mais un **protocole** : vocabulaire
+  d'opérations fermé, paramètres **encodés en JSON**, réponses corrélées par identifiant, délais
+  tenus par l'appelant. **Aucun paramètre n'entre jamais dans la source d'un script** — un test le
+  prouve avec une valeur contenant guillemets, apostrophes, backticks et `</script>`, en vérifiant
+  que la source injectée reste un gabarit constant ; `evaluate` est l'unique exception, isolée dans
+  son fichier parce que son `script` *est* du code par contrat (son `arg`, lui, reste du JSON).
+  **L'auto-attente est écrite une fois** (tenter, observer mutations *et* sondage, échouer
+  explicitement à l'échéance) là où les WebView artisanales la recopient par script ; le **mode
+  strict** de Playwright est reproduit avec son asymétrie (agir refuse l'ambiguïté, attendre et lire
+  prennent la première correspondance), et le vocabulaire `as:` à la lettre — un écart y produirait
+  une donnée fausse, pas une panne. Le **cycle de vie de navigation** repose sur un état explicite :
+  prêt = l'agent s'est annoncé sur la génération courante ; une réponse d'un document remplacé est
+  jetée, un clic qui a causé la navigation réussit, une lecture qui a perdu sa page échoue.
+  Capacités non portables refusées **avant** le run (`upload`, `drag`, `screenshot`), et le cas
+  subtil du `status` de `navigate` : la clé n'est pas publiée, donc la lire **lève** au lieu de
+  rendre une donnée fausse. Sessions (`persist` → magasin de la plateforme ou vue incognito) et
+  **mode debug qui rend la WebView visible**. Le corpus de conformance gagne le champ `requires` et
+  un **troisième exécuteur** ; l'agent est en outre joué dans un **vrai Chromium** et comparé à
+  Playwright sur la même page. Exemple zéro config :
+  [`examples/mobile/webview-quotes.blueprint.json`](examples/mobile/webview-quotes.blueprint.json).
+  [docs/embedded.md](docs/embedded.md#act-ii--continuum-sur-webview),
   [docs/phase-3/3-d-continuum.md](docs/phase-3/3-d-continuum.md).
-- [ ] **3-E** — Intégration applicative : façade `Aetherius`, secrets par le trousseau de l'OS,
-  événements pour l'UI, `confirm` en modal natif, modèle d'erreur exploitable.
+- [x] **3-E** — **Intégration applicative** : ce que l'application voit du moteur. Une **façade**
+  `Aetherius` qui se lit exactement comme le SDK daemon — `client.run(blueprint, { inputs, secrets,
+  onEvent })` —, parce que le choix d'embarquer un moteur ou de piloter un daemon ne doit pas se
+  voir dans le code appelant. Les **secrets** viennent d'un magasin **injecté** (le trousseau de
+  l'OS par défaut, `expo-secure-store` ou un autre : le paquet décrit structurellement ce dont il a
+  besoin plutôt que d'imposer une dépendance), seuls les noms **déclarés** sont demandés, une valeur
+  passée à l'appel gagne — et les valeurs résolues sont **masquées** sur le chemin de sortie, parce
+  qu'un `assert` rend son message et qu'une URL en échec peut porter un secret ; la limite est écrite
+  (le masquage se fait par valeur). **`confirm` en modal natif** : là où le moteur Python a eu besoin
+  de quatre surfaces pour poser une question à un humain, un téléphone n'en a qu'une — sémantique 2-E
+  reprise à la lettre, délai obligatoire, **refus par défaut** (une application en arrière-plan ne
+  répondra jamais, le comportement sûr doit être celui qui arrive tout seul), échéance comparée en
+  **heure murale** pour qu'un tap tardif soit ignoré malgré les minuteurs gelés par iOS.
+  L'**annulation** est traitée comme un besoin, pas un raffinement : sans elle une WebView cachée
+  survit à l'écran qui l'a demandée ; un run annulé est un run `failed` dont la `cause` le dit, et
+  une seule WebView veut dire **un seul run Act II à la fois** — le second est refusé bruyamment, pas
+  mis en file. Enfin le **modèle d'erreur**, le point le plus structurant : `describeFailure` traduit
+  la hiérarchie typée en huit familles d'écran, de sorte qu'**une source en panne et une réponse vide
+  cessent d'être indiscernables** — le défaut classique des couches de service mobiles. Deux défauts
+  du jalon 3-D trouvés par les sondes et corrigés : l'auto-attente ne s'appliquait pas à une cible
+  **absente** (un `click` échouait en 6 ms au lieu d'attendre, là où Playwright attend), et un
+  sélecteur périmé se présentait comme un bug du moteur — **des deux côtés**, le moteur Python
+  laissant même échapper la temporisation Playwright en `RunError`. Exemple zéro configuration :
+  [`examples/mobile/quotes-login-confirm.blueprint.json`](examples/mobile/quotes-login-confirm.blueprint.json).
+  [docs/embedded.md](docs/embedded.md#la-surface-applicative),
   [docs/phase-3/3-e-integration.md](docs/phase-3/3-e-integration.md).
 - [ ] **3-F** — Livraison des Blueprints : socle embarqué + surcouche distante avec cache, intégrité,
   repli et interrupteur d'arrêt — corriger un site cassé sans republier sur les stores.

@@ -118,7 +118,7 @@ exécutable.
 | 3-C | [3-c-vector.md](3-c-vector.md) | 3-B | Runtime asynchrone (moteur de run, exécuteur de steps, garde `when`, actions de flux) et **Act I — Vector** sur `fetch`. Premier Blueprint qui tourne réellement sur un téléphone. |
 | 3-D | [3-d-continuum.md](3-d-continuum.md) | 3-C | **Act II — Continuum** sur WebView : agent injecté, RPC corrélée, locators, auto-attente, extraction DOM, `wait_for` avec `fail:CODE`, sessions et cookies, mode debug. Le jalon le plus volumineux. **Livré.** |
 | 3-E | [3-e-integration.md](3-e-integration.md) | 3-D | La surface applicative : façade `Aetherius`, `SecretResolver` sur le trousseau, hygiène des secrets, flux d'événements pour l'UI, action `confirm` en modal natif, annulation, et un modèle d'erreur qui distingue enfin « source en panne » de « réponse vide ». **Livré.** |
-| 3-F | [3-f-delivery.md](3-f-delivery.md) | 3-E | **Livraison des Blueprints** : socle embarqué dans le binaire, surcouche distante avec cache, contrôle d'intégrité, repli et interrupteur d'arrêt. Corriger un site cassé sans publier sur les stores — le vrai gain produit. |
+| 3-F | [3-f-delivery.md](3-f-delivery.md) | 3-E | **Livraison des Blueprints** : socle embarqué dans le binaire, surcouche distante avec cache, contrôle d'intégrité, repli et interrupteur d'arrêt. Corriger un site cassé sans publier sur les stores — le vrai gain produit. **Livré.** |
 | 3-G | [3-g-reference.md](3-g-reference.md) | 3-F | Blueprints de référence exécutables sous `examples/mobile/` (API publiques et un parcours SSO complet) et **guide de migration** : comment un service HTTP et une WebView cachée deviennent des Blueprints. |
 
 **Ordre recommandé :** strictement séquentiel, de 3-A à 3-G — chaque jalon consomme le précédent.
@@ -142,10 +142,13 @@ Deux adaptations pour un jalon TypeScript :
 
 > **Note de portée.** Comme en Phase 2, tout ce qui toucherait la table des `capabilities`, les
 > contrats (`contracts/*.json|yaml`), l'enum `EventType` ou le dispatch d'un driver est **différé au
-> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les jalons **3-A à 3-E sont
+> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les jalons **3-A à 3-F sont
 > livrés** : `contracts/actions.json` existe (généré depuis le registre Python et gardé), les deux
-> mini-langages sont là, les Blueprints `vector` **et** `continuum` **s'exécutent** sur l'appareil, et
-> une application les consomme par une **façade** (secrets, `confirm`, annulation, modèle d'erreur).
+> mini-langages sont là, les Blueprints `vector` **et** `continuum` **s'exécutent** sur l'appareil,
+> une application les consomme par une **façade** (secrets, `confirm`, annulation, modèle d'erreur),
+> et ils ne sont plus figés dans le binaire — un **registre** les résout entre un socle embarqué et
+> une surcouche distante vérifiée. Le jalon 3-F définit d'ailleurs le seul **nouveau** contrat de la
+> phase, et il est *applicatif* (le format du manifeste) : `contracts/` reste intact.
 > Le corpus de conformance vit sous [`conformance/`](../../conformance/README.md) et
 > `make conformance` rejoue les deux moteurs — depuis 3-C sur des **runs entiers**, pas seulement des
 > verdicts, et depuis 3-D sur des runs **navigateur** (un cas déclare alors `requires: "browser"`,

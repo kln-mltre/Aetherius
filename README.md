@@ -342,7 +342,8 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 > la Phase 3 (en cours) livre la seconde : un **moteur embarqué** en TypeScript qui exécute les mêmes
 > Blueprints directement sur l'appareil, sans daemon ni serveur. L'Act I y tourne
 > ([`@aetherius/engine`](sdks/engine), jalon 3-C) et l'Act II aussi, dans une WebView cachée
-> ([`@aetherius/react-native`](sdks/react-native), jalon 3-D). Voir
+> ([`@aetherius/react-native`](sdks/react-native), jalon 3-D) ; depuis le jalon 3-F, ces Blueprints se
+> **corrigent à distance** sans republier l'application. Voir
 > [docs/embedded.md](docs/embedded.md) et [docs/phase-3/](docs/phase-3/README.md).
 
 ```
@@ -427,7 +428,8 @@ deploy/        recette always-on : Dockerfile, docker-compose.yml, service syste
 sdks/          workspace npm + python
   client/        @aetherius/client — pilote le daemon depuis TypeScript
   engine/        @aetherius/engine — moteur embarqué, neutre plateforme (Phase 3)
-  react-native/  @aetherius/react-native — Act II sur WebView + façade mobile (Phase 3)
+  react-native/  @aetherius/react-native — Act II sur WebView + façade mobile + livraison
+                 des Blueprints (registre, manifeste, cache) (Phase 3)
 examples/      Blueprints de démonstration (par Act + plugins/ + mobile/ : moteur embarqué et
                son application de démonstration)
 training/      entraînement des modèles Oracle (hors runtime)
@@ -718,9 +720,11 @@ l'utilisateur par une machine tierce. Périmètre : **Acts I et II uniquement**,
 Le socle est posé (jalon 3-A) — on charge, valide et refuse un Blueprint côté TypeScript, et des
 gardes empêchent les moteurs de diverger —, les deux mini-langages sont là (jalon 3-B), un Blueprint
 `vector` s'exécute réellement sur l'appareil (jalon 3-C), depuis le jalon 3-D **un Blueprint
-`continuum` aussi**, dans une WebView cachée pilotée par un agent injecté, et depuis le jalon 3-E une
-application le consomme par une **façade** : secrets par le trousseau de l'OS, `confirm` en modal
-natif, annulation, et un modèle d'erreur exploitable. Référence d'usage :
+`continuum` aussi**, dans une WebView cachée pilotée par un agent injecté, depuis le jalon 3-E une
+application le consomme par une **façade** (secrets par le trousseau de l'OS, `confirm` en modal
+natif, annulation, modèle d'erreur exploitable), et depuis le jalon 3-F il n'est plus figé dans le
+binaire : un **registre** le résout entre un socle embarqué et une surcouche distante vérifiée, donc
+**un site qui change se répare sans republier sur les stores**. Référence d'usage :
 [docs/embedded.md](docs/embedded.md).
 
 - [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
@@ -837,8 +841,27 @@ natif, annulation, et un modèle d'erreur exploitable. Référence d'usage :
   [`examples/mobile/quotes-login-confirm.blueprint.json`](examples/mobile/quotes-login-confirm.blueprint.json).
   [docs/embedded.md](docs/embedded.md#la-surface-applicative),
   [docs/phase-3/3-e-integration.md](docs/phase-3/3-e-integration.md).
-- [ ] **3-F** — Livraison des Blueprints : socle embarqué + surcouche distante avec cache, intégrité,
-  repli et interrupteur d'arrêt — corriger un site cassé sans republier sur les stores.
+- [x] **3-F** — **Livraison des Blueprints** : le gain produit de la phase. Un Blueprint figé dans le
+  binaire n'est qu'un fichier de configuration — le corriger demande une publication sur les stores.
+  Un **registre** le résout désormais entre un **socle embarqué** (jamais optionnel : une application
+  doit tourner au premier lancement, hors ligne, sans avoir jamais contacté le réseau) et une
+  **surcouche distante** décrite par un **manifeste** — le seul nouveau contrat de la phase, et il
+  est *applicatif* : `contracts/` reste intact. La résolution **ne touche jamais au réseau** (un run
+  n'attend pas un CDN pour savoir quoi jouer) et `refresh()` **ne lève jamais** : elle rend un
+  rapport, parce qu'un CDN en panne ne doit pas devenir une application en panne. Le distant ne gagne
+  que s'il est **plus récent, entier et valide** : empreinte SHA-256 rejouée **à chaque lecture** (un
+  cache local n'est pas plus digne de confiance qu'un CDN), validation complète avant toute mise en
+  cache, `min_engine` pour qu'un Blueprint écrit pour un moteur plus récent soit ignoré sans erreur
+  visible, et surtout un **périmètre de secrets borné par l'application** — sans lui, un Blueprint
+  distant compromis réclamerait le trousseau et l'exfiltrerait par une simple requête. La troisième
+  garde n'a rien coûté : depuis 3-B l'évaluateur n'exécute pas de code dynamique et n'expose aucune
+  fonction native, ce qui est précisément ce qui rend ce jalon défendable. **Interrupteur d'arrêt**
+  des deux côtés (`disabled` au manifeste, `revert()` local) : un mécanisme de déploiement sans
+  retour arrière n'en est pas un. Le **modèle de menace est écrit, y compris ce qu'il ne couvre pas**
+  (un publieur compromis, la destination des requêtes). Exemple exécutable : un Blueprint embarqué
+  **volontairement cassé** et sa correction publiée
+  ([`examples/mobile/registry/`](examples/mobile/registry/)).
+  [docs/embedded.md](docs/embedded.md#la-livraison-des-blueprints),
   [docs/phase-3/3-f-delivery.md](docs/phase-3/3-f-delivery.md).
 - [ ] **3-G** — Blueprints de référence & guide de migration : un cas d'usage mobile réel décrit
   entièrement en Blueprints. [docs/phase-3/3-g-reference.md](docs/phase-3/3-g-reference.md).

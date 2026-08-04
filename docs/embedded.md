@@ -15,7 +15,10 @@ Le cadrage, les décisions d'architecture et les sept jalons sont dans
 > le second depuis le jalon 3-D (WebView cachée, agent JavaScript injecté, RPC corrélée,
 > auto-attente, extraction DOM, sessions). Depuis le jalon 3-E, une application les consomme par une
 > **façade** : secrets par le trousseau de l'OS, `confirm` en modal natif, annulation, et un modèle
-> d'erreur exploitable — voir [La surface applicative](#la-surface-applicative).
+> d'erreur exploitable — voir [La surface applicative](#la-surface-applicative). Depuis le jalon
+> 3-F, ces Blueprints ne sont plus figés dans le binaire : un **registre** les résout entre un socle
+> embarqué et une surcouche distante vérifiée, donc un site qui change se répare sans republier —
+> voir [La livraison des Blueprints](#la-livraison-des-blueprints).
 
 ## Les trois paquets
 
@@ -904,6 +907,220 @@ garé (jusqu'à cinq minutes) tenant l'unique vue derrière un délai inexpliqu�
 veut sérialiser le fait explicitement. **Les runs `vector` restent concurrents sans limite** : ils
 ne partagent rien.
 
+## La livraison des Blueprints
+
+Jalon 3-F, et le gain produit de la phase. Jusqu'ici un Blueprint arrivait par un `import` : il était
+**figé dans le binaire**, donc un site qui change cassait l'application jusqu'à une publication sur
+les stores — exactement le coût que la Phase 3 existe pour supprimer. Le registre le rend
+corrigeable en quelques minutes, pour tous les utilisateurs, sans rien republier.
+
+Ce qui est livré, ce sont le **client** et le **format**, pas une infrastructure : un dépôt de
+fichiers statiques derrière un CDN suffit, et c'est un motif déjà éprouvé pour du contenu éditorial
+d'application.
+
+```ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Aetherius, BlueprintRegistry } from "@aetherius/react-native";
+
+import planning from "./blueprints/planning.blueprint.json";   // le socle, dans le binaire
+
+const registry = new BlueprintRegistry({
+  bundled: { "ukit.planning.week": { version: "1", document: planning } },
+  manifest: "https://cdn.exemple.fr/aetherius/manifest.json",
+  cache: AsyncStorage,          // injecte : sa surface satisfait l'interface telle quelle
+});
+
+const { blueprint, origin } = await registry.resolve("ukit.planning.week");
+await client.run(blueprint, { inputs });
+
+void registry.refresh();        // asynchrone, hors du chemin critique
+```
+
+### Le socle embarqué n'est pas optionnel
+
+Une application doit fonctionner **au premier lancement, hors ligne**, sans avoir jamais contacté le
+réseau. Les Blueprints embarqués dans le binaire sont la source de vérité de départ ; le distant est
+une **surcouche**. Un registre purement distant transformerait une panne de CDN en application
+morte.
+
+Trois conséquences, et ce sont des règles, pas des détails :
+
+- **La résolution ne touche jamais au réseau.** `resolve()` lit le cache local, rien d'autre. Un run
+  n'attend pas un CDN pour savoir quoi jouer. `refresh()` est un geste **séparé**, que l'application
+  déclenche quand ça l'arrange (au démarrage, au retour au premier plan) et dont elle peut ignorer
+  le résultat.
+- **`refresh()` ne lève jamais** pour une panne réseau ou un manifeste malformé : elle rend un
+  rapport. Une livraison est un confort ; en faire une erreur visible rendrait une application
+  dépendante du CDN qu'elle était censée pouvoir ignorer.
+- **Le manifeste ne peut que *mettre à jour* ce que l'application livre déjà.** Un nom absent du
+  socle est ignoré. C'est ce qui garantit le repli hors ligne **pour chaque Blueprint**, et ce qui
+  empêche un manifeste compromis d'ajouter du comportement que personne n'a relu. Ajouter un
+  Blueprint reste une livraison d'application — ce qu'il faudrait de toute façon pour lui faire une
+  place à l'écran.
+
+### Le manifeste
+
+C'est le **contrat applicatif** que ce jalon définit — le seul contrat ajouté par la phase, et il
+n'a rien à voir avec ceux de `contracts/`, qui restent inchangés. Il est servi tel quel par un
+hébergement statique.
+
+```json
+{
+  "manifest": "1",
+  "generated_at": "2026-08-04T12:00:00Z",
+  "disabled": false,
+  "blueprints": {
+    "ukit.planning.week": {
+      "version": "2",
+      "url": "planning.v2.blueprint.json",
+      "sha256": "627fa03a4e5922323babc5bd5608d6d165069694c2bc571dc61a4d214f416538",
+      "min_engine": "0.4.0",
+      "disabled": false
+    }
+  }
+}
+```
+
+| Champ | Règle |
+|-------|-------|
+| `manifest` | version du **format**, pas des Blueprints. `"1"` aujourd'hui ; toute autre valeur fait **ignorer le manifeste entier**. C'est le mécanisme d'évolution : une vieille application ignore un manifeste écrit pour un moteur plus récent au lieu d'en lire la moitié de travers. |
+| `generated_at` | horodatage informatif. Il ne décide jamais de rien. |
+| `disabled` (racine) | **interrupteur d'arrêt global** : tout revient à l'embarqué. |
+| `blueprints` | table indexée par le `name` du Blueprint. Un nom que l'application n'embarque pas est ignoré. |
+| `version` | version **du Blueprint**, chaîne numérique pointée (`"2"`, `"1.4"`), ordonnée. Le distant ne gagne que s'il est **strictement supérieur** à la version embarquée. |
+| `url` | absolue, ou relative — résolue contre l'URL du manifeste. |
+| `sha256` | empreinte hexadécimale minuscule du **texte servi**. |
+| `min_engine` | optionnel. L'entrée est ignorée si le moteur installé est plus ancien. |
+| `disabled` (entrée) | interrupteur d'arrêt pour ce Blueprint. |
+
+Le parseur est **strict** : une clé inconnue, un type inattendu, une version non numérique ou une
+empreinte malformée font refuser le manifeste, et un manifeste refusé ne remplace rien. Ce n'est pas
+du purisme : une faute de frappe dans `disabled` ou dans `sha256` ne doit pas pouvoir **désactiver
+une garde en silence**.
+
+Le versionnage est volontairement plus pauvre que SemVer — ni pré-release, ni métadonnées : une
+comparaison qu'un publieur peut faire de tête vaut mieux qu'une grammaire dont il devine les coins.
+
+### L'ordre de résolution
+
+```
+cache distant valide et plus récent que l'embarqué  →  sinon l'embarqué
+```
+
+« Valide » veut dire : **toutes** les gardes ci-dessous, rejouées **à chaque lecture** — pas
+seulement au téléchargement. Vérifier à l'écriture seulement supposerait qu'un cache local est digne
+de confiance ; il ne l'est pas plus qu'un CDN, c'est un fichier sur un appareil. Une entrée qui
+échoue une garde est **purgée** au passage : un cache corrompu ou périmé se soigne tout seul au lieu
+d'être rejeté à chaque run pour l'éternité.
+
+Le manifeste décrit **l'état voulu** : une entrée qui en disparaît ramène son Blueprint à la version
+embarquée, au même titre qu'une entrée `disabled`. L'interprétation la plus sûre d'un manifeste
+partiel est ainsi toujours le socle.
+
+### Les trois gardes
+
+Un Blueprint est de la **donnée exécutable**, et il faut le traiter comme tel. Par ordre
+d'importance :
+
+1. **Intégrité.** L'empreinte SHA-256 du texte doit être celle qu'annonce le manifeste. Une réponse
+   tronquée, un fichier modifié après coup, un cache bricolé : tous échouent là, et **la version en
+   place n'est jamais remplacée par un échec**. Le condensat est écrit à la main
+   ([`sha256.ts`](../sdks/react-native/src/delivery/sha256.ts)) — même posture que le base64 de
+   `BasicAuth` : `crypto.subtle` n'existe pas sous Hermes, et les bibliothèques disponibles
+   marcheraient *la plupart du temps*, ce qui est la pire propriété possible pour une garde
+   d'intégrité. Il est comparé à `node:crypto` en test, coins compris.
+2. **Périmètre.** Un Blueprint distant ne peut pas élargir ce que l'application sait faire. Les
+   secrets qu'il a le droit de **déclarer** sont bornés par l'application (`allowedSecrets`), et par
+   défaut c'est l'union de ceux que déclare le socle embarqué — c'est-à-dire ce que l'application a
+   été construite pour fournir. Sans cette borne, un Blueprint distant compromis pourrait réclamer le
+   contenu du trousseau et l'exfiltrer par une simple requête. La façade ne résout déjà que les
+   secrets **déclarés** (jalon 3-E), ce qui borne ce qu'un Blueprint peut *lire* ; c'est ici qu'on
+   borne ce qu'il peut *déclarer*. Un fichier livré sous un `name` qui n'est pas le sien est refusé
+   pour la même raison : sinon le manifeste dirait une chose et l'appareil en jouerait une autre.
+3. **Sûreté d'exécution.** Elle est acquise **par construction depuis le jalon 3-B** : l'évaluateur
+   d'expressions n'exécute pas de code dynamique et n'expose ni fonctions natives, ni prototypes, ni
+   globales — il n'y a donc aucune liste blanche à maintenir. C'est ce qui rend ce jalon défendable,
+   et c'est écrit ici pour qu'on n'« optimise » pas un jour l'évaluateur en réintroduisant une
+   compilation dynamique. La garde `no-dynamic-code` la tient à chaque exécution des tests.
+
+Et, avant tout cela, la **validation complète** : un Blueprint distant passe par `parseBlueprint` +
+`validateForAct`, exactement comme un fichier local. Un document invalide au schéma ou non portable
+sur ce moteur (`upload`, `screenshot`, act `oracle`…) est refusé **avant** d'atteindre le cache,
+donc il n'atteint jamais un run.
+
+### Le modèle de menace, et ce qu'il ne couvre pas
+
+Écrire ce qui est protégé sans écrire ce qui ne l'est pas donnerait une fausse assurance.
+
+| Menace | Traitement |
+|--------|-----------|
+| Altération en transit, réponse tronquée, CDN qui sert un vieux fichier | **couverte** — l'empreinte du manifeste, revérifiée à chaque lecture |
+| Manifeste malformé, format inconnu, entrée bricolée | **couverte** — parseur strict, refus global, rien n'est remplacé |
+| Cache corrompu ou modifié sur l'appareil | **couverte** — l'entrée est rejetée et purgée, l'application retombe sur son socle |
+| Blueprint distant réclamant un secret que l'application ne lui a pas ouvert | **couverte** — périmètre des secrets |
+| Blueprint distant utilisant une capacité que ce moteur n'a pas | **couverte** — validation par act, avant le cache |
+| Blueprint écrit pour un moteur plus récent | **couverte** — `min_engine`, l'entrée est ignorée sans erreur visible |
+| Exécution de code arbitraire par une expression | **couverte par construction** — jalon 3-B |
+| **Publieur compromis** (clé du dépôt, du CDN, du compte) | **non couverte.** Un manifeste signé par le bon publieur est cru. Un attaquant qui contrôle la publication peut livrer un Blueprint qui envoie **les secrets autorisés** où il veut. Le périmètre limite le rayon de l'incendie (les secrets que l'application a déjà ouverts à ce Blueprint), il ne l'éteint pas. |
+| Confidentialité et authenticité du transport | **déléguées à TLS.** Il n'y a pas de signature d'auteur : ce serait la réponse à la ligne précédente, et elle demanderait une gestion de clés qu'un dépôt de fichiers statiques ne fournit pas. Servir le manifeste en HTTPS n'est donc pas un détail de configuration. |
+| Destination des requêtes d'un Blueprint distant | **non bornée.** Une URL de Blueprint peut être un gabarit (`{{ vars.domain }}/…`), donc une liste blanche d'hôtes vérifiée statiquement serait contournable — et une vérification à l'exécution ferait échouer des Blueprints corrects. Mieux vaut une limite écrite qu'une garde qui rassure sans mordre. |
+
+### L'interrupteur d'arrêt
+
+Un mécanisme de déploiement sans mécanisme de retour arrière n'en est pas un. Il y en a donc trois,
+selon l'urgence et selon qui décide :
+
+| Geste | Qui | Effet |
+|-------|-----|-------|
+| `disabled: true` sur une entrée, ou à la racine, ou entrée retirée du manifeste | le publieur | l'embarqué reprend la main **au prochain rafraîchissement** |
+| `registry.revert(name?)` | l'application | purge la surcouche **tout de suite**, sans réseau ; effectif au run suivant. Un `refresh()` ultérieur peut ramener une version distante |
+| `remote: false` à la construction | l'application | la surcouche est ignorée durablement, sans être détruite : rallumer la livraison la retrouve, hors ligne |
+
+### Le cache
+
+Le magasin est **injecté**, jamais importé — même posture que le trousseau et que `fetch`. La
+surface décrite (`getItem`/`setItem`/`removeItem`) est celle d'AsyncStorage, qu'une application
+branche donc **sans adaptateur** ; un magasin de fichiers s'y branche en dix lignes, et
+`memoryCache()` sert les tests et les applications qui ne veulent rien persister.
+
+Tout tient dans un **document unique**, sous une seule clé. Le coût est connu et assumé : un document
+illisible fait perdre la surcouche **entière**, et l'application retombe sur son socle. C'est le sens
+du repli, et c'est préférable à un index et des entrées qui peuvent se contredire — un cache à moitié
+cohérent serait un état qu'aucun test ne couvre vraiment. Un magasin qui **échoue** (verrouillé,
+plein) est traité comme un magasin absent : la correction vaut alors pour le processus en cours, et
+rien n'explose.
+
+### Publier une correction
+
+Deux gestes, et le second n'est pas optionnel :
+
+```bash
+# 1. corriger le Blueprint, le deposer a cote du manifeste
+# 2. republier le manifeste, empreintes recalculees
+node examples/mobile/registry/build-manifest.mjs
+```
+
+### Le cache HTTP de la plateforme est contourné
+
+Le client ajoute un paramètre d'unicité à chaque requête (`?_aeth=…`) et envoie `Cache-Control:
+no-cache`. Ce n'est pas de la superstition : `fetch` passe par **`NSURLCache` sur iOS** et par le
+**cache OkHttp sur Android**, tous deux indexés par URL, et un hébergement statique qui ne renvoie
+qu'un `Last-Modified` — `python3 -m http.server`, un dépôt brut — leur laisse le droit d'inventer une
+**fraîcheur heuristique**. Le manifeste est le **plan de contrôle** de la livraison : une réponse
+servie depuis un cache, c'est un interrupteur d'arrêt qui n'arrête rien et une correction qui
+n'arrive pas, pendant une durée que personne ne contrôle.
+
+Le défaut a été trouvé **sur un appareil** (voir [plus bas](#la-livraison-sur-appareil)), et son
+symptôme ne ressemblait pas à sa cause : serveur coupé, l'application répondait « manifeste lu ».
+
+Le prix est connu et assumé : chaque rafraîchissement traverse le cache de bord d'un CDN. Pour un
+document de quelques centaines d'octets dont dépend un retour arrière, c'est le bon échange.
+
+L'empreinte se calcule avec un script parce qu'une empreinte écrite à la main est périmée dès la
+première correction — et un manifeste dont l'empreinte ment est exactement ce que l'appareil rejette.
+On passerait la soirée à déboguer une garde qui fonctionne. Un test rejoue ce calcul sur le manifeste
+d'exemple livré : un manifeste périmé dans le dépôt se voit en CI.
+
 ## Les événements
 
 Le moteur émet exactement les types de `contracts/events.schema.json`, pour qu'une même UI consomme
@@ -931,9 +1148,17 @@ const { running, events, result, failure, run, cancel } = useAetheriusRun(client
 
 - **JSON seulement, pas de YAML.** Le moteur Python lit les deux ; embarquer un parseur YAML pour
   lire des fichiers que l'outillage écrit toujours en JSON serait un mauvais échange.
-- **Pas de système de fichiers.** `parseBlueprint` prend du texte, pas un chemin : la livraison des
-  Blueprints (ressource embarquée, téléchargement, cache) appartient à l'application, et fait
-  l'objet du jalon 3-F.
+- **Pas de système de fichiers.** `parseBlueprint` prend du texte, pas un chemin. La livraison
+  (ressource embarquée, téléchargement, cache) passe par le registre du jalon 3-F, dont le magasin
+  est lui aussi **injecté** : le moteur ne connaît aucun chemin.
+- **La livraison ne peut que mettre à jour des Blueprints déjà embarqués.** Un nom absent du socle
+  est ignoré par le manifeste. C'est ce qui garantit le premier lancement hors ligne pour chaque
+  Blueprint ; ajouter une tâche reste une livraison d'application.
+- **Un publieur compromis n'est pas couvert.** Il n'y a pas de signature d'auteur : l'intégrité
+  protège le transport et le stockage, pas la source. Voir
+  [le modèle de menace](#le-modèle-de-menace-et-ce-quil-ne-couvre-pas).
+- **Le cache est un document unique.** Illisible, c'est la surcouche **entière** qui est perdue, et
+  l'application repart sur son socle embarqué.
 - **Pas de plugins.** Une action de plugin est acceptée par le moteur Python sur tous les Acts ;
   côté embarqué elle est refusée comme action inconnue.
 - **Les options hors périmètre sont ignorées, pas refusées.** `options.proxy`, `options.stealth` et
@@ -1031,6 +1256,11 @@ exécuteurs se recouvrent au lieu de se partager le corpus : aucun cas ne peut t
 parce que quelqu'un l'aurait mal étiqueté, et chacun échoue si les cas `requires: browser`
 disparaissent.
 
+La **livraison** (jalon 3-F) n'a, elle, aucun cas de conformance, et c'est délibéré : le moteur
+Python n'a pas de couche de livraison — il lit des fichiers sur une machine —, il n'y a donc aucun
+« même Blueprint, deux moteurs » à figer. Ce qu'elle a, ce sont ses tests miroir
+(`sdks/react-native/test/delivery*.test.js`) et une garde sur le manifeste d'exemple livré.
+
 L'agent injecté est en outre joué dans un **vrai Chromium** piloté depuis les tests Python
 (`tests/integration/test_webview_agent.py`, marker `browser`) : la même page est lue deux fois, une
 fois par l'agent qui part sur le téléphone, une fois par Playwright, et les réponses doivent
@@ -1074,6 +1304,14 @@ moyen de vérifier que les gardes mordent toujours.
 | Rendre le silence de la page en `ActionError` au lieu du code nommé | `npm test` (react-native) : « a page that never answers produces the failure the Blueprint named » — un login refusé redevient « erreur interne ». |
 | Détruire la vue à la fin d'un run `persist: true` | `npm test` (react-native) : « a persistent session keeps its view » — la session ne franchit plus la frontière du run. |
 | Exiger l'agent pour décider qu'un `navigate` est un rechargement | `npm test` (react-native) : « a kept view is reloaded, not handed the URL it already shows » — le second run d'une session persistante attend un document qui ne vient jamais. |
+| Ne vérifier l'empreinte d'un Blueprint livré qu'au téléchargement, pas à la lecture du cache | `npm test` (react-native) : « a cached entry tampered with after the fact is dropped when it is read ». |
+| Laisser un refus (empreinte, schéma, périmètre) effacer la version distante en place | `npm test` (react-native) : les six cas de `delivery-guards` — le repli devient une régression. |
+| Accepter dans le manifeste un nom que l'application n'embarque pas | `npm test` (react-native) : « a manifest entry the application does not bundle is ignored » — et le premier lancement hors ligne cesse d'être garanti. |
+| Rendre le parseur de manifeste tolérant aux clés inconnues | `npm test` (react-native) : « the parser is strict… » — une faute de frappe dans `disabled` désactiverait l'interrupteur d'arrêt en silence. |
+| Faire attendre le réseau à `resolve()` (rafraîchir « au passage ») | `npm test` (react-native) : « resolving never reaches the network » — un run dépendrait d'un CDN. |
+| Publier un Blueprint corrigé sans rejouer `build-manifest.mjs` | `npm test` (react-native) : « the example manifest is real » — l'empreinte committée ne correspond plus au fichier. |
+| Laisser `ENGINE_VERSION` diverger de `package.json` | `npm test` (engine) : « the engine announces its own package version » — `min_engine` cesserait de vouloir dire quelque chose. |
+| Retirer le contournement du cache HTTP d'une requête de livraison | `npm test` (react-native) : « every delivery request defeats the platform HTTP cache » — sur un appareil, l'interrupteur d'arrêt cesse d'arrêter quoi que ce soit. |
 
 Le harnais lui-même est testé (`tests/conformance/test_harness.py`) : un exécuteur qui rapporterait
 tous les cas comme passants transformerait une suite verte en affirmation fausse.
@@ -1228,6 +1466,33 @@ une mauvaise étiquette, il a révélé que **les deux moteurs ne tombaient pas 
 d'issue** pour le cas le plus banal. Un tableau de classification est une garde comme une autre : il
 force à répondre, pour chaque erreur, à la question « quel écran ? », et une erreur sans réponse
 raisonnable est une erreur mal typée.
+
+### Sondes du jalon 3-F
+
+Le jalon livre une **chaîne de confiance**, pas une fonctionnalité isolée : les sondes ne jouent donc
+pas un Blueprint, elles jouent un **parcours de publication** — un vrai serveur statique
+(`python3 -m http.server` sur `examples/mobile/registry/`), les vrais fichiers du dépôt, la vraie
+source (`quotes.toscrape.com`), et la façade `Aetherius` pour exécuter ce que le registre a résolu.
+
+| Sonde | Résultat |
+|-------|----------|
+| Le socle embarqué, le jour où le site change | `failed`, `kind: "rejected"` — « Expected HTTP 200, got 404 ». Un échec **propre et nommé**, pas une donnée vide |
+| La correction publiée à distance | `refresh` → `updated v2`, puis run `success` : la citation d'Einstein, `livree_par: "le manifeste distant (v2)"`. **L'application s'est réparée sans être republiée** |
+| Le cache survit au processus | registre neuf, **sans réseau** : v2 encore là, run `success` |
+| **Conçue pour échouer** : un octet altéré sans régénérer le manifeste | `rejected` — « integrity check failed (expected 627fa03a4e59, got ae3d9d8ac3bd) », et c'est l'embarqué qui tourne |
+| **Conçue pour échouer** : cache corrompu | surcouche perdue, run sur l'embarqué, aucune exception |
+| Version croisée (`min_engine` > moteur installé) | `ignored` — « needs engine 0.4.0, this one is 0.1.0 », sans erreur visible |
+| Interrupteur d'arrêt local (`revert()`) | retour à l'embarqué au run suivant, sans réseau |
+| **Parité** : `aetherius run` sur les deux fichiers | le moteur Python rend **les mêmes sorties** pour la v2 et **le même échec** pour la v1 |
+
+L'exfiltration, elle, est éprouvée **en test** plutôt qu'en sonde, parce qu'elle demande d'observer
+ce qui n'arrive pas : un manifeste hostile publie un Blueprint qui réclame `cas_pass` et le poste sur
+un serveur local ; le registre le refuse, la façade joue l'embarqué, et le serveur de l'attaquant ne
+reçoit **rien**.
+
+Ces sondes-là n'ont trouvé aucun défaut, et c'est cohérent avec la nature du jalon : tout s'y décide
+sur des octets et des empreintes. Ce qui dépendait d'une plateforme, en revanche, n'a été visible que
+sur un téléphone — la campagne sur appareil, elle, a trouvé un défaut structurant (ci-dessous).
 
 ### Sur appareil
 
@@ -1397,3 +1662,49 @@ aucun chargement, et le run attendait un document qui ne venait jamais.
 
 L'application de démonstration marque chaque carte `vérifié` / `partiel` / `à faire` / `bloqué`, et
 la note dit ce qui a déjà été vu — précisément pour qu'on ne s'y perde pas d'une passe à l'autre.
+
+#### La livraison, sur appareil
+
+Le jalon 3-F ajoute une carte **Livraison** et son panneau : l'origine du Blueprint (embarqué ou
+distant, avec sa version), une URL de manifeste éditable, **Rafraîchir** et **Revenir à l'embarqué**.
+Ce qui ne se vérifie que là : que la correction franchit vraiment la frontière du binaire, et qu'elle
+**survit à un redémarrage de l'application** — le cache est un magasin de plateforme, pas une
+variable.
+
+La procédure complète (servir le manifeste, publier une correction, la voir prise en compte,
+déclencher l'interrupteur d'arrêt) est dans
+[`examples/mobile/README.md`](../examples/mobile/README.md#la-livraison-des-blueprints).
+
+**Campagne sur iPhone** (iOS, Expo Go SDK 54, téléphone en 5G, poste sur le partage de connexion du
+téléphone, manifeste servi par `python3 -m http.server`). Elle a demandé **deux passes**, la première
+ayant trouvé le défaut ci-dessous ; les deux ensemble couvrent le parcours entier.
+
+| Parcours | Observé |
+|----------|---------|
+| Le socle embarqué, cassé | **« Réponse inattendue »** avec le 404 nommé, `embarque · v1` — pas un résultat vide |
+| Rafraîchir puis rejouer | `manifeste lu`, `updated v2`, `distant · v2`, run **`success`** : la citation d'Einstein et `livree_par: "le manifeste distant (v2)"`. **L'application s'est réparée sans être republiée** |
+| Tuer l'application, relancer, rejouer **sans rafraîchir** | `distant · v2` dès l'ouverture du panneau, run `success` : le cache a franchi la frontière du processus |
+| Revenir à l'embarqué | `embarque · v1` immédiatement, sans réseau, et le run suivant recasse |
+| **CDN coupé** (serveur arrêté), Rafraîchir puis rejouer | `manifeste non lu : Network request failed`, panneau toujours `distant · v2`, run **`success`** — une panne de CDN n'est pas une panne d'application |
+| **Mode avion** | `manifeste non lu` ; la résolution rend toujours `distant · v2` **sans réseau** ; et le run échoue en **« Service indisponible »** (`Transport error`), parce que la source aussi est injoignable — deux échecs distincts, correctement nommés |
+| **Fichier altéré sans régénérer le manifeste** | `rejected · integrity check failed (expected 627fa03a4e59, got ee574e7394af)`, panneau resté `embarque · v1`. Le serveur a bien vu passer **les deux** requêtes (`GET /manifest.json?_aeth=…`, `GET /delivery-quotes.v2.blueprint.json?_aeth=…`) : le fichier est arrivé, c'est la garde qui l'a refusé |
+| **Publier une vraie correction** (éditer + `build-manifest.mjs`) | `updated v2`, run `success` avec `livree_par: "corrige en direct depuis le poste"` |
+| **Interrupteur d'arrêt distant** (`"disabled": true`) | `ignored · disabled by the manifest`, retour à `embarque · v1`, et le run suivant recasse |
+
+Les traces du serveur valent d'être lues : le paramètre `?_aeth=…` y est visible sur **chaque**
+requête, ce qui vérifie sur l'appareil le correctif ci-dessous — et pas seulement en test.
+
+Un défaut trouvé, et il ne pouvait l'être qu'ici :
+
+| Trouvé | Correction |
+|--------|-----------|
+| **La plateforme servait le manifeste depuis son propre cache HTTP.** Serveur statique coupé, l'application répondait quand même « manifeste lu » ; en mode avion, aucune erreur ; et un fichier modifié n'était jamais retéléchargé — le serveur ne voyait plus passer la moindre requête. `fetch` passe par `NSURLCache` (iOS) et par le cache OkHttp (Android), et un hôte qui ne renvoie qu'un `Last-Modified` les autorise à inventer une **fraîcheur heuristique**. Conséquence réelle : **un interrupteur d'arrêt qui n'arrête rien** pendant plusieurs minutes, et une correction qui n'arrive pas. Sous Node, `fetch` n'a pas de cache — aucun test hors appareil ne pouvait le produire. | Toute requête de livraison **contourne le cache de la plateforme** : paramètre d'unicité (`?_aeth=…`) et en-têtes `Cache-Control: no-cache` / `Pragma`. Les en-têtes seules ne suffisaient pas, ces caches étant indexés par URL. Gardé par un test qui vérifie que deux rafraîchissements ne demandent jamais la même URL. |
+
+**Rien ne reste à observer.** Les neuf parcours ont été joués, correctif compris — c'est la seconde
+passe qui valide ce dernier là où il s'était manifesté, et non en test.
+
+Une leçon de méthode, la même qu'aux jalons 3-D et 3-E : le symptôme ne ressemblait pas à sa cause.
+« Le serveur est coupé mais l'application dit *manifeste lu* » se lisait comme un bug du rapport ; ce
+qui a désigné le vrai coupable, c'est le **journal du serveur statique** — il ne recevait plus rien.
+Un banc de vérification doit donc montrer les deux bouts : ce que l'application affiche, et ce que la
+source a réellement vu passer.

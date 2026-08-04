@@ -34,7 +34,11 @@ sur un appareil mobile, là où le daemon ne convient pas (les requêtes doivent
 l'utilisateur, et ses identifiants ne doivent pas transiter par une machine tierce).
 
 Ce moteur couvre les **Acts I et II** ; les Acts cognitifs, la planification et l'outillage restent
-l'apanage du moteur Python. Trois gardes, en place depuis le jalon 3-A, empêchent la dérive :
+l'apanage du moteur Python. Les Blueprints qu'il joue ne sont pas figés dans le binaire de
+l'application : depuis le jalon 3-F, un **registre** les résout entre un socle embarqué et une
+surcouche distante vérifiée (manifeste, empreintes, cache, interrupteur d'arrêt) — voir
+[docs/embedded.md](embedded.md#la-livraison-des-blueprints). Trois gardes, en place depuis le jalon
+3-A, empêchent la dérive :
 `contracts/actions.json` (projection générée du registre d'actions, consommée par le moteur
 TypeScript), la table des capacités embarquées prouvée **sous-ensemble strict** de
 `ACT_CAPABILITIES`, et un corpus de conformance rejoué par les deux moteurs (`make conformance`).

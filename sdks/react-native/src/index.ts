@@ -2,9 +2,10 @@
  * `@aetherius/react-native` — le moteur Aetherius dans une application mobile.
  *
  * Ce paquet porte ce que `@aetherius/engine` ne peut pas tenir sans dependre d'une plateforme :
- * l'**Act II** sur une WebView cachee pilotee par un agent JavaScript injecte (jalon 3-D), et la
+ * l'**Act II** sur une WebView cachee pilotee par un agent JavaScript injecte (jalon 3-D), la
  * **surface applicative** (jalon 3-E) — la facade `Aetherius`, les secrets par le trousseau de
- * l'OS, `confirm` en modal natif, l'annulation d'un run.
+ * l'OS, `confirm` en modal natif, l'annulation d'un run — et la **livraison des Blueprints**
+ * (jalon 3-F) : socle embarque, surcouche distante, cache et interrupteur d'arret.
  *
  * ```tsx
  * import * as SecureStore from "expo-secure-store";
@@ -28,6 +29,29 @@
 import { registerContinuum } from "./registry.js";
 
 export { Aetherius, type AetheriusConfig, type BlueprintSource, type RunOptions } from "./aetherius.js";
+export {
+  BlueprintRegistry,
+  CACHE_KEY,
+  MANIFEST_FORMAT,
+  ManifestError,
+  compareVersions,
+  memoryCache,
+  parseManifest,
+  resolveUrl,
+  sha256Hex,
+  type BlueprintCacheStore,
+  type BlueprintOrigin,
+  type BlueprintStatus,
+  type BundledBlueprint,
+  type CachedBlueprint,
+  type Manifest,
+  type ManifestEntry,
+  type RefreshEntry,
+  type RefreshOutcome,
+  type RefreshReport,
+  type RegistryConfig,
+  type ResolvedBlueprint,
+} from "./delivery/index.js";
 export { ContinuumDriver, type HostProvider } from "./continuum/driver.js";
 export { AGENT_ACTIONS, failureCode, type AgentOp } from "./continuum/actions.js";
 export {

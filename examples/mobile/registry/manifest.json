@@ -1,0 +1,14 @@
+{
+  "manifest": "1",
+  "generated_at": "2026-08-04T21:52:48.628Z",
+  "disabled": false,
+  "blueprints": {
+    "mobile.delivery.quotes": {
+      "version": "2",
+      "url": "delivery-quotes.v2.blueprint.json",
+      "sha256": "627fa03a4e5922323babc5bd5608d6d165069694c2bc571dc61a4d214f416538",
+      "min_engine": "0.4.0",
+      "disabled": false
+    }
+  }
+}

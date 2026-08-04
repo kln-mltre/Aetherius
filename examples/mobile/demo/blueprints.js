@@ -2,14 +2,18 @@
  * The Blueprints the demo ships with — imported as JSON, from `examples/`.
  *
  * They are the *same files* `aetherius run` plays on a machine, not copies: bundling anything else
- * would make this app prove something other than what it exists to prove. Delivering Blueprints
- * properly (a bundled asset, a download, a cache, a kill switch) is milestone 3-F; until then, an
- * import is honest and enough.
+ * would make this app prove something other than what it exists to prove.
+ *
+ * One card is different since milestone 3-F, and it is the point of that milestone: it declares
+ * `delivered`, so the screen asks the **registry** for its Blueprint instead of using the import.
+ * The bundled baseline is deliberately broken; the fix arrives from a manifest.
  *
  * Each entry carries a `status`, and it is the point of the bench rather than decoration: this
  * screen exists to walk a checklist on a device, and after a few passes nobody remembers what has
  * already been observed. `done` means *seen on a phone*, not "the tests pass".
  */
+
+import { DELIVERED } from "./delivery";
 
 import deviceIpCheck from "../device-ip-check.blueprint.json";
 import quotesLoginConfirm from "../quotes-login-confirm.blueprint.json";
@@ -36,6 +40,18 @@ export const STATUS = {
 };
 
 export const BLUEPRINTS = [
+  {
+    key: "delivery-quotes",
+    title: "Livraison : reparer sans republier",
+    hint: "Le Blueprint embarque est casse (il demande une page renommee). Rafraichir le manifeste doit livrer la correction, et le run passer.",
+    // Pas de `blueprint` : c'est le registre qui le rend, embarque ou distant.
+    delivered: DELIVERED,
+    // Campagne complete sur iPhone : socle casse, correction distante, cache qui survit a la mort de
+    // l'application, CDN coupe, mode avion, fichier altere, publication d'une correction, et les
+    // deux interrupteurs d'arret. La premiere passe a trouve le cache HTTP de la plateforme.
+    status: "done",
+    note: "Les neuf parcours vus sur telephone. Le fichier altere doit donner « integrity check failed » : purger avec « Revenir a l'embarque » avant, sinon le rafraichissement repond kept sans retelecharger.",
+  },
   {
     key: "quotes-login-confirm",
     title: "Parcours applicatif : secrets + confirm",

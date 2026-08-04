@@ -1,0 +1,25 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.delivery.quotes",
+  "description": "LA CORRECTION LIVRÉE À DISTANCE (jalon 3-F), v2 : le même Blueprint que le socle embarqué examples/mobile/delivery-quotes.blueprint.json, à une ligne près — l'URL de la page, que le site avait « renommée ». C'est le fichier que sert le manifeste d'exemple ; il est exécutable tel quel (aetherius run) et zéro configuration.",
+  "act": "vector",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "steps": [
+    {
+      "id": "page",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.domain }}/page/1/",
+      "expect": { "status": 200 },
+      "extract": {
+        "quote": { "from": "html", "selector": "div.quote span.text::text" },
+        "author": { "from": "html", "selector": "div.quote small.author::text" }
+      }
+    }
+  ],
+  "outputs": {
+    "livree_par": "le manifeste distant (v2)",
+    "citation": "{{ steps.page.quote | first }}",
+    "auteur": "{{ steps.page.author | first }}"
+  }
+}

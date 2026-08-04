@@ -1,0 +1,25 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.delivery.quotes",
+  "description": "SOCLE EMBARQUÉ, VOLONTAIREMENT CASSÉ (jalon 3-F) : ce Blueprint échoue exprès — il demande une page que le site a « renommée », et son expect.status: 200 le refuse proprement (StatusAssertionError -> famille 'rejected'). Il joue le rôle du Blueprint figé dans le binaire d'une application le jour où un site change. Sa correction est publiée par le manifeste d'exemple, examples/mobile/registry/, et prise en compte sans republier l'application. La version corrigée, elle, est exécutable : examples/mobile/registry/delivery-quotes.v2.blueprint.json.",
+  "act": "vector",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "steps": [
+    {
+      "id": "page",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.domain }}/citations/page/1/",
+      "expect": { "status": 200 },
+      "extract": {
+        "quote": { "from": "html", "selector": "div.quote span.text::text" },
+        "author": { "from": "html", "selector": "div.quote small.author::text" }
+      }
+    }
+  ],
+  "outputs": {
+    "livree_par": "le socle embarqué (v1)",
+    "citation": "{{ steps.page.quote | first }}",
+    "auteur": "{{ steps.page.author | first }}"
+  }
+}

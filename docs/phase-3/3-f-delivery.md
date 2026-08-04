@@ -1,9 +1,31 @@
 # Jalon 3-F — Livraison des Blueprints
 
-**Statut : à faire.** Le gain produit de la phase. Sans ce jalon, un Blueprint embarqué dans le
-binaire d'une application n'est qu'un fichier de configuration : le corriger demande toujours une
-publication sur les stores. Avec lui, un site qui change se répare en quelques minutes, pour tous les
-utilisateurs, sans republier quoi que ce soit.
+**Statut : livré.** Doc de référence :
+[docs/embedded.md](../embedded.md#la-livraison-des-blueprints). Le gain produit de la phase. Sans ce
+jalon, un Blueprint embarqué dans le binaire d'une application n'est qu'un fichier de configuration :
+le corriger demande toujours une publication sur les stores. Avec lui, un site qui change se répare
+en quelques minutes, pour tous les utilisateurs, sans republier quoi que ce soit.
+
+Livré : le `BlueprintRegistry` ([`sdks/react-native/src/delivery/`](../../sdks/react-native/src/delivery)),
+le **format de manifeste** (contrat applicatif, spécifié avec le même soin que ceux du moteur), un
+cache dont le magasin est **injecté**, les trois gardes (intégrité SHA-256 rejouée à chaque lecture,
+périmètre des secrets borné par l'application, sûreté d'exécution acquise depuis 3-B), la contrainte
+`min_engine`, et un interrupteur d'arrêt distant **et** local. Le modèle de menace est écrit, y
+compris ce qu'il ne couvre pas.
+
+Deux décisions structurantes prises à l'implémentation, et écrites parce qu'on pourrait les
+« corriger » par erreur :
+
+- **le manifeste ne peut que mettre à jour des noms déjà embarqués.** C'est ce qui garantit le
+  premier lancement hors ligne *pour chaque Blueprint*, et ce qui empêche un manifeste compromis
+  d'ajouter du comportement que personne n'a relu ;
+- **le manifeste décrit l'état voulu.** Une entrée qui en disparaît ramène son Blueprint à
+  l'embarqué, comme une entrée `disabled` : l'interprétation la plus sûre d'un manifeste partiel est
+  toujours le socle.
+
+Un écart de nommage assumé : la spécification parlait de `registry/`, mais ce paquet a déjà un
+registre — celui des **drivers** (`src/registry.ts`). Le module porte donc le nom du jalon,
+`delivery/`, et la classe celui du domaine, `BlueprintRegistry`.
 
 ## Objectif
 

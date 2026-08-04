@@ -13,9 +13,10 @@ import { fileURLToPath } from "node:url";
 import { RUN_EVENT_TYPES } from "../dist/events/index.js";
 import { contract, contractActs, introducingAct } from "../dist/blueprint/contract.js";
 import { EMBEDDED_ACTS, NOT_PORTABLE, embeddedCapabilities } from "../dist/blueprint/capabilities.js";
-import { ACTIONS_SHA256, SCHEMA_SHA256 } from "../dist/generated/schema-meta.js";
+import { ACTIONS_SHA256, ENGINE_VERSION, SCHEMA_SHA256 } from "../dist/generated/schema-meta.js";
 
-const CONTRACTS = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "contracts");
+const HERE = dirname(fileURLToPath(import.meta.url));
+const CONTRACTS = resolve(HERE, "..", "..", "..", "contracts");
 
 const readContract = (name) => readFileSync(join(CONTRACTS, name), "utf8");
 const sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex");
@@ -30,6 +31,14 @@ test("the inlined artefacts are not stale", () => {
   // ran the tests against an older build.
   assert.equal(SCHEMA_SHA256, sha256(readContract("blueprint.schema.json")));
   assert.equal(ACTIONS_SHA256, sha256(readContract("actions.json")));
+});
+
+test("the engine announces its own package version", () => {
+  // A manifest constrains delivery with `min_engine` (milestone 3-F): a constant that drifted from
+  // the published version would let a device accept a Blueprint written for an engine it has not
+  // got — the exact cross-update the constraint exists to prevent.
+  const { version } = JSON.parse(readFileSync(join(HERE, "..", "package.json"), "utf8"));
+  assert.equal(ENGINE_VERSION, version);
 });
 
 test("the inlined action contract matches contracts/actions.json", () => {

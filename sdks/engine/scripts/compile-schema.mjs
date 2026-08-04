@@ -107,22 +107,36 @@ function emitActionsContract(contract) {
   );
 }
 
-function emitMeta(schemaDigest, actionsDigest) {
+function emitMeta(schemaDigest, actionsDigest, version) {
   return (
     `${BANNER("blueprint.schema.json + actions.json")}` +
     `/** SHA-256 of contracts/blueprint.schema.json at the time the validator was compiled. */\n` +
     `export const SCHEMA_SHA256 = "${schemaDigest}";\n\n` +
     `/** SHA-256 of contracts/actions.json at the time the contract was inlined. */\n` +
-    `export const ACTIONS_SHA256 = "${actionsDigest}";\n`
+    `export const ACTIONS_SHA256 = "${actionsDigest}";\n\n` +
+    `/**\n` +
+    ` * The version of this engine, taken from its package.json.\n` +
+    ` *\n` +
+    ` * Read at build time rather than imported: a package.json import would need a JSON module\n` +
+    ` * assertion Hermes does not promise. Blueprint delivery (milestone 3-F) compares it against a\n` +
+    ` * manifest's \`min_engine\`, so that a Blueprint written for a newer engine is ignored on an old\n` +
+    ` * install instead of failing mid-run.\n` +
+    ` */\n` +
+    `export const ENGINE_VERSION = "${version}";\n`
   );
 }
 
 const schema = readContract("blueprint.schema.json");
 const actions = readContract("actions.json");
+const { version } = JSON.parse(readFileSync(join(PACKAGE, "package.json"), "utf8"));
 
 mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(join(OUT_DIR, "blueprint-validator.ts"), emitValidator(schema.data), "utf8");
 writeFileSync(join(OUT_DIR, "actions-contract.ts"), emitActionsContract(actions.data), "utf8");
-writeFileSync(join(OUT_DIR, "schema-meta.ts"), emitMeta(schema.sha256, actions.sha256), "utf8");
+writeFileSync(
+  join(OUT_DIR, "schema-meta.ts"),
+  emitMeta(schema.sha256, actions.sha256, version),
+  "utf8",
+);
 
 console.log(`Generated ${OUT_DIR} from ${CONTRACTS}`);

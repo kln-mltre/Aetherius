@@ -100,6 +100,77 @@ limite décrite dans [docs/embedded.md](../../docs/embedded.md#cookies-redirecti
 rendue observable — et la seule manière de vérifier sur un vrai téléphone une promesse qui, sinon,
 resterait une affirmation.
 
+## La livraison des Blueprints
+
+[`delivery-quotes.blueprint.json`](delivery-quotes.blueprint.json) est le témoin du jalon 3-F, et le
+seul Blueprint livré qui soit **volontairement cassé** : il demande une page que le site aurait
+« renommée », et son `expect.status: 200` la refuse proprement. C'est le jour où un site change, vu
+depuis une application dont le Blueprint est figé dans le binaire.
+
+Sa correction n'est **pas** dans l'application : elle est publiée par le manifeste d'exemple de
+[`registry/`](registry/), et l'application va la chercher. Le format du manifeste, l'ordre de
+résolution et le modèle de menace sont dans
+[docs/embedded.md](../../docs/embedded.md#la-livraison-des-blueprints).
+
+### Servir le manifeste
+
+Deux voies, selon la configuration réseau ; l'URL est éditable dans l'application, donc on choisit au
+moment du test.
+
+**a) Depuis le poste**, quand le téléphone peut l'atteindre (même Wi-Fi, ou poste sur le partage de
+connexion du téléphone) :
+
+```bash
+python3 -m http.server 8000 --directory examples/mobile/registry
+hostname -I | awk '{print $1}'        # l'adresse a saisir dans l'application
+```
+
+Dans le panneau **Livraison** : `http://<cette-adresse>:8000/manifest.json`.
+
+**b) Un hébergement HTTPS statique** — un gist GitHub (URL *raw*), des Pages, n'importe quel dépôt de
+fichiers derrière un CDN. C'est la seule voie qui marche quand le téléphone est en données
+cellulaires derrière `expo start --tunnel`, et c'est aussi ce à quoi ressemble la production. Y
+déposer `manifest.json` **et** `delivery-quotes.v2.blueprint.json` — si l'hébergement ne garde pas
+les fichiers côte à côte, mettre l'URL absolue du Blueprint dans le champ `url` du manifeste avant de
+le publier.
+
+### Publier une correction
+
+```bash
+# 1. corriger le Blueprint distant
+$EDITOR examples/mobile/registry/delivery-quotes.v2.blueprint.json
+# 2. republier le manifeste : les empreintes sont recalculees
+node examples/mobile/registry/build-manifest.mjs
+```
+
+Le second geste n'est pas optionnel : un manifeste dont l'empreinte ment est précisément ce que
+l'appareil rejette, et on chercherait longtemps une panne qui est une garde qui fonctionne.
+
+### Le parcours à jouer
+
+| Geste | Ce qui doit se passer |
+|-------|------------------------|
+| Lancer le run sans rien faire d'autre | échec **« Réponse inattendue »** (le socle embarqué, cassé), et le panneau affiche `embarque · v1` |
+| Saisir l'URL du manifeste, **Rafraîchir** | `updated v2` dans le rapport, et le panneau passe à `distant · v2` |
+| Relancer le run | `success`, la citation d'Einstein, `livree_par: "le manifeste distant (v2)"` |
+| Tuer l'application, la relancer, rejouer **sans rafraîchir** | toujours `success` en v2 : le cache a survécu au processus |
+| Mode avion, **Rafraîchir** | le rapport dit que le manifeste n'a pas été lu — et le run continue de jouer la v2 |
+| **Revenir à l'embarqué** | le panneau repasse à `embarque · v1`, et le run suivant recasse |
+| Modifier `delivery-quotes.v2.blueprint.json` **sans** régénérer le manifeste, puis Rafraîchir | `rejected`, avec l'empreinte attendue et celle obtenue ; ce qui est en place ne bouge pas. **Purger d'abord** avec « Revenir à l'embarqué » : sinon le rafraîchissement répond `kept` sans retélécharger, et il n'y a rien à rejeter |
+| Publier `"disabled": true` sur l'entrée, puis Rafraîchir | `ignored · disabled by the manifest`, retour à l'embarqué — l'interrupteur d'arrêt distant |
+
+Garde le terminal du serveur sous les yeux : chaque requête y apparaît avec son paramètre
+d'unicité (`GET /manifest.json?_aeth=…`). C'est ce qui distingue « le registre a refusé » de « le
+téléphone n'a jamais demandé » — et c'est exactement ce qui a permis de trouver le défaut de cache de
+la plateforme (voir [docs/embedded.md](../../docs/embedded.md#la-livraison-sur-appareil)).
+
+Comparer avec le moteur Python, qui joue les deux mêmes fichiers :
+
+```bash
+aetherius run examples/mobile/delivery-quotes.blueprint.json                 # echoue (404)
+aetherius run examples/mobile/registry/delivery-quotes.v2.blueprint.json     # la citation
+```
+
 ## Ce qu'on doit voir
 
 Un run affiche sa progression puis son `Result`. Les valeurs attendues, à comparer avec
@@ -116,6 +187,7 @@ Un run affiche sa progression puis son `Result`. Les valeurs attendues, à compa
 | `bordeaux-cas-login` | `peut_se_deconnecter: 1` avec les bons identifiants ; `LOGIN_FAILED` avec de mauvais |
 | `ukit-planning` | la liste d'événements de la semaine, identique à `aetherius run` — c'est l'encodage `form` (clé répétée `federationIds[]`) éprouvé sur l'appareil |
 | `session-persist-probe` | `connecte: 1` si la session tient, `0` sinon — voir ci-dessous |
+| `delivery-quotes` | « Réponse inattendue » avant Rafraîchir, la citation d'Einstein après — voir ci-dessus |
 
 ## La sonde de persistance
 
@@ -242,6 +314,9 @@ Blueprint : la note de la carte dit alors ce qu'il reste.
 
 ```
 ┌─ Blueprints ────────────────┐   la liste, un par carte + son badge
+├─ Livraison ─────────────────┤   jalon 3-F, pour la carte livrable seulement : l'origine
+│  embarque · v1              │   (embarque/distant + version), l'URL du manifeste,
+│  [URL] [Rafraichir][Revenir]│   Rafraichir, et le retour a l'embarque
 ├─ Secrets ───────────────────┤   visible seulement pour les Blueprints qui en declarent, et il
 │  identifiant / mot de passe │   LIT le trousseau : « presents » ou « absents » avant de lancer.
 │                             │   « Ranger dans le trousseau » y ecrit sous les noms declares
@@ -268,12 +343,14 @@ que décrit.
 
 ## Ce qui n'est pas là
 
-- **Pas de livraison distante** : les Blueprints sont importés depuis le dépôt. Le cache, le
-  contrôle d'intégrité et l'interrupteur d'arrêt sont le jalon
-  [3-F](../../docs/phase-3/3-f-delivery.md).
 - **Pas de biométrie sur le modal** : `<AetheriusConfirm />` est l'habillage par défaut. Une
   application qui veut Face ID passe par `useApprovalRequest`, la primitive sur laquelle il est
   bâti.
+- **Pas d'infrastructure de livraison** : le jalon 3-F livre le client et le format, pas un CDN. Un
+  `python3 -m http.server` ou un gist font le travail ici ; en production, c'est un dépôt de
+  fichiers statiques comme un autre.
+- **Un seul Blueprint livrable** dans le banc. Le registre en gère autant qu'on veut, mais une carte
+  suffit à éprouver le parcours, et l'application doit rester minimale.
 
 L'application n'est pas construite en CI : elle demande un appareil. Ce qui est gardé
 automatiquement, c'est le moteur (`make check-all`) et l'accord entre les deux moteurs

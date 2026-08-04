@@ -5,8 +5,9 @@ consomme l'application.
 
 Ce paquet apporte ce que [`@aetherius/engine`](../engine) ne peut pas porter sans dependre d'une
 plateforme : le driver Continuum adosse a une **WebView cachee** pilotee par un agent JavaScript
-injecte, les secrets par le **trousseau de l'OS**, `confirm` en **modal natif**, et la facade
-`Aetherius`.
+injecte, les secrets par le **trousseau de l'OS**, `confirm` en **modal natif**, la facade
+`Aetherius`, et la **livraison des Blueprints** — un socle embarque, une surcouche distante verifiee,
+un cache et un interrupteur d'arret.
 
 C'est la reponse a un cas concret : une application mobile qui se connecte au portail d'une
 universite et en extrait des donnees. Aujourd'hui cela s'ecrit en JavaScript injecte sous forme de
@@ -44,6 +45,28 @@ const failure = describeFailure(result); // undefined quand le run a reussi
 Les noms sont ceux du SDK daemon [`@aetherius/client`](../client) : le choix d'embarquer un moteur ou
 d'en piloter un a distance ne doit pas se voir dans le code appelant.
 
+Un Blueprint n'a pas a etre fige dans le binaire. Le **registre** resout entre le socle embarque et
+une surcouche distante verifiee — donc un site qui change se repare sans republier sur les stores :
+
+```ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BlueprintRegistry } from "@aetherius/react-native";
+
+const registry = new BlueprintRegistry({
+  bundled: { "ukit.planning.week": { version: "1", document: planning } },
+  manifest: "https://cdn.exemple.fr/aetherius/manifest.json",
+  cache: AsyncStorage,          // magasin injecte, comme le trousseau
+});
+
+const { blueprint, origin } = await registry.resolve("ukit.planning.week");  // aucun reseau
+void registry.refresh();                                                    // hors du chemin critique
+```
+
+Le distant ne gagne que s'il est **plus recent, entier et valide** : empreinte SHA-256 verifiee a
+chaque lecture, secrets bornes par l'application, `min_engine` respecte, et un interrupteur d'arret
+des deux cotes. Format du manifeste et modele de menace :
+[docs/embedded.md](../../docs/embedded.md#la-livraison-des-blueprints).
+
 `react`, `react-native` et `react-native-webview` sont des **peer dependencies** : le paquet declare
 structurellement la surface qu'il utilise plutot que d'emprunter leurs types, ce qui le garde
 compilable et testable sans elles.
@@ -63,6 +86,7 @@ compilable et testable sans elles.
 | `webview/agent/` | L'agent injecte — locators, auto-attente, operations, lecture DOM. Assemble au build en une chaine unique. |
 | `webview/component.tsx` | `<AetheriusWebView />` : la WebView cachee, ses sessions et son mode debug. |
 | `continuum/` | Le driver et sa table action → operation. |
+| `delivery/` | Le registre : manifeste (parseur strict), integrite (SHA-256 ecrit a la main), cache (magasin injecte), perimetre des secrets et interrupteur d'arret. |
 
 Le modele d'erreur (`describeFailure` et la hierarchie typee) est **re-exporte** depuis le moteur :
 une application n'a qu'une porte d'entree, et n'a pas a savoir ou vivent les classes.

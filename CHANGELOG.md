@@ -8,6 +8,73 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 3-F — Livraison des Blueprints**
+  ([docs/embedded.md](docs/embedded.md#la-livraison-des-blueprints)) : le gain produit de la Phase 3.
+  Jusqu'ici un Blueprint arrivait par un `import` — figé dans le binaire, donc un site qui change
+  cassait l'application jusqu'à une publication sur les stores. Un **registre** le résout désormais
+  entre un socle embarqué et une surcouche distante vérifiée.
+  - **Le socle embarqué n'est pas optionnel** (`sdks/react-native/src/delivery/`). Une application
+    doit fonctionner au premier lancement, hors ligne, sans avoir jamais contacté le réseau : le
+    distant est une **surcouche**, jamais un prérequis. Trois règles en découlent — `resolve()` ne
+    touche **jamais** au réseau (un run n'attend pas un CDN pour savoir quoi jouer), `refresh()` **ne
+    lève jamais** et rend un rapport (un CDN en panne ne doit pas devenir une application en panne),
+    et le manifeste ne peut que **mettre à jour des noms déjà embarqués** (ce qui garantit le repli
+    hors ligne pour chaque Blueprint et empêche un manifeste compromis d'ajouter du comportement que
+    personne n'a relu).
+  - **Un nouveau contrat, applicatif** : le format du manifeste (`manifest`, `version`, `url`,
+    `sha256`, `min_engine`, `disabled`), spécifié dans `docs/embedded.md` avec le même soin que les
+    contrats du moteur. `contracts/` n'a pas bougé. Le parseur est **strict** — clé inconnue, type
+    inattendu, version non numérique : le manifeste est refusé et rien n'est remplacé. Une faute de
+    frappe dans `disabled` ou `sha256` ne doit pas pouvoir désactiver une garde en silence. Le
+    manifeste décrit **l'état voulu** : une entrée qui en disparaît ramène son Blueprint à
+    l'embarqué, comme une entrée `disabled`.
+  - **Trois gardes, dans cet ordre.** *Intégrité* : l'empreinte SHA-256 est rejouée **à chaque
+    lecture** du cache, pas seulement au téléchargement — un cache local n'est pas plus digne de
+    confiance qu'un CDN, c'est un fichier sur un appareil ; une entrée qui échoue est purgée, et
+    **aucun refus ne remplace la version en place**. *Périmètre* : les secrets qu'un Blueprint
+    distant a le droit de **déclarer** sont bornés par l'application (par défaut, ceux du socle
+    embarqué) — sans cela un Blueprint compromis réclamerait le trousseau et l'exfiltrerait par une
+    simple requête. *Sûreté d'exécution* : acquise depuis le jalon 3-B (aucun `eval`, aucune fonction
+    native exposée à l'évaluateur), et écrite noir sur blanc pour qu'on ne réintroduise pas une
+    compilation dynamique par « optimisation ». S'y ajoute la validation complète
+    (`parseBlueprint` + `validateForAct`) **avant** toute mise en cache : un Blueprint invalide ou
+    non portable n'atteint jamais un run.
+  - **Le versionnage protège des mises à jour croisées** : `min_engine` fait ignorer une entrée
+    écrite pour un moteur plus récent — sans erreur visible pour l'utilisateur, les vieilles versions
+    d'une application vivant longtemps. Le moteur expose pour cela `ENGINE_VERSION`, **généré** depuis
+    son `package.json` au build et gardé par un test.
+  - **L'interrupteur d'arrêt, des deux côtés** : `disabled` (par entrée ou global) côté publieur,
+    `revert()` côté application — immédiat et sans réseau —, plus `remote: false` pour une coupure
+    durable. Un mécanisme de déploiement sans mécanisme de retour arrière n'en est pas un.
+  - **Le cache est un magasin injecté**, jamais importé : la surface décrite
+    (`getItem`/`setItem`/`removeItem`) est celle d'AsyncStorage, branché **sans adaptateur**, et
+    `memoryCache()` sert les tests. Zéro dépendance ajoutée au paquet — le SHA-256 est écrit à la
+    main (même posture que le base64 de `BasicAuth` : `crypto.subtle` n'existe pas sous Hermes) et
+    comparé à `node:crypto` en test, demi-couples de substitution et frontières de bourrage compris.
+  - **Le modèle de menace est écrit, y compris ce qu'il ne couvre pas** : altération en transit,
+    cache corrompu, périmètre des secrets, capacité absente et version croisée sont couverts ; un
+    **publieur compromis** ne l'est pas (pas de signature d'auteur), et la destination des requêtes
+    d'un Blueprint n'est pas bornée (une URL peut être un gabarit, donc une liste blanche d'hôtes
+    rassurerait sans mordre).
+  - **Exemple exécutable** : un Blueprint embarqué **volontairement cassé**
+    (`examples/mobile/delivery-quotes.blueprint.json`), sa correction publiée
+    (`examples/mobile/registry/`) et le générateur de manifeste qui recalcule les empreintes — une
+    empreinte écrite à la main est périmée dès la première correction. L'application de démonstration
+    gagne un panneau **Livraison** (origine et version, URL du manifeste, Rafraîchir, Revenir à
+    l'embarqué).
+  - **Le cache HTTP de la plateforme est contourné** (`?_aeth=…` + `Cache-Control: no-cache`), et
+    c'est une **campagne sur appareil qui l'a imposé** : `fetch` passe par `NSURLCache` (iOS) et par
+    le cache OkHttp (Android), et un hébergement statique qui ne renvoie qu'un `Last-Modified` les
+    autorise à inventer une fraîcheur heuristique. Symptôme observé sur iPhone : serveur coupé, et
+    l'application répondait « manifeste lu » — c'est-à-dire un **interrupteur d'arrêt qui n'arrête
+    rien**. Sous Node, `fetch` n'a pas de cache : aucun test hors appareil ne pouvait le produire.
+  - **Campagne sur iPhone complète** (Expo Go SDK 54, 5G) : socle cassé, correction distante, cache
+    qui survit à la mort de l'application, CDN coupé, mode avion, fichier altéré (`integrity check
+    failed`), publication d'une correction, et les deux interrupteurs d'arrêt — les neuf parcours
+    observés, correctif de cache vérifié là où il s'était manifesté.
+  - **Pas de cas de conformance, et c'est délibéré** : le moteur Python n'a pas de couche de
+    livraison, il n'y a donc aucun « même Blueprint, deux moteurs » à figer. À la place, 39 tests
+    miroir et une garde qui vérifie que le manifeste d'exemple livré n'est pas périmé.
 - **Jalon 3-E — Intégration applicative**
   ([docs/embedded.md](docs/embedded.md#la-surface-applicative)) : ce que l'application voit du
   moteur embarqué. C'est la surface publique — celle qu'on ne pourra plus changer sans casser ses

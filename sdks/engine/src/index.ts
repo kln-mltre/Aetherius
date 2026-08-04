@@ -43,3 +43,4 @@ export * from "./runtime/engine.js";
 export * from "./runtime/flow.js";
 export * from "./runtime/steps.js";
 export * from "./template.js";
+export * from "./version.js";

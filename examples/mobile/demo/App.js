@@ -13,8 +13,13 @@
  * Trois composants montes une fois, en bas de l'arbre, parce que leur vie appartient a l'arbre et
  * pas a un run : la WebView cachee (Act II) et le modal de confirmation.
  *
+ * Depuis le jalon 3-F, une carte ne vient plus forcement d'un `import` : la carte « livraison »
+ * demande son Blueprint au **registre**, qui rend la version distante si elle a gagne. C'est la
+ * seule difference visible entre un Blueprint fige dans le binaire et un Blueprint corrigeable sans
+ * republier — et c'est tout l'objet du jalon.
+ *
  * Palette empruntee a la Console (src/aetherius/console/theme.py) pour que les deux surfaces du
- * meme outil se ressemblent.
+ * meme outil se ressemblent (`theme.js`).
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -38,19 +43,9 @@ import {
 } from "@aetherius/react-native";
 
 import { BLUEPRINTS, STATUS } from "./blueprints";
-
-const COLORS = {
-  void: "#141020",
-  nimbus: "#1c1730",
-  panel: "#282045",
-  moonlight: "#dcd7e8",
-  stone: "#7f7a90",
-  violet: "#9d7bd8",
-  gold: "#d4af37",
-  laurel: "#4e8a5a",
-  amber: "#d08a3e",
-  pompeian: "#c1564a",
-};
+import DeliveryPanel from "./DeliveryPanel";
+import { useDelivery } from "./delivery";
+import { COLORS } from "./theme";
 
 const LEVEL_COLOR = {
   error: COLORS.pompeian,
@@ -108,6 +103,7 @@ export default function App() {
 
   const entry = useMemo(() => BLUEPRINTS.find((item) => item.key === selected), [selected]);
   const { running, events, result, failure, run, cancel } = useAetheriusRun(client);
+  const delivery = useDelivery();
 
   // Lire le trousseau plutot que de supposer : le premier run sur appareil a echoue parce que les
   // identifiants n'y etaient pas, et rien a l'ecran ne le disait.
@@ -139,8 +135,15 @@ export default function App() {
 
   const start = useCallback(() => {
     setNotice(null);
-    void run(withOptions(entry.blueprint, { debug, persist }));
-  }, [entry, run, debug, persist]);
+    void (async () => {
+      // Une carte livrable demande son Blueprint au registre : c'est lui qui decide si la version
+      // distante a gagne. Toutes les autres jouent le fichier importe du depot.
+      const blueprint = entry.delivered
+        ? (await delivery.resolve(entry.delivered)).blueprint
+        : entry.blueprint;
+      await run(withOptions(blueprint, { debug, persist }));
+    })();
+  }, [entry, run, debug, persist, delivery]);
 
   const [failureTitle, failureHint] = failure ? FAILURE_COPY[failure.kind] : [];
   const needsSecrets = entry.secrets !== undefined;
@@ -182,6 +185,8 @@ export default function App() {
             );
           })}
         </View>
+
+        {entry.delivered !== undefined && <DeliveryPanel delivery={delivery} />}
 
         {needsSecrets && (
           <View style={styles.section}>

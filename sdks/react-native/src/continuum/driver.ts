@@ -173,8 +173,12 @@ export class ContinuumDriver implements ActDriver {
       step.action === "wait_for"
         ? ((params["fail_code"] as string | undefined) ?? failureCode(render(step["on_timeout"])))
         : undefined;
+    // Name what the step was looking at. Without it, an `extract` with five outputs reports a
+    // deadline and nothing else, and the only way to learn which selector was involved is to edit
+    // the Blueprint and run again — which is exactly what the reference port had to do.
+    const targets = describeTargets(step.action, params);
     return new StepTimeoutError(
-      `${step.action} timed out after ${timeoutMs} ms: the page never reported back ` +
+      `${step.action} timed out after ${timeoutMs} ms${targets}: the page never reported back ` +
         "(an off-screen WebView throttles its own timers, so the deadline is the caller's)",
       code,
     );
@@ -213,6 +217,32 @@ function sessionConfig(ctx: RunContext): SessionConfig {
       ? String((stealth as Record<string, unknown>)["user_agent"])
       : undefined,
   };
+}
+
+/**
+ * The selectors an op was working on, as a suffix for a failure message (empty when there are none).
+ *
+ * `extract` carries its selectors inside `outputs`, one per named value; every other op carries a
+ * single `selector`. A silence that names neither leaves the author with a deadline and no lead.
+ */
+function describeTargets(action: string, params: Record<string, unknown>): string {
+  const selectors: string[] = [];
+  if (action === "extract") {
+    const outputs = params["outputs"];
+    if (isRecord(outputs)) {
+      for (const spec of Object.values(outputs)) {
+        if (!isRecord(spec)) continue;
+        const one = spec["selector"] ?? spec["each"];
+        if (typeof one === "string" && one !== "" && selectors.indexOf(one) === -1) {
+          selectors.push(one);
+        }
+      }
+    }
+  } else if (typeof params["selector"] === "string" && params["selector"] !== "") {
+    selectors.push(params["selector"] as string);
+  }
+  if (selectors.length === 0) return "";
+  return ` on ${selectors.map((selector) => JSON.stringify(selector)).join(", ")}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

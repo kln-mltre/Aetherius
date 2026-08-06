@@ -171,17 +171,18 @@ class _Executor:
                 )
                 raise
             except AetheriusError as exc:
+                message = _named(exc)
                 self.results.append(
                     StepResult(
                         step_id=display_id,
                         action=step.action,
                         status=RunStatus.FAILED,
-                        error=str(exc),
+                        error=message,
                         duration_ms=(time.monotonic() - t0) * 1000,
                     )
                 )
-                self._emit(EventType.ERROR, display_id, message=str(exc), level="error")
-                raise StepFailed(str(exc)) from exc
+                self._emit(EventType.ERROR, display_id, message=message, level="error")
+                raise StepFailed(message) from exc
 
     def _run_leaf(
         self,
@@ -238,3 +239,15 @@ class _Executor:
 
 def _join(path: str, key: str) -> str:
     return f"{path}.{key}" if path else key
+
+
+def _named(exc: AetheriusError) -> str:
+    """Prefix a failure the Blueprint named (`on_timeout: "fail:CODE"`) with its code.
+
+    The code was set on the exception and read by nobody, so a caller could not tell "wrong
+    password" from "the page changed" — which is the entire point of naming it. The embedded engine
+    exposes it as a field of the failure it describes; here the Result is a serialisable model that
+    cannot carry an exception, so the name rides at the front of the message, in a fixed position.
+    """
+    code = getattr(exc, "code", None)
+    return f"{code}: {exc}" if code else str(exc)

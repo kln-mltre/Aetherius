@@ -20,7 +20,10 @@ from jinja2.sandbox import SandboxedEnvironment
 from ..errors import TemplateError
 
 # Matches strings that are exactly one {{ … }} expression (possibly with surrounding whitespace).
-_BARE_EXPR = re.compile(r"^\s*\{\{(.*?)\}\}\s*$", re.DOTALL)
+# The body may not contain "}}": a lazy ".*?" backtracks past the first closer, so
+# "{{ vars.api }}/{{ inputs.id }}" — the most ordinary way to build a URL — looked like one
+# expression whose source was "vars.api }}/{{ inputs.id", and failed to parse instead of rendering.
+_BARE_EXPR = re.compile(r"^\s*\{\{((?:(?!\}\}).)*)\}\}\s*$", re.DOTALL)
 
 # ── Custom filters ─────────────────────────────────────────────────────────────
 

@@ -1,0 +1,41 @@
+{
+  "name": "extract-where-nested-field",
+  "kind": "extraction",
+  "description": "Un predicat where atteint un champ imbrique. Les charges utiles reelles y logent leurs discriminants (le service de restauration ecarte 'type.code == 4'), et c'est le port du jalon 3-G qui a trouve la divergence : le moteur embarque lisait la valeur imbriquee, le moteur Python n'enveloppait que le premier niveau et levait. Corrige cote Python.",
+  "body": "[{\"nom\": \"Resto U\", \"type\": {\"code\": 1, \"libelle\": \"Restaurant\"}}, {\"nom\": \"Agree\", \"type\": {\"code\": 4, \"libelle\": \"Restaurant agree\"}}]",
+  "spec": {
+    "lieux": {
+      "from": "json",
+      "path": "$[*]",
+      "where": "item.type.code != 4",
+      "fields": {
+        "nom": "$.nom",
+        "type": "$.type.libelle"
+      }
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "lieux": [
+          {
+            "nom": "Resto U",
+            "type": "Restaurant"
+          }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "lieux": [
+          {
+            "nom": "Resto U",
+            "type": "Restaurant"
+          }
+        ]
+      }
+    }
+  }
+}

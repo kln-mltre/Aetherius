@@ -292,6 +292,42 @@ test("the Blueprint's session options reach the view", async () => {
   }
 });
 
+test("options.stealth.user_agent reaches the view, and the page sees it", async () => {
+  // The one piece of stealth inside the phase's scope. A portal often serves a different DOM to a
+  // mobile UA, so a Blueprint has to be able to decide — and it could not until the shared schema
+  // accepted the key (it was documented and implemented, but refused by the contract).
+  const desktop = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/124.0.0.0 Safari/537.36";
+  const server = await htmlServer({
+    "/": ({ headers }) => ({
+      body: `<html><body><p id="ua">${headers["user-agent"] ?? "none"}</p></body></html>`,
+    }),
+  });
+  const { host, page } = createDomHost();
+  registerContinuum(() => host);
+  try {
+    const document = validateBlueprintData(
+      {
+        aetherius: "1.0",
+        name: "test.ua",
+        act: "continuum",
+        options: { stealth: { user_agent: desktop } },
+        steps: [
+          { action: "navigate", url: `${server.baseUrl}/` },
+          { id: "vu", action: "extract", outputs: { ua: { selector: "#ua", as: "text" } } },
+        ],
+        outputs: { ua: "{{ steps.vu.ua }}" },
+      },
+      "test.json",
+    );
+    const result = await new RunEngine().run(document, { sinks: [] });
+    assert.equal(result.status, "success", result.error);
+    assert.equal(page.session.userAgent, desktop);
+    assert.equal(result.outputs.ua, desktop, "the server saw the declared UA, not the default one");
+  } finally {
+    await server.close();
+  }
+});
+
 test("a second run on the same host works: dispose releases the view, not the host", async () => {
   // The host belongs to the mounted component and outlives the runs it serves. Teardown disposes
   // it; if that were final, run #2 would fail — invisible on a first launch, fatal on the second
@@ -426,6 +462,63 @@ test("a page that never answers produces the failure the Blueprint named", async
     assert.equal(result.status, "failed");
     assert.equal(result.cause.name, "StepTimeoutError");
     assert.equal(result.cause.code, "LOGIN_FAILED", "the named failure must survive the silence");
+    assert.match(result.cause.message, /"\.success"/, "and it names what was being waited for");
+  } finally {
+    registerContinuum();
+  }
+});
+
+test("a silent read names the selectors it was reading", async () => {
+  // An `extract` with several outputs used to report a deadline and nothing else: the only way to
+  // learn which selector was involved was to edit the Blueprint and run again. That is literally
+  // what diagnosing the reference port required, on a device, twice.
+  const silent = {
+    configure: async () => {},
+    navigate: async (url) => url,
+    goBack: async () => "",
+    goForward: async () => "",
+    reload: async () => "",
+    call: async () => {
+      const { NoAnswerError } = await import("../dist/webview/rpc.js");
+      throw new NoAnswerError("operation 'extract' did not answer within 200 ms");
+    },
+    evaluate: async () => null,
+    settleAfterAction: async () => {},
+    currentUrl: () => "",
+    dispose: async () => {},
+  };
+  registerContinuum(() => silent);
+
+  try {
+    const result = await new RunEngine().run(
+      validateBlueprintData(
+        {
+          aetherius: "1.0",
+          name: "test.silent-read",
+          act: "continuum",
+          options: { timeout_ms: 200 },
+          steps: [
+            { action: "navigate", url: "https://example.invalid/" },
+            {
+              id: "lu",
+              action: "extract",
+              outputs: {
+                boite: { selector: "#compteur", as: "text" },
+                lignes: { each: ".ligne", fields: { t: { selector: ".t" } } },
+              },
+            },
+          ],
+        },
+        "silent-read.json",
+      ),
+      { sinks: [] },
+    );
+
+    assert.equal(result.status, "failed");
+    assert.equal(result.cause.name, "StepTimeoutError");
+    assert.equal(result.cause.code, undefined, "an unnamed step keeps no code");
+    assert.match(result.cause.message, /"#compteur"/);
+    assert.match(result.cause.message, /"\.ligne"/);
   } finally {
     registerContinuum();
   }

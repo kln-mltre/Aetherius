@@ -1,0 +1,9 @@
+{
+  "name": "example-reference-restaurants",
+  "description": "Le predicat where sur un champ imbrique et la conversion de date par format_date : les deux moteurs acceptent le meme fichier.",
+  "blueprint_path": "examples/mobile/reference/ukit-campus-restaurants.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

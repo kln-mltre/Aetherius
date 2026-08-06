@@ -191,15 +191,26 @@ class BrowserSession:
 
     def _context_options(self) -> dict[str, Any]:
         """Playwright context options for the fingerprint profile and/or the exit-IP geo (empty when
-        neither applies)."""
+        neither applies).
+
+        An explicit ``options.stealth.user_agent`` wins over the profile's: it is the one knob the
+        embedded engine shares (a portal often serves a different DOM to a mobile UA, and a
+        Blueprint must be able to decide), so it has to mean the same thing on both engines —
+        including on a run that wears no fingerprint profile at all.
+        """
+        options: dict[str, Any] = {}
         profile = self._effective_profile()
         if profile is not None:
-            return profile.context_options()
-        # No fingerprint profile, but a geo hint still aligns the browser's timezone/locale with the IP.
-        geo = self._identity.geo if self._identity is not None else None
-        if geo is not None:
-            return {"locale": geo.locale, "timezone_id": geo.timezone_id}
-        return {}
+            options = profile.context_options()
+        else:
+            # No fingerprint profile, but a geo hint still aligns timezone/locale with the exit IP.
+            geo = self._identity.geo if self._identity is not None else None
+            if geo is not None:
+                options = {"locale": geo.locale, "timezone_id": geo.timezone_id}
+
+        if self._stealth.user_agent is not None:
+            options["user_agent"] = self._stealth.user_agent
+        return options
 
     def _apply_stealth(self) -> None:
         """Inject the fingerprint patches and, if inputs are humanized, build the HumanInput facade."""

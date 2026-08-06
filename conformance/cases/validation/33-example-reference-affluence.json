@@ -1,0 +1,9 @@
+{
+  "name": "example-reference-affluence",
+  "description": "En-tetes imites, corps JSON, extraction imbriquee. Rien qui sorte du perimetre embarque.",
+  "blueprint_path": "examples/mobile/reference/ukit-campus-affluence.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

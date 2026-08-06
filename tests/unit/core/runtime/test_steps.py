@@ -13,7 +13,7 @@ import pytest
 
 from aetherius.core.actions.base import FLOW_ACTIONS
 from aetherius.core.blueprint.models import Blueprint, StepModel
-from aetherius.core.errors import ActionError, AetheriusError, TemplateError
+from aetherius.core.errors import ActionError, AetheriusError, StepTimeoutError, TemplateError
 from aetherius.core.events.bus import EventBus
 from aetherius.core.events.models import EventType, RunEvent
 from aetherius.core.runtime.context import RunContext
@@ -490,6 +490,39 @@ def test_error_in_a_branch_reports_once_and_aborts() -> None:
         ("loop", RunStatus.FAILED),
     ]
     assert driver.calls == []
+
+
+def test_a_named_failure_carries_its_code_into_the_result() -> None:
+    # `on_timeout: "fail:LOGIN_FAILED"` exists so a caller can tell "wrong password" from "the page
+    # changed". The code was set on the exception and read by nobody, so it never left the engine.
+    class NamingDriver(FakeDriver):
+        def run_step(
+            self, step: StepModel, ctx: RunContext, bus: EventBus, renderer: Callable[[Any], Any]
+        ) -> dict[str, Any]:
+            raise StepTimeoutError("wait_for timed out", code="LOGIN_FAILED")
+
+    ctx = _ctx()
+    sink = ListSink()
+    bus = EventBus()
+    bus.register(sink)
+    results: list[StepResult] = []
+    with pytest.raises(StepFailed, match="LOGIN_FAILED"):
+        run_steps(_steps({"id": "wait", "action": "wait_for"}), ctx, bus, NamingDriver(), results)
+
+    assert results[0].error == "LOGIN_FAILED: wait_for timed out"
+    assert _events(sink, EventType.ERROR)[0].message == "LOGIN_FAILED: wait_for timed out"
+
+
+def test_an_unnamed_failure_keeps_its_message_untouched() -> None:
+    ctx = _ctx()
+    bus = EventBus()
+    bus.register(ListSink())
+    results: list[StepResult] = []
+    with pytest.raises(StepFailed):
+        run_steps(
+            _steps({"id": "bad", "action": "set", "boom": True}), ctx, bus, FakeDriver(), results
+        )
+    assert results[0].error == "boom"
 
 
 def test_flow_actions_never_reach_the_driver() -> None:

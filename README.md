@@ -339,11 +339,13 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 
 > Deux voies, un seul format de Blueprint. Celle décrite ci-dessous — **piloter** le moteur Python à
 > distance — convient à une application de bureau ou à un service. Pour une application **mobile**,
-> la Phase 3 (en cours) livre la seconde : un **moteur embarqué** en TypeScript qui exécute les mêmes
+> la Phase 3 (terminée) livre la seconde : un **moteur embarqué** en TypeScript qui exécute les mêmes
 > Blueprints directement sur l'appareil, sans daemon ni serveur. L'Act I y tourne
 > ([`@aetherius/engine`](sdks/engine), jalon 3-C) et l'Act II aussi, dans une WebView cachée
 > ([`@aetherius/react-native`](sdks/react-native), jalon 3-D) ; depuis le jalon 3-F, ces Blueprints se
-> **corrigent à distance** sans republier l'application. Voir
+> **corrigent à distance** sans republier l'application. Un cas d'usage mobile réel est porté de bout
+> en bout dans [`examples/mobile/reference/`](examples/mobile/reference/), avec son
+> [guide de migration](docs/mobile-migration.md). Voir
 > [docs/embedded.md](docs/embedded.md) et [docs/phase-3/](docs/phase-3/README.md).
 
 ```
@@ -430,8 +432,9 @@ sdks/          workspace npm + python
   engine/        @aetherius/engine — moteur embarqué, neutre plateforme (Phase 3)
   react-native/  @aetherius/react-native — Act II sur WebView + façade mobile + livraison
                  des Blueprints (registre, manifeste, cache) (Phase 3)
-examples/      Blueprints de démonstration (par Act + plugins/ + mobile/ : moteur embarqué et
-               son application de démonstration)
+examples/      Blueprints de démonstration (par Act + plugins/ + mobile/ : moteur embarqué,
+               son application de démonstration, sa livraison distante et les Blueprints
+               de référence d'un cas d'usage mobile réel)
 training/      entraînement des modèles Oracle (hors runtime)
 legacy_examples/  code de référence des projets d'origine (UKit, TikTok) + carte de provenance
 docs-ukit/     pointeur vers UKit, le projet consommateur (doc complète sur son dépôt)
@@ -486,9 +489,9 @@ Conventions de contribution (discipline de test, invariants, structure des tests
 Le projet avance par phases. La **Phase 1** pose le socle, utilisable comme **bibliothèque**
 (in-process Python) et comme **service** (daemon + SDK). La **Phase 1.5** le durcit pour les workflows
 **récurrents et réactifs** (planification, alertes, réactivité, furtivité). La **Phase 2** apporte les
-Acts cognitifs et le contrôle humain. Toutes trois sont **terminées**. La **Phase 3**, en cours, ne
-touche pas au vocabulaire des Blueprints : elle livre un **second moteur** qui les exécute
-directement sur l'appareil d'un utilisateur.
+Acts cognitifs et le contrôle humain. La **Phase 3** ne touche pas au vocabulaire des Blueprints :
+elle livre un **second moteur** qui les exécute directement sur l'appareil d'un utilisateur. **Les
+quatre sont terminées.**
 
 ### Phase 1 — le socle réutilisable (terminée)
 
@@ -556,7 +559,7 @@ directement sur l'appareil d'un utilisateur.
 **Phase 1 terminée.** Aetherius est utilisable comme bibliothèque et comme service ; c'est le point de
 contrôle prévu pour l'éprouver en conditions réelles et corriger avant la suite.
 
-### Phase 1.5 — socle opérationnel (en cours)
+### Phase 1.5 — socle opérationnel (terminée)
 
 Un palier intermédiaire, dans l'esprit du durcissement du socle : rendre Aetherius capable de porter
 des workflows **récurrents et réactifs** (planifier un Blueprint, réagir aux données extraites,
@@ -630,6 +633,9 @@ couche stealth, le rendre invisible **au niveau réseau** (proxy, rotation d'IP)
   `examples/continuum/fingerprint-hardening.blueprint.json` et
   `examples/vector/http-headers-identity.blueprint.json`. [docs/stealth.md](docs/stealth.md),
   [docs/phase-1.5/h-fingerprint.md](docs/phase-1.5/h-fingerprint.md).
+
+**Phase 1.5 terminée (A–H).** Aetherius porte des workflows récurrents et réactifs, tourne en
+permanence, et sait rester discret jusqu'au niveau réseau.
 
 ### Phase 2 — Autonomie & Contrôle (terminée)
 
@@ -709,7 +715,7 @@ optionnel), sans entraînement obligatoire.
 **Phase 2 terminée (A–E).** Aetherius est désormais autonome (Oracle/Phantom, composition,
 self-healing) **et** pilotable (human-in-the-loop).
 
-### Phase 3 — Embarqué : le moteur sur l'appareil (en cours)
+### Phase 3 — Embarqué : le moteur sur l'appareil (terminée)
 
 Cadrage complet et **spécifications par jalon** : [docs/phase-3/](docs/phase-3/README.md). La phase
 n'ajoute **aucune capacité** au vocabulaire des Blueprints : elle livre un **second moteur**, écrit
@@ -724,8 +730,9 @@ gardes empêchent les moteurs de diverger —, les deux mini-langages sont là (
 application le consomme par une **façade** (secrets par le trousseau de l'OS, `confirm` en modal
 natif, annulation, modèle d'erreur exploitable), et depuis le jalon 3-F il n'est plus figé dans le
 binaire : un **registre** le résout entre un socle embarqué et une surcouche distante vérifiée, donc
-**un site qui change se répare sans republier sur les stores**. Référence d'usage :
-[docs/embedded.md](docs/embedded.md).
+**un site qui change se répare sans republier sur les stores**. Le jalon 3-G clôt la phase en
+**portant un cas d'usage mobile réel** — quatre API tierces et un parcours authentifiant complet —
+et en livrant le guide de migration. Référence d'usage : [docs/embedded.md](docs/embedded.md).
 
 - [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
   Blueprint à l'identique du moteur Python. Validation **en deux temps** — JSON Schema **précompilé
@@ -863,8 +870,40 @@ binaire : un **registre** le résout entre un socle embarqué et une surcouche d
   ([`examples/mobile/registry/`](examples/mobile/registry/)).
   [docs/embedded.md](docs/embedded.md#la-livraison-des-blueprints),
   [docs/phase-3/3-f-delivery.md](docs/phase-3/3-f-delivery.md).
-- [ ] **3-G** — Blueprints de référence & guide de migration : un cas d'usage mobile réel décrit
-  entièrement en Blueprints. [docs/phase-3/3-g-reference.md](docs/phase-3/3-g-reference.md).
+- [x] **3-G** — **Blueprints de référence & guide de migration** : la seule question qui restait
+  après six jalons de moteur — *remplace-t-il vraiment le code qu'il prétend remplacer ?* La réponse
+  est un cas d'usage mobile **réel**, celui d'une application universitaire en production, décrit
+  intégralement en Blueprints et joué sur les vrais services :
+  [`examples/mobile/reference/`](examples/mobile/reference/) porte un fichier éditorial servi par
+  CDN, une API de restauration, une API d'affluence de lieux, un serveur d'emplois du temps et le
+  **parcours authentifiant** en deux volets (dossier administratif, puis messagerie) qui remplace
+  **323 lignes de composant WebView**, dont 176 de JavaScript en gabarits de chaîne. Les données extraites par les deux moteurs sont **identiques**, jusqu'à la séquence
+  d'événements, et les six tournent sur un vrai téléphone. Le guide, [docs/mobile-migration.md](docs/mobile-migration.md), dit ce qui descend
+  dans un Blueprint et ce qui n'y descend pas — cache, i18n, calcul et rendu restent applicatifs —
+  et il est **honnête sur ce qui reste fragile** : un sélecteur positionnel le demeure ; ce qui
+  change, c'est qu'il devient une ligne de données corrigeable à distance au lieu d'une constante
+  compilée en attente de publication (le Blueprint lit d'ailleurs les libellés voisins et les
+  `assert`, de sorte qu'un décalage devienne un échec nommé plutôt qu'une donnée fausse). Le jalon
+  ne devait produire **aucun code** ; il a fallu toucher au moteur **huit fois**, et c'est son
+  résultat le plus utile : une URL construite de **deux variables** ne se rendait pas (des deux
+  côtés, et un cas de conformance figeait la bizarrerie comme voulue), un prédicat `where` sur un
+  champ **imbriqué** rendait des données **différentes** selon le moteur, le littéral `true` en
+  minuscules levait côté Python, le mode booléen de `default` manquait côté embarqué, et
+  `options.stealth.user_agent` — documenté, implémenté, **absent du schéma** — était refusé par les
+  deux moteurs, alors qu'il décide de la page qu'un portail sert à un téléphone. S'y ajoutent le code
+  d'un `fail:CODE`, qui n'atteignait jamais l'appelant côté Python, et deux défauts trouvés **sur
+  l'appareil seulement** : une opération en échec qui revenait en *silence* plutôt qu'avec sa raison,
+  et surtout un **changement de fragment pris pour un nouveau document** — l'agent injecté se
+  réinstallait par-dessus une opération en vol, si bien qu'aucune lecture n'aboutissait sur un client
+  web qui route par `#`. Aucun n'était visible depuis le dépôt : il fallait écrire un Blueprint
+  contre une source qu'on n'a pas choisie, et le jouer sur un téléphone. Le port a même **retiré un
+  serveur de l'architecture** : le relais que l'application interrogeait n'existait que pour
+  contourner une contrainte de navigateur, à laquelle une requête native n'est pas soumise.
+  [docs/embedded.md](docs/embedded.md#porter-un-cas-dusage-réel),
+  [docs/phase-3/3-g-reference.md](docs/phase-3/3-g-reference.md).
+
+**Phase 3 terminée (A–G).** Le même Blueprint tourne sur une machine et sur un téléphone, se corrige
+à distance, et un cas d'usage réel le prouve.
 
 ## Sources de référence
 

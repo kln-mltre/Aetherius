@@ -10,6 +10,7 @@
 
 import { TemplateError } from "../errors.js";
 import { parseIsoDate, shiftDays, strftime, toIsoDate } from "./dates.js";
+import { pyTruth } from "./operators.js";
 import { pythonStr } from "./truthy.js";
 import { isUndefined, undefinedValue, type UndefinedValue } from "./undefined.js";
 
@@ -91,7 +92,20 @@ export const FILTERS: Readonly<Record<string, FilterFn>> = {
     const separator = args.length > 0 ? pythonStr(args[0]) : "";
     return sequenceOf(value, "join").map(pythonStr).join(separator);
   },
-  default: (value, args) => (isUndefined(value) ? (args.length > 0 ? args[0] : "") : value),
+  /**
+   * `default(fallback, boolean=False)`, Jinja's signature.
+   *
+   * The second argument is not a detail: with it, *any* falsy value takes the fallback, not only an
+   * undefined one. A Blueprint reading a nullable field writes `| default('', true)` to turn a
+   * `null` into an empty string — and without this branch the embedded engine kept the `null`,
+   * which is a different value with the same run status. Found by the reference port of milestone
+   * 3-G, on a closing time that is `null` while a place is shut.
+   */
+  default: (value, args) => {
+    const fallback = args.length > 0 ? args[0] : "";
+    if (isUndefined(value)) return fallback;
+    return args.length > 1 && pyTruth(args[1]) && !pyTruth(value) ? fallback : value;
+  },
 };
 
 /** `default` must see the marker; every other filter gets a defined value. */

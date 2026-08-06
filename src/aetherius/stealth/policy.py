@@ -21,7 +21,7 @@ ScrollMode = Literal["off", "eased"]
 _MOUSE_MODES = frozenset(get_args(MouseMode))
 _KEYBOARD_MODES = frozenset(get_args(KeyboardMode))
 _SCROLL_MODES = frozenset(get_args(ScrollMode))
-_KNOWN_KEYS = frozenset({"mouse", "keyboard", "scroll", "timing", "fingerprint"})
+_KNOWN_KEYS = frozenset({"mouse", "keyboard", "scroll", "timing", "fingerprint", "user_agent"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +30,8 @@ class StealthPolicy:
 
     ``mouse``/``keyboard``/``scroll`` gate the humanizers; ``distraction`` is the probability of an
     occasional idle pause; ``fingerprint`` names a profile (or ``None`` to keep Playwright's stock
-    fingerprint). ``OFF`` is the identity policy: no feature touches the page.
+    fingerprint); ``user_agent`` overrides the UA string alone. ``OFF`` is the identity policy: no
+    feature touches the page.
     """
 
     mouse: MouseMode = "off"
@@ -38,10 +39,18 @@ class StealthPolicy:
     scroll: ScrollMode = "off"
     distraction: float = 0.0
     fingerprint: str | None = None
+    user_agent: str | None = None
 
     @property
     def is_active(self) -> bool:
-        """True when at least one feature would alter the browser or its inputs."""
+        """True when at least one feature would alter the browser or its inputs.
+
+        ``user_agent`` is deliberately excluded: it is the one piece of discretion the embedded
+        engine also honours, and there it changes the UA and nothing else. Counting it here would
+        drag in the fingerprint patches on this engine only — the same Blueprint behaving
+        differently on the two engines, which is precisely what the shared contract exists to
+        prevent. The UA is applied from the context options instead.
+        """
         return (
             self.mouse != "off"
             or self.keyboard != "off"
@@ -124,10 +133,15 @@ def build_policy(raw: Any) -> StealthPolicy:
     if fingerprint is not None and not isinstance(fingerprint, str):
         raise _fail("'fingerprint' must be a profile name (string).")
 
+    user_agent = raw.get("user_agent")
+    if user_agent is not None and not isinstance(user_agent, str):
+        raise _fail("'user_agent' must be a string.")
+
     return StealthPolicy(
         mouse=_choice(raw.get("mouse"), _MOUSE_MODES, "mouse"),  # type: ignore[arg-type]
         keyboard=_choice(raw.get("keyboard"), _KEYBOARD_MODES, "keyboard"),  # type: ignore[arg-type]
         scroll=_choice(raw.get("scroll"), _SCROLL_MODES, "scroll"),  # type: ignore[arg-type]
         distraction=_distraction(raw.get("timing")),
         fingerprint=fingerprint,
+        user_agent=user_agent,
     )

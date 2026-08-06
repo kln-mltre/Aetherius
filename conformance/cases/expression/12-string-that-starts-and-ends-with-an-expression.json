@@ -1,7 +1,7 @@
 {
   "name": "expr-two-expressions-no-surrounding-text",
   "kind": "expression",
-  "description": "Bizarrerie du moteur Python reproduite volontairement : le motif de l'expression nue va jusqu'au DERNIER '}}', donc '{{ a }} {{ b }}' est lu comme une seule expression malformee. Les deux moteurs refusent. Le moteur embarque ne doit pas la 'corriger' : le meme Blueprint se comporterait alors differemment de chaque cote.",
+  "description": "Deux expressions dans une chaine, sans texte autour : elles s'interpolent, et le resultat est une chaine. Le motif de l'expression nue ne va PLUS jusqu'au dernier '}}'. C'etait une bizarrerie du moteur Python, reproduite volontairement au jalon 3-B et figee ici ; le jalon 3-G l'a rencontree a la premiere URL construite de deux variables ('{{ vars.api }}/{{ inputs.id }}'), la forme la plus ordinaire qui soit. Corrigee des DEUX cotes le meme jour : c'est ce qui garde l'invariant que ce cas protegeait.",
   "context": {
     "a": 1,
     "b": 2
@@ -9,12 +9,12 @@
   "value": "{{ a }} {{ b }}",
   "expect": {
     "python": {
-      "outcome": "error",
-      "error": "TemplateError"
+      "outcome": "rendered",
+      "value": "1 2"
     },
     "embedded": {
-      "outcome": "error",
-      "error": "TemplateError"
+      "outcome": "rendered",
+      "value": "1 2"
     }
   }
 }

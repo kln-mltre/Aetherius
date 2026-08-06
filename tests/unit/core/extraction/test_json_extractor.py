@@ -112,6 +112,46 @@ def test_where_single_underscore_field_is_allowed() -> None:
     assert result["rows"] == [{"_private": 2}]
 
 
+def test_where_reaches_a_nested_field() -> None:
+    # Real payloads nest their discriminators (Croustillant: `type.code`). The embedded engine reads
+    # a plain object graph, so it has always answered this; only the top level was wrapped here,
+    # which made the same predicate raise on one engine and filter on the other.
+    body = json.dumps(
+        [
+            {"nom": "Resto U", "type": {"code": 1, "libelle": "Restaurant"}},
+            {"nom": "Agree", "type": {"code": 4, "libelle": "Restaurant agree"}},
+        ]
+    ).encode()
+    spec = {"rows": ExtractSpec(from_="json", path="$[*]", where="item.type.code != 4")}
+    result = extract_json(body, spec)
+    assert [row["nom"] for row in result["rows"]] == ["Resto U"]
+
+
+@pytest.mark.parametrize("spelling", ["true", "True"])
+def test_where_accepts_both_spellings_of_a_boolean_literal(spelling: str) -> None:
+    # Jinja and the embedded engine's single evaluator spell literals in lower case; here `where`
+    # is raw Python, where `true` is an undefined name. Both spellings must mean the same thing, or
+    # the natural one raises on this engine and filters on the other.
+    body = json.dumps([{"id": 1, "is_active": True}, {"id": 2, "is_active": False}]).encode()
+    spec = {"rows": ExtractSpec(from_="json", path="$[*]", where=f"item.is_active == {spelling}")}
+    assert extract_json(body, spec)["rows"] == [{"id": 1, "is_active": True}]
+
+
+def test_where_accepts_the_lower_case_none_literal() -> None:
+    body = json.dumps([{"id": 1, "zone": None}, {"id": 2, "zone": "Talence"}]).encode()
+    spec = {"rows": ExtractSpec(from_="json", path="$[*]", where="item.zone != none")}
+    assert extract_json(body, spec)["rows"] == [{"id": 2, "zone": "Talence"}]
+
+
+def test_where_on_an_absent_nested_field_raises() -> None:
+    # An absent field is an error on both engines, not a silent filter: a typo in a Blueprint must
+    # not read as "nothing matched".
+    body = json.dumps([{"type": {"code": 1}}]).encode()
+    spec = {"rows": ExtractSpec(from_="json", path="$[*]", where="item.type.absent != 4")}
+    with pytest.raises(ExtractionError, match="Error evaluating where expression"):
+        extract_json(body, spec)
+
+
 def test_where_with_boolean_logic() -> None:
     spec = {
         "events": ExtractSpec(

@@ -73,10 +73,17 @@ export class BridgedHost implements WebViewHost {
    * be Blueprint data.
    */
   onDocumentLoaded(url: string): void {
+    // A **fragment** change is not a new document, whatever the view reports. Some platforms signal
+    // a finished load for one; taking that at face value advanced the generation, and the agent
+    // then reinstalled itself over an operation still in flight — which never answered, and came
+    // back as silence. Observed on a real web client that sets `location.hash` a second after its
+    // first render: every read on it failed, WebView hidden or visible. A reload keeps the *same*
+    // URL, fragment included, so it is not mistaken for one and still earns a fresh generation.
+    const sameDocument = isFragmentChange(this.url, url);
     this.loading = false;
     this.loadError = undefined;
     this.url = url;
-    this.generation += 1;
+    if (!sameDocument) this.generation += 1;
     this.page.inject(installSource(this.agentSource, this.generation));
   }
 
@@ -316,6 +323,25 @@ export class BridgedHost implements WebViewHost {
     if (this.loadError !== undefined) throw this.networkFailure();
     await this.bridge.waitForReady(timeoutMs);
   }
+}
+
+/**
+ * Do *from* and *to* differ only by their fragment — that is, is it the same document?
+ *
+ * Compared as text rather than through a URL parser: the engine runs where `URL` may be a polyfill,
+ * and the two strings come from the same view, so they are already absolute and consistently
+ * spelled. Identical URLs are **not** a fragment change: that is a reload, and a reload really does
+ * produce a new document.
+ */
+export function isFragmentChange(from: string, to: string): boolean {
+  if (from === "" || to === "" || from === to) return false;
+  const cut = (url: string): [string, string] => {
+    const hash = url.indexOf("#");
+    return hash === -1 ? [url, ""] : [url.slice(0, hash), url.slice(hash + 1)];
+  };
+  const [beforeFrom, fragmentFrom] = cut(from);
+  const [beforeTo, fragmentTo] = cut(to);
+  return beforeFrom === beforeTo && fragmentFrom !== fragmentTo;
 }
 
 /** Exported so a test can assert the settle window is bounded rather than guessed. */

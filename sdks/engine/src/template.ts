@@ -14,8 +14,15 @@
 import { TemplateError } from "./errors.js";
 import { evaluateExpression, isUndefined, pythonStr, type Context } from "./expr/index.js";
 
-/** A string that is exactly one `{{ … }}` expression, whitespace aside. */
-const BARE_EXPRESSION = /^\s*\{\{([\s\S]*?)\}\}\s*$/;
+/**
+ * A string that is exactly one `{{ … }}` expression, whitespace aside.
+ *
+ * The body may not contain `}}`. A lazy `[\s\S]*?` backtracks past the first closer, so
+ * `"{{ vars.api }}/{{ inputs.id }}"` — the most ordinary way to build a URL — matched as a single
+ * expression whose source was `vars.api }}/{{ inputs.id`, and raised instead of interpolating.
+ * Both engines had the same defect, so the corpus saw agreement rather than a bug.
+ */
+const BARE_EXPRESSION = /^\s*\{\{((?:(?!\}\})[\s\S])*)\}\}\s*$/;
 
 /** Every `{{ … }}` occurrence, for the mixed-text path. */
 const EXPRESSION = /\{\{([\s\S]*?)\}\}/g;

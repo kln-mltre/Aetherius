@@ -46,12 +46,19 @@ test("several expressions interpolate in one string", () => {
   assert.equal(render("x {{ a }} y {{ b }} z", ctx), "x 1 y 2 z");
 });
 
-test("a string that both starts and ends with an expression is refused, as in Python", () => {
-  // Faithful mirror of a Python-side quirk: `_BARE_EXPR` matches to the *last* `}}`, so
-  // "{{ a }} {{ b }}" is read as one malformed expression. Both engines reject it; the embedded
-  // engine must not "fix" it, or the same Blueprint would behave differently on each.
-  assert.match(failure("{{ a }} {{ b }}", { a: 1, b: 2 }), /Invalid expression/);
+test("a string that both starts and ends with an expression interpolates", () => {
+  // Until milestone 3-G both engines *refused* this: the bare-expression pattern backtracked past
+  // the first `}}` and read the whole string as one malformed expression. The first reference
+  // Blueprint hit it on `"{{ vars.api }}/{{ inputs.id }}"` — a URL built from two variables. Fixed
+  // on both engines the same day, which is what keeps the invariant the old test protected.
+  assert.equal(render("{{ a }} {{ b }}", { a: 1, b: 2 }), "1 2");
+  assert.equal(render("{{ a }}/{{ b }}", { a: 1, b: 2 }), "1/2");
   assert.equal(render("x {{ a }} {{ b }}", { a: 1, b: 2 }), "x 1 2");
+});
+
+test("the bare expression rule survives the fix", () => {
+  // The counterpart: exactly one expression still yields the raw object, whitespace aside.
+  assert.deepEqual(render("  {{ rows }}  ", { rows: [1, 2] }), [1, 2]);
 });
 
 test("a string without any expression passes through untouched", () => {

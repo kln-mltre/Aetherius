@@ -61,6 +61,21 @@ test("a call that is never answered fails at a known time", async () => {
   });
 });
 
+test("the caller's grace scales with the budget it covers", async () => {
+  // A flat grace was too tight, and a real portal showed why: the agent measures its deadline with
+  // page timers, which a busy or off-screen document runs late, and the drift grows with the wait.
+  // Every read on a heavy web client came back as *silence* rather than as the agent's own "no
+  // element matched" — which sends the author hunting an engine bug instead of a selector.
+  const { callerDeadlineMs } = await import("../dist/webview/rpc.js");
+  assert.equal(callerDeadlineMs(0), 2000, "the floor still covers an instantaneous op");
+  assert.equal(callerDeadlineMs(5000), 9500);
+  assert.equal(callerDeadlineMs(30000), 47000);
+  assert.ok(
+    callerDeadlineMs(30000) - 30000 > callerDeadlineMs(5000) - 5000,
+    "a longer wait earns a longer grace",
+  );
+});
+
 test("a split answer is reassembled", async () => {
   const { bridge, injected, gen } = bridgeWithAgent();
   const pending = bridge.call("extract", {}, 2000);
@@ -374,4 +389,70 @@ test("a kept view is reloaded, not handed the URL it already shows", async () =>
   host.onDocumentLoaded("https://x.test/");
   host.onMessage(JSON.stringify({ aeth: 1, gen: 2, ready: true, url: "https://x.test/" }));
   assert.equal(await navigating, "https://x.test/");
+});
+
+test("a fragment change keeps the generation, so a call in flight still gets its answer", async () => {
+  // The defect a real web client exposed: it sets `location.hash` about a second after its first
+  // render. The view reported a finished load, the host called it a new document, the agent
+  // reinstalled itself over the operation in flight — and that operation never answered. Every read
+  // on that page failed, WebView hidden or visible, with a silence that named nothing.
+  const injected = [];
+  const page = {
+    load: () => {},
+    goBack: () => {},
+    goForward: () => {},
+    reload: () => {},
+    inject: (source) => injected.push(source),
+    applySession: () => true,
+    destroy: () => {},
+  };
+  const host = new BridgedHost(page, "/* agent */");
+  await host.configure({ persist: false, debug: false, userAgent: undefined }, 1000);
+
+  host.onLoadStarted("https://x.test/mail");
+  host.onDocumentLoaded("https://x.test/mail");
+  host.onMessage(JSON.stringify({ aeth: 1, gen: 1, ready: true, url: "https://x.test/mail" }));
+
+  const reading = host.call("extract", { outputs: {} }, 1000);
+  // The call reaches the page through a readiness check, so it is injected a tick later.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const order = orderIn(injected[injected.length - 1]);
+
+  // The client routes to `#1`: same document, new URL.
+  host.onDocumentLoaded("https://x.test/mail#1");
+  assert.match(
+    injected[injected.length - 1],
+    /__aetheriusGen = 1;/,
+    "a fragment change must not advance the generation",
+  );
+
+  // The agent answers the call it is still running, stamped with the generation it was given.
+  host.onMessage(
+    JSON.stringify({ aeth: PROTOCOL_VERSION, gen: 1, id: order.id, ok: true, value: { lu: 12 } }),
+  );
+  assert.deepEqual(await reading, { lu: 12 });
+});
+
+test("a reload does earn a fresh generation, fragment or not", async () => {
+  const injected = [];
+  const page = {
+    load: () => {},
+    goBack: () => {},
+    goForward: () => {},
+    reload: () => {},
+    inject: (source) => injected.push(source),
+    applySession: () => true,
+    destroy: () => {},
+  };
+  const host = new BridgedHost(page, "/* agent */");
+  await host.configure({ persist: false, debug: false, userAgent: undefined }, 1000);
+
+  host.onLoadStarted("https://x.test/mail#1");
+  host.onDocumentLoaded("https://x.test/mail#1");
+  assert.match(injected[injected.length - 1], /__aetheriusGen = 1;/);
+
+  // Same URL, fragment included: that is a reload, and the document really is new.
+  host.onLoadStarted("https://x.test/mail#1");
+  host.onDocumentLoaded("https://x.test/mail#1");
+  assert.match(injected[injected.length - 1], /__aetheriusGen = 2;/);
 });

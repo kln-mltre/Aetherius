@@ -1,0 +1,21 @@
+{
+  "name": "expr-default-boolean-mode",
+  "kind": "expression",
+  "description": "Le second argument de `default` : avec lui, TOUTE valeur fausse prend le repli, pas seulement une valeur absente. Un Blueprint qui lit un champ nullable ecrit `| default('', true)` pour transformer un null en chaine vide ; le moteur embarque gardait le null, soit une valeur differente avec le meme statut de run. Trouve par le port de reference du jalon 3-G, sur une heure de fermeture nulle quand un lieu est ferme.",
+  "context": {
+    "ferme_a": [null],
+    "ouvert_a": ["09:00"],
+    "zero": 0
+  },
+  "value": "{{ ferme_a | first | default('inconnu', true) }} / {{ ouvert_a | first | default('inconnu', true) }} / {{ zero | default(9, true) }} / {{ zero | default(9) }}",
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": "inconnu / 09:00 / 9 / 0"
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": "inconnu / 09:00 / 9 / 0"
+    }
+  }
+}

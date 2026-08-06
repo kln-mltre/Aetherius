@@ -119,7 +119,7 @@ exécutable.
 | 3-D | [3-d-continuum.md](3-d-continuum.md) | 3-C | **Act II — Continuum** sur WebView : agent injecté, RPC corrélée, locators, auto-attente, extraction DOM, `wait_for` avec `fail:CODE`, sessions et cookies, mode debug. Le jalon le plus volumineux. **Livré.** |
 | 3-E | [3-e-integration.md](3-e-integration.md) | 3-D | La surface applicative : façade `Aetherius`, `SecretResolver` sur le trousseau, hygiène des secrets, flux d'événements pour l'UI, action `confirm` en modal natif, annulation, et un modèle d'erreur qui distingue enfin « source en panne » de « réponse vide ». **Livré.** |
 | 3-F | [3-f-delivery.md](3-f-delivery.md) | 3-E | **Livraison des Blueprints** : socle embarqué dans le binaire, surcouche distante avec cache, contrôle d'intégrité, repli et interrupteur d'arrêt. Corriger un site cassé sans publier sur les stores — le vrai gain produit. **Livré.** |
-| 3-G | [3-g-reference.md](3-g-reference.md) | 3-F | Blueprints de référence exécutables sous `examples/mobile/` (API publiques et un parcours SSO complet) et **guide de migration** : comment un service HTTP et une WebView cachée deviennent des Blueprints. |
+| 3-G | [3-g-reference.md](3-g-reference.md) | 3-F | Blueprints de référence exécutables sous `examples/mobile/reference/` (quatre API réelles et un parcours SSO complet) et **guide de migration** : comment un service HTTP et une WebView cachée deviennent des Blueprints. **Livré.** |
 
 **Ordre recommandé :** strictement séquentiel, de 3-A à 3-G — chaque jalon consomme le précédent.
 Deux avertissements de charge : **3-B** est le jalon à risque (c'est là que se paie la contrainte du
@@ -142,16 +142,21 @@ Deux adaptations pour un jalon TypeScript :
 
 > **Note de portée.** Comme en Phase 2, tout ce qui toucherait la table des `capabilities`, les
 > contrats (`contracts/*.json|yaml`), l'enum `EventType` ou le dispatch d'un driver est **différé au
-> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les jalons **3-A à 3-F sont
+> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les **sept jalons sont
 > livrés** : `contracts/actions.json` existe (généré depuis le registre Python et gardé), les deux
 > mini-langages sont là, les Blueprints `vector` **et** `continuum` **s'exécutent** sur l'appareil,
 > une application les consomme par une **façade** (secrets, `confirm`, annulation, modèle d'erreur),
 > et ils ne sont plus figés dans le binaire — un **registre** les résout entre un socle embarqué et
 > une surcouche distante vérifiée. Le jalon 3-F définit d'ailleurs le seul **nouveau** contrat de la
-> phase, et il est *applicatif* (le format du manifeste) : `contracts/` reste intact.
+> phase, et il est *applicatif* (le format du manifeste). Enfin, le jalon 3-G **porte un cas d'usage
+> mobile réel** en Blueprints et livre le guide de migration.
 > Le corpus de conformance vit sous [`conformance/`](../../conformance/README.md) et
 > `make conformance` rejoue les deux moteurs — depuis 3-C sur des **runs entiers**, pas seulement des
 > verdicts, et depuis 3-D sur des runs **navigateur** (un cas déclare alors `requires: "browser"`,
 > et un troisième exécuteur, celui de `@aetherius/react-native`, les joue). Référence d'usage :
-> [docs/embedded.md](../embedded.md). Aucun contrat existant n'a été modifié : un fichier a été
-> **ajouté** au jalon 3-A, rien n'a bougé depuis.
+> [docs/embedded.md](../embedded.md).
+>
+> **Une seule évolution de contrat sur toute la phase** : un fichier **ajouté** au jalon 3-A
+> (`contracts/actions.json`), et une **clé ajoutée** au jalon 3-G — `options.stealth.user_agent`,
+> qui était documentée et implémentée côté embarqué mais absente du schéma, donc refusée par les
+> deux moteurs. Un port réel l'a trouvée en une requête.

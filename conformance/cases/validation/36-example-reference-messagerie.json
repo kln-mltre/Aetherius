@@ -1,0 +1,9 @@
+{
+  "name": "example-reference-messagerie",
+  "description": "Le second volet du parcours authentifiant (le mode 'chaud' de l'application d'origine) : il declare lui aussi options.stealth.user_agent, et une lecture avec son propre timeout_ms court. Accepte des deux cotes.",
+  "blueprint_path": "examples/mobile/reference/ukit-scolarite-messagerie.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

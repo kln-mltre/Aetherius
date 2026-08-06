@@ -8,6 +8,61 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 ## [Non publié]
 
 ### Ajouté
+- **Jalon 3-G — Blueprints de référence & guide de migration**
+  ([docs/mobile-migration.md](docs/mobile-migration.md)) : la Phase 3 se termine sur la seule
+  question qui restait après six jalons de moteur — *remplace-t-il vraiment le code qu'il prétend
+  remplacer ?*
+  - **Cinq Blueprints de référence** dans [`examples/mobile/reference/`](examples/mobile/reference/),
+    sur les **vrais** services d'une application universitaire en production : un fichier éditorial
+    servi par CDN, une API de restauration, une API d'affluence de lieux, un serveur d'emplois du
+    temps, et le **parcours authentifiant** en deux volets (dossier administratif, puis messagerie)
+    qui remplace 323 lignes de composant WebView, dont environ 176 de JavaScript en gabarits de
+    chaîne — deux Blueprints et non un, parce que c'est la distinction que l'application d'origine
+    fait déjà entre son parcours froid et son parcours chaud. Quatre sont zéro configuration ; les
+    deux autres demandent des identifiants, sont marqués comme tels, et ne comptent pas comme
+    l'exemple exécutable requis.
+  - **Parité démontrée sur des données réelles** : pour les trois Blueprints Act I joués des deux
+    côtés, les `outputs`, les `StepResult` **et** la séquence d'événements sont identiques au JSON
+    canonique. Les 41 Blueprints d'`examples/` ont vu leurs verdicts recomparés : 34 identiques,
+    7 divergents, tous des divergences déclarées par le socle.
+  - **Le guide** dit ce qui descend dans un Blueprint et ce qui n'y descend pas (cache,
+    internationalisation, calcul, rendu, toute règle qui a besoin de l'heure courante), donne
+    l'ordre de migration, la stratégie incrémentale derrière les signatures existantes, et reste
+    **honnête sur ce qui demeure fragile** : un sélecteur positionnel le reste. Ce qui change, c'est
+    qu'il devient une ligne de données corrigeable à distance au lieu d'une constante compilée en
+    attente de publication. Le Blueprint lit d'ailleurs les **libellés voisins** et les `assert` :
+    un décalage devient un échec nommé au lieu d'une donnée fausse écrite dans le trousseau.
+  - **Une lecture qui suit une attente porte désormais son propre `timeout_ms`, court.** Un
+    `extract` réarmait une auto-attente du budget du step ; sur un appareil, les minuteurs de la
+    page ne sont pas fiables alors que l'appelant compte en temps réel, si bien qu'un élément
+    disparu entre les deux steps produisait un **silence** rapporté « la page a changé » au lieu
+    d'un « aucun élément ne correspond ». Trouvé sur un client de messagerie lourd, WebView cachée
+    comme visible.
+  - **Découper selon les parcours de l'application, pas selon les pages** : le parcours
+    authentifiant est livré en deux Blueprints (dossier, messagerie) parce que c'est la distinction
+    que l'application d'origine fait déjà, et que chaque service rebondit seul sur
+    l'authentification unifiée.
+  - **Un relais qui disparaît.** Le Blueprint d'emplois du temps vise le service de l'université
+    **directement**, là où l'application d'origine passe par un point d'entrée dédié. Ce relais
+    existe pour contourner une contrainte de navigateur — une page ne peut pas appeler un autre
+    domaine sans son accord — et une requête émise nativement depuis l'appareil n'y est pas soumise.
+    Un serveur à héberger, à payer et à surveiller sort donc de l'architecture avec la migration.
+  - **Une limite du moteur, nommée et contournée à découvert.** Les six Blueprints de référence
+    tournent sur l'appareil, sorties identiques au moteur Python — le dernier a demandé cinq passes.
+    Ce qui a tranché est une sonde qui ne demandait rien à la page sinon *ce qu'elle était* : tout
+    répondait, à l'identique du poste. La cause est qu'**une opération émise pendant un enchaînement
+    de navigations se perd** — le moteur ne rejoue que ce qu'il sait avoir perdu, et il n'apprend
+    pas tous les remplacements de document qu'une redirection en cascade produit. Le Blueprint
+    laisse donc la page arriver avant de l'interroger, par une pause **visible dans le fichier** :
+    un contournement qu'on peut lire est un contournement qu'on saura retirer. La limite est écrite
+    dans `docs/embedded.md`, avec ce qu'il faudrait pour l'absorber côté moteur.
+  - Le banc de vérification gagne six cartes ; le dépôt du projet consommateur n'est pas touché.
+- **`options.stealth.user_agent`** ([docs/stealth.md](docs/stealth.md#user_agent-à-part-des-autres))
+  — la seule bribe de discrétion que le moteur embarqué honore, désormais **acceptée par le
+  contrat** et honorée par le moteur Python (contexte Playwright). Elle écrase l'UA du profil
+  d'empreinte, s'applique sans profil, et **n'active rien d'autre** : la déclarer ne doit pas tirer
+  les patches d'empreinte d'un seul côté, sinon le même Blueprint se comporterait différemment sur
+  les deux moteurs.
 - **Jalon 3-F — Livraison des Blueprints**
   ([docs/embedded.md](docs/embedded.md#la-livraison-des-blueprints)) : le gain produit de la Phase 3.
   Jusqu'ici un Blueprint arrivait par un `import` — figé dans le binaire, donc un site qui change
@@ -427,6 +482,66 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
   que rien ne s'exécute.
 
 ### Corrigé
+- **Une URL construite de deux variables ne se rendait pas** — `"{{ vars.api }}/{{ inputs.id }}"`,
+  la forme la plus ordinaire qui soit. Le motif de l'expression nue (`^\s*\{\{(.*?)\}\}\s*$`)
+  rebroussait jusqu'au **dernier** `}}` et lisait la chaîne entière comme une expression malformée,
+  qui échouait au parsing. Les **deux** moteurs avaient le défaut, et un cas de conformance figeait
+  la bizarrerie comme un comportement voulu — c'est pourquoi rien ne la voyait. Le corps d'une
+  expression nue ne peut plus contenir `}}` ; corrigé des deux côtés le même jour, ce qui préserve
+  l'invariant que le cas protégeait. Trouvé au premier Blueprint de référence du jalon 3-G.
+- **Un prédicat `where` sur un champ imbriqué rendait des données différentes selon le moteur.**
+  `item.type.code != 4` — le filtre exact d'un service réel — **levait** côté Python, où seul le
+  premier niveau de l'item était enveloppé dans un `SimpleNamespace`, et **filtrait** côté embarqué,
+  qui parcourt un graphe d'objets ordinaire. La conversion est désormais **récursive** ; les listes
+  restent des listes, l'indexation étant refusée par les deux grammaires. Gardé par
+  `extract-where-nested-field` et son pendant sur un champ imbriqué **absent**, qui doit lever des
+  deux côtés.
+- **Le littéral `true` en minuscules levait côté Python dans un `where`.** Le prédicat y est du
+  Python brut, où `true` est un nom indéfini, alors que Jinja et l'évaluateur embarqué l'acceptent :
+  la forme la plus naturelle (`item.is_active == true`) marchait d'un côté et pas de l'autre. Les
+  trois alias `true`/`false`/`none` sont liés dans la portée du prédicat
+  (`extract-where-lower-case-literals`).
+- **Le mode booléen de `default` manquait au moteur embarqué.** `| default('', true)` — la forme qui
+  transforme *toute* valeur fausse en repli, et donc un `null` en chaîne vide — laissait passer le
+  `null` : une valeur différente, avec le même statut de run. Second argument honoré
+  (`expr-default-boolean-mode`). Trouvé sur une heure de fermeture nulle quand un lieu est fermé,
+  c'est-à-dire par une donnée réelle et non par un test.
+- **`options.stealth.user_agent` était refusé par le schéma partagé.** La clé était documentée dans
+  `docs/embedded.md` et lue par le driver WebView depuis le jalon 3-D, mais absente de
+  `contracts/blueprint.schema.json`, dont la branche objet de `stealth` porte
+  `additionalProperties: false` : **les deux moteurs** refusaient tout Blueprint qui la déclarait, et
+  personne ne s'en apercevait puisque aucun ne l'utilisait. Ajoutée au contrat (et à la copie
+  packagée `aetherius/_contracts/`), décodée par `StealthPolicy`, appliquée aux options de contexte
+  Playwright.
+- **Le code d'un `fail:CODE` n'atteignait jamais l'appelant côté Python.**
+  `on_timeout: "fail:LOGIN_FAILED"` posait bien son code sur `StepTimeoutError`, mais rien ne le
+  lisait : ni le `Result`, ni le `StepResult`, ni l'événement `error`. Une application ne pouvait
+  donc pas distinguer « mot de passe refusé » de « la page a changé », ce qui est l'unique raison
+  d'être du nommage. Le code passe désormais en tête du message (`LOGIN_FAILED: wait_for timed
+  out …`). Côté embarqué il était déjà exposé par `describeFailure(...).code`.
+- **Un changement de fragment était pris pour un nouveau document** (`webview/bridged-host.ts`).
+  Certaines plateformes signalent une fin de chargement quand une page se contente de poser son
+  `location.hash` ; le host y voyait un document neuf, incrémentait sa génération, et **l'agent
+  injecté se réinstallait par-dessus une opération en vol** — qui ne répondait alors plus jamais.
+  Conséquence réelle : sur un client web qui route par fragment, *toute* opération échouait en
+  silence, WebView cachée comme visible, et le symptôme se déplaçait d'une passe à l'autre selon
+  l'instant où la page posait son fragment. Une URL qui ne diffère que par son fragment garde
+  désormais la génération (`isFragmentChange`), ce qui rend l'installation idempotente comme elle
+  prétendait l'être ; un rechargement, lui, garde la **même** URL et gagne bien une génération
+  neuve. Invisible hors appareil : une page de test ne route pas par fragment une seconde après son
+  rendu.
+- **Sur un appareil, une opération qui échouait revenait en silence plutôt qu'avec sa raison.** La
+  grâce que l'appelant accorde à l'agent injecté au-delà de l'échéance de celui-ci était un
+  **forfait** de 2 s. Or l'agent mesure son échéance avec les minuteurs de la page, qu'un document
+  occupé — ou hors écran, donc ralenti par la plateforme — fait dériver, et la dérive grandit avec
+  l'attente qu'elle couvre : généreuse pour une opération de 200 ms, insuffisante pour une attente
+  de 5 s. Sur un client web lourd, **toute** lecture en échec revenait donc en « la page n'a jamais
+  répondu » au lieu du « aucun élément ne correspond » de l'agent — ce qui envoie l'auteur chercher
+  un bug du moteur plutôt que son sélecteur. La grâce suit désormais le budget qu'elle couvre
+  (`callerDeadlineMs`), et le minuteur ne se déclenche que sur un chemin déjà en échec. Dans la
+  foulée, le message d'un silence **nomme les sélecteurs** du step : un `extract` à cinq sorties
+  rapportait une échéance et rien d'autre. Trouvé sur appareil uniquement — une page de test répond
+  instantanément et ne produit jamais le cas.
 - **Act I perdait sa session d'un step à l'autre.** `VectorClient` construit sa `httpx.Request` à la
   main (pour garder explicite la précédence des en-têtes), or httpx n'attache les cookies du client
   que dans `build_request` : un `Set-Cookie` capturé par un step — ou la session ouverte par

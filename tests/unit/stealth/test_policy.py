@@ -44,6 +44,23 @@ def test_fingerprint_only_is_active() -> None:
     assert build_policy({"fingerprint": "chrome-desktop"}).is_active is True
 
 
+def test_user_agent_is_decoded() -> None:
+    policy = build_policy({"user_agent": "Mozilla/5.0 (Macintosh) Chrome/124.0.0.0"})
+    assert policy.user_agent == "Mozilla/5.0 (Macintosh) Chrome/124.0.0.0"
+
+
+def test_user_agent_alone_does_not_activate_the_rest() -> None:
+    # The embedded engine honours the UA and nothing else; counting it as "active" here would
+    # inject the fingerprint patches on this engine only, and the same Blueprint would behave
+    # differently on the two engines.
+    assert build_policy({"user_agent": "Mozilla/5.0"}).is_active is False
+
+
+def test_non_string_user_agent_rejected() -> None:
+    with pytest.raises(BlueprintValidationError):
+        build_policy({"user_agent": 42})
+
+
 def test_unknown_preset_rejected() -> None:
     with pytest.raises(BlueprintValidationError):
         build_policy("ninja")

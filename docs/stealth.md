@@ -23,12 +23,36 @@ Trois formes, toutes validées par le schéma ([`contracts/blueprint.schema.json
   "keyboard": "human",        // "off" | "human"
   "scroll": "eased",          // "off" | "eased"
   "timing": { "distraction": 0.1 },   // proba d'une pause "distraction" occasionnelle (0..1)
-  "fingerprint": "chrome-desktop"     // nom d'un profil de fingerprint, ou absent
+  "fingerprint": "chrome-desktop",    // nom d'un profil de fingerprint, ou absent
+  "user_agent": "Mozilla/5.0 (…)"     // UA explicite, prioritaire sur celui du profil
 } }
 ```
 
 Une forme invalide (preset inconnu, valeur d'enum hors liste, clé inconnue) échoue à la construction
 avec une `BlueprintValidationError` claire — jamais de dégradation silencieuse.
+
+### `user_agent`, à part des autres
+
+`user_agent` n'est pas une facette de discrétion comme les autres, et il mérite ses trois lignes.
+
+- Il **n'active rien d'autre** : un Blueprint qui ne déclare que lui n'obtient ni patch
+  d'automation, ni profil d'empreinte, ni humanisation (`StealthPolicy.is_active` reste `False`).
+  C'est délibéré — voir ci-dessous.
+- Il **écrase** l'UA du profil de fingerprint quand les deux sont présents, et s'applique aussi
+  quand il n'y a pas de profil du tout.
+- Il vise les **Acts navigateur**. L'identité d'en-têtes de Vector (Jalon 1.5-H) reste pilotée par
+  `fingerprint` : un `user_agent` seul ne change pas les en-têtes d'un run Act I.
+
+La raison de cette mise à part est la Phase 3 : c'est **la seule bribe de discrétion que le moteur
+embarqué honore** ([décision 8](phase-3/README.md)), parce qu'un portail sert souvent un DOM
+différent aux mobiles et qu'un Blueprint doit pouvoir en décider. Si la déclarer tirait avec elle
+les patches d'empreinte de ce côté-ci, le même fichier se comporterait différemment sur les deux
+moteurs — exactement ce que le contrat partagé existe pour empêcher.
+
+> La clé a été **ajoutée au schéma au jalon 3-G**. Elle était jusque-là documentée et implémentée
+> côté embarqué, mais absente de `contracts/blueprint.schema.json` : les deux moteurs refusaient
+> tout Blueprint qui la déclarait. Le port de référence l'a trouvée en une requête — la messagerie
+> visée sert `/modern/` à un UA mobile, un DOM où les sélecteurs décrits n'existent pas.
 
 ## Fonctionnement
 

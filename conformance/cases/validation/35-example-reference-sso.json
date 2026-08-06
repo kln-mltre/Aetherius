@@ -1,0 +1,9 @@
+{
+  "name": "example-reference-sso",
+  "description": "Le parcours authentifiant de reference, et le seul Blueprint livre qui declare options.stealth.user_agent. La cle etait documentee et implementee cote embarque, mais absente du schema partage : les deux moteurs la refusaient. Ce cas garde qu'elle est acceptee des deux cotes — sans lui, le DOM desktop d'une messagerie reste inatteignable depuis un telephone.",
+  "blueprint_path": "examples/mobile/reference/ukit-scolarite-sso.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

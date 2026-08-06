@@ -1,0 +1,38 @@
+{
+  "name": "extract-where-lower-case-literals",
+  "kind": "extraction",
+  "description": "Les litteraux s'ecrivent en minuscules, comme partout ailleurs dans le vocabulaire ('true', 'false', 'none'). Cote Python le predicat where est du Python brut, ou 'true' est un nom indefini : la forme la plus naturelle levait d'un cote et filtrait de l'autre. Les trois alias y sont desormais lies.",
+  "body": "[{\"id\": 1, \"is_active\": true, \"zone\": null}, {\"id\": 2, \"is_active\": false, \"zone\": \"Talence\"}]",
+  "spec": {
+    "actives": {
+      "from": "json",
+      "path": "$[*]",
+      "where": "item.is_active == true and item.zone == none",
+      "fields": {
+        "id": "$.id"
+      }
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "actives": [
+          {
+            "id": 1
+          }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "actives": [
+          {
+            "id": 1
+          }
+        ]
+      }
+    }
+  }
+}

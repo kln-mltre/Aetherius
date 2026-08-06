@@ -13,7 +13,8 @@ examples/
   phantom/      Act IV — agent autonome orienté objectif (goal/constraints)
   composition/  Multi-Act : act par step + self-healing (Jalon 2-D)
   plugins/      Extension par paquet tiers : action + canal custom (Jalon 1.5-E)
-  mobile/       Moteur embarqué : Blueprint témoin + application de démonstration (Jalon 3-C)
+  mobile/       Moteur embarqué : Blueprints témoins, application de démonstration,
+                livraison distante (registry/) et Blueprints de référence (reference/)
 ```
 
 ## Act I — Vector
@@ -105,7 +106,7 @@ Sans le plugin installé, la validation rejette l'action inconnue — c'est le c
 Après l'essai, le désinstaller (`pip uninstall aetherius-plugin-demo`) avant de relancer
 `make check` : les tests d'intégration démarrent le vrai moteur, qui le découvrirait.
 
-## Moteur embarqué (Jalon 3-C)
+## Moteur embarqué (Phase 3)
 
 Les mêmes Blueprints, joués par le **second moteur** directement sur un téléphone. Prise en main,
 prérequis et lancement : [`mobile/README.md`](mobile/README.md).
@@ -113,8 +114,26 @@ prérequis et lancement : [`mobile/README.md`](mobile/README.md).
 | Fichier | Ce qu'il montre | Prérequis |
 |---------|-----------------|-----------|
 | [`mobile/device-ip-check.blueprint.json`](mobile/device-ip-check.blueprint.json) | Le Blueprint témoin : quelle IP a émis la requête. Jouée depuis `aetherius run` puis depuis l'appareil, elle diffère — la preuve que la requête part bien du téléphone. Zéro config. | Aucun |
+| [`mobile/webview-quotes.blueprint.json`](mobile/webview-quotes.blueprint.json) | Le témoin Act II : navigation, attente du DOM, extraction typée et JS injecté, dans une WebView cachée. Zéro config. | Aucun |
 | [`mobile/session-cookie-probe.blueprint.json`](mobile/session-cookie-probe.blueprint.json) | **Sonde, pas démonstration** : un cookie de session posé par une redirection. `carried: true` sur l'appareil et sous le moteur Python, `false` sous Node — l'asymétrie est le résultat, et elle est rapportée plutôt que subie. Zéro config. | Aucun |
+| [`mobile/registry/`](mobile/registry/) | La livraison distante (Jalon 3-F) : un manifeste, une correction publiée, et le socle embarqué volontairement cassé qu'elle répare. | Node 20+ |
 | [`mobile/demo/`](mobile/demo/) | L'application de démonstration (Expo) : liste de Blueprints, run sur l'appareil, flux d'événements en direct, `Result`. Banc de vérification, pas vitrine. | Node 20+, Expo Go |
+
+### Blueprints de référence (Jalon 3-G)
+
+Un cas d'usage mobile **réel** décrit intégralement en Blueprints, sur les vrais services : quatre
+API tierces et un parcours authentifiant. Détail des fichiers dans
+[`mobile/README.md`](mobile/README.md#les-blueprints-de-référence), mode d'emploi de la migration
+dans [docs/mobile-migration.md](../docs/mobile-migration.md).
+
+| Fichier | Ce qu'il montre | Prérequis |
+|---------|-----------------|-----------|
+| [`mobile/reference/ukit-campus-annonces.blueprint.json`](mobile/reference/ukit-campus-annonces.blueprint.json) | Un fichier éditorial servi par CDN + filtre `where`. Le port le plus court. Zéro config. | Aucun |
+| [`mobile/reference/ukit-campus-restaurants.blueprint.json`](mobile/reference/ukit-campus-restaurants.blueprint.json) | `where` sur un champ **imbriqué**, conversion de date par `format_date`. Zéro config. | Aucun |
+| [`mobile/reference/ukit-campus-affluence.blueprint.json`](mobile/reference/ukit-campus-affluence.blueprint.json) | En-têtes imités, corps JSON, extraction imbriquée — et un filtre qui **reste applicatif**, volontairement. Zéro config. | Aucun |
+| [`mobile/reference/ukit-celcat-semaine.blueprint.json`](mobile/reference/ukit-celcat-semaine.blueprint.json) | POST form-encodé, clé répétée, borne de fin exclusive, constantes magiques devenues des `vars`. Zéro config. | Aucun |
+| [`mobile/reference/ukit-scolarite-sso.blueprint.json`](mobile/reference/ukit-scolarite-sso.blueprint.json) | Le remplaçant d'une WebView cachée, mode **froid** : CAS réel puis dossier administratif. `options.stealth.user_agent`, `fail:CODE`, `assert` de garde sur des sélecteurs positionnels. | Secrets `bordeaux_user`/`bordeaux_pass` dans `.env` |
+| [`mobile/reference/ukit-scolarite-messagerie.blueprint.json`](mobile/reference/ukit-scolarite-messagerie.blueprint.json) | Mode **chaud** : la messagerie seule, qui rebondit d'elle-même sur le CAS. Le comptage par expression régulière devient `as: "number"`. Porte une **pause explicite** après le login : une opération émise pendant la cascade de redirections se perd sur appareil. | Mêmes secrets |
 
 ## Lancer un exemple
 

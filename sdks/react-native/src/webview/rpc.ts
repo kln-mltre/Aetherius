@@ -246,7 +246,7 @@ export class AgentBridge {
         this.pending.delete(id);
         this.assemblies.delete(id);
         reject(new NoAnswerError(`${label} did not answer within ${timeoutMs} ms`));
-      }, timeoutMs + CALLER_GRACE_MS);
+      }, callerDeadlineMs(timeoutMs));
 
       this.pending.set(id, { gen, resolve, reject, timer, navigable });
       try {
@@ -326,10 +326,30 @@ export class AgentBridge {
 }
 
 /**
- * How long the caller waits *past* the agent's own deadline before declaring silence.
+ * The floor of how long the caller waits *past* the agent's own deadline before declaring silence.
  *
  * The agent answers its own timeout with a message naming what it was waiting for, which is far
  * more useful than "no answer". This grace exists only for the case where nothing comes back at
  * all — a crashed renderer, a bridge that dropped the message.
  */
 const CALLER_GRACE_MS = 2000;
+
+/**
+ * How much of the agent's own budget to add on top of the floor.
+ *
+ * A fixed grace was too tight, and a real portal showed why: the agent measures its deadline with
+ * page timers, which a busy — or off-screen, hence throttled — document runs late. The drift grows
+ * with the wait it is covering, so a flat two seconds covered a 200 ms operation generously and a
+ * five-second one not at all. On a heavy web client, every read came back as *silence* instead of
+ * the agent's own "no element matched", which sends the author looking for a bug in the engine
+ * rather than at their selector.
+ *
+ * Scaling with the budget keeps the failure legible where it matters and costs nothing on the happy
+ * path: this timer only ever fires when something has already gone wrong.
+ */
+const CALLER_GRACE_RATIO = 0.5;
+
+/** The caller's patience for one call: the agent's budget, plus a grace that scales with it. */
+export function callerDeadlineMs(timeoutMs: number): number {
+  return timeoutMs + CALLER_GRACE_MS + Math.round(timeoutMs * CALLER_GRACE_RATIO);
+}

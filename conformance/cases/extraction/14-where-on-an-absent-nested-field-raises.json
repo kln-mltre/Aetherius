@@ -1,0 +1,29 @@
+{
+  "name": "extract-where-absent-nested-field",
+  "kind": "extraction",
+  "description": "Le pendant du cas precedent : atteindre un champ imbrique ne doit pas rendre l'absence silencieuse. Une faute de frappe au deuxieme niveau leve comme au premier, des deux cotes — sinon un predicat casse se lirait 'aucun resultat'.",
+  "body": "[{\"nom\": \"Resto U\", \"type\": {\"code\": 1}}]",
+  "spec": {
+    "lieux": {
+      "from": "json",
+      "path": "$[*]",
+      "where": "item.type.absent != 4"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Error evaluating where expression"
+      ]
+    },
+    "embedded": {
+      "outcome": "error",
+      "error": "ExtractionError",
+      "message_contains": [
+        "Error evaluating where expression"
+      ]
+    }
+  }
+}

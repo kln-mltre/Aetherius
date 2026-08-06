@@ -1,0 +1,9 @@
+{
+  "name": "example-reference-annonces",
+  "description": "Le port le plus court : une requete, un filtre declaratif. Les deux moteurs l'acceptent.",
+  "blueprint_path": "examples/mobile/reference/ukit-campus-annonces.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

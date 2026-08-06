@@ -66,3 +66,17 @@ def test_step_output_in_context() -> None:
     ctx = {**_CTX, "steps": {"step1": {"value": "hello"}}}
     result = render_value("{{ steps.step1.value }}", ctx)
     assert result == "hello"
+
+
+def test_two_expressions_without_surrounding_text_interpolate() -> None:
+    # A URL built from two variables is the most ordinary Blueprint string there is. The bare
+    # expression pattern used to backtrack past the first '}}' and read the whole thing as one
+    # malformed expression, so this raised instead of rendering.
+    ctx = {**_CTX, "inputs": {"group": "TP-A1"}}
+    assert render_value("{{ vars.domain }}/{{ inputs.group }}", ctx) == "https://example.com/TP-A1"
+
+
+def test_the_bare_expression_rule_still_returns_raw_values() -> None:
+    # The counterpart the fix must not break: exactly one expression still yields the object.
+    ctx = {**_CTX, "steps": {"week": {"events": [{"id": 1}, {"id": 2}]}}}
+    assert render_value("  {{ steps.week.events }}  ", ctx) == [{"id": 1}, {"id": 2}]

@@ -86,6 +86,31 @@ def test_pace_raw_action_is_noop_when_slow_mo_covers_or_debug_off(
     assert _pace_slept(True, OFF, monkeypatch) == []  # slow_mo already paces raw ops here
 
 
+# ── user-agent override (the one knob the embedded engine shares) ─────────────
+def _context_options(policy: StealthPolicy) -> dict[str, object]:
+    return BrowserSession(stealth=policy)._context_options()
+
+
+def test_no_context_options_without_stealth() -> None:
+    assert _context_options(OFF) == {}
+
+
+def test_user_agent_alone_is_the_only_context_option() -> None:
+    # A Blueprint that only needs the desktop DOM of a portal must not silently get a whole
+    # fingerprint profile with it — the embedded engine would not give it one.
+    assert _context_options(StealthPolicy(user_agent="Mozilla/5.0 (Macintosh)")) == {
+        "user_agent": "Mozilla/5.0 (Macintosh)"
+    }
+
+
+def test_explicit_user_agent_overrides_the_profile() -> None:
+    options = _context_options(
+        StealthPolicy(fingerprint="chrome-desktop", user_agent="Mozilla/5.0 (Macintosh)")
+    )
+    assert options["user_agent"] == "Mozilla/5.0 (Macintosh)"
+    assert "viewport" in options  # the rest of the profile is untouched
+
+
 # ── multi-tab following ────────────────────────────────────────────────────────
 def test_on_new_page_becomes_active_and_repoints_humanizer() -> None:
     session = BrowserSession(stealth=StealthPolicy(mouse="gestures"))

@@ -25,12 +25,22 @@ import jsonplaceholderFlow from "../../vector/jsonplaceholder-flow.blueprint.jso
 import quotesWatch from "../../vector/quotes-watch.blueprint.json";
 import ukitPlanning from "../../vector/ukit-inf601a5-test.blueprint.json";
 
+// Jalon 3-G — le cas d'usage mobile reel, entierement decrit en Blueprints.
+import referenceAffluence from "../reference/ukit-campus-affluence.blueprint.json";
+import referenceAnnonces from "../reference/ukit-campus-annonces.blueprint.json";
+import referenceCelcat from "../reference/ukit-celcat-semaine.blueprint.json";
+import referenceMessagerie from "../reference/ukit-scolarite-messagerie.blueprint.json";
+import referenceRestaurants from "../reference/ukit-campus-restaurants.blueprint.json";
+import referenceSso from "../reference/ukit-scolarite-sso.blueprint.json";
+
 /**
  * `done` = observé sur un téléphone · `partial` = le chemin nominal est vu, des variantes restent ·
  * `todo` = à jouer · `blocked` = bloqué par un tiers indisponible.
  *
  * `partial` existe parce que plusieurs vérifications montent souvent sur le même Blueprint :
  * marquer « à faire » une carte qui vient de réussir serait aussi trompeur que la marquer finie.
+ * `blocked` couvre un tiers indisponible **et** un tiers dont le client défait le moteur : dans les
+ * deux cas la carte ne peut pas passer, et la raison n'est pas dans le Blueprint.
  */
 export const STATUS = {
   done: { label: "verifie", color: "#4e8a5a" },
@@ -40,6 +50,57 @@ export const STATUS = {
 };
 
 export const BLUEPRINTS = [
+  {
+    key: "reference-sso",
+    title: "Reference : le dossier administratif",
+    hint: "Le remplacant de la WebView cachee, mode froid : CAS puis identite. Un mauvais mot de passe doit donner LOGIN_FAILED.",
+    blueprint: referenceSso,
+    // Memes noms que la carte CAS : le trousseau est deja rempli si elle a servi.
+    secrets: ["bordeaux_user", "bordeaux_pass"],
+    status: "done",
+    note: "Les cinq champs lus sur iPhone, identiques a `aetherius run`, et un mauvais mot de passe donne bien LOGIN_FAILED en pastille.",
+  },
+  {
+    key: "reference-messagerie",
+    title: "Reference : la messagerie",
+    hint: "Mode chaud : la messagerie rebondit d'elle-meme sur le CAS. Une pause laisse la cascade de redirections arriver avant qu'on interroge la page.",
+    blueprint: referenceMessagerie,
+    secrets: ["bordeaux_user", "bordeaux_pass"],
+    status: "done",
+    note: "Reception (788) et non_lus: 788 sur iPhone, identiques a `aetherius run`. Le diagnostic a montre que l'agent est vivant et l'element present : ce qui se perdait, c'etait l'operation emise PENDANT la cascade de redirections du login. D'ou la pause, visible dans le fichier.",
+  },
+  {
+    key: "reference-annonces",
+    title: "Reference : les annonces (CDN)",
+    hint: "Le fichier editorial servi par jsDelivr, filtre par un predicat declaratif.",
+    blueprint: referenceAnnonces,
+    status: "done",
+    note: "Sorties identiques a `aetherius run`, vues sur iPhone.",
+  },
+  {
+    key: "reference-restaurants",
+    title: "Reference : la restauration",
+    hint: "Categorie ecartee par where sur un champ imbrique, date DD-MM-YYYY produite par format_date.",
+    blueprint: referenceRestaurants,
+    status: "done",
+    note: "Sorties identiques a `aetherius run`, vues sur iPhone.",
+  },
+  {
+    key: "reference-affluence",
+    title: "Reference : l'affluence des BU",
+    hint: "En-tetes imites, corps JSON, extraction imbriquee. Le filtre de categorie reste applicatif, et c'est le sujet.",
+    blueprint: referenceAffluence,
+    status: "done",
+    note: "Sorties identiques a `aetherius run`, vues sur iPhone.",
+  },
+  {
+    key: "reference-celcat",
+    title: "Reference : l'emploi du temps",
+    hint: "POST form-encode, cle repetee, borne de fin exclusive. Constantes magiques devenues des vars nommees.",
+    blueprint: referenceCelcat,
+    status: "done",
+    note: "Vise le service de l'universite DIRECTEMENT : le relais qu'interroge l'application d'origine existe pour contourner une contrainte de navigateur, et une requete native n'y est pas soumise. Le relais etait d'ailleurs en panne (522) — un tiers mort produit un echec nomme, pas une liste vide.",
+  },
   {
     key: "delivery-quotes",
     title: "Livraison : reparer sans republier",

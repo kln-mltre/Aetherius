@@ -181,7 +181,11 @@
               "additionalProperties": false,
               "properties": { "distraction": { "type": "number", "minimum": 0, "maximum": 1 } }
             },
-            "fingerprint": { "type": "string" }
+            "fingerprint": { "type": "string" },
+            "user_agent": {
+              "type": "string",
+              "description": "Browser Acts only: the User-Agent string to wear, overriding the fingerprint profile's. The one piece of discretion the embedded engine honours too, because a portal often serves a different DOM to a mobile UA."
+            }
           }
         }
       ]

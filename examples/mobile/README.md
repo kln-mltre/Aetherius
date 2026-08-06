@@ -171,6 +171,33 @@ aetherius run examples/mobile/delivery-quotes.blueprint.json                 # e
 aetherius run examples/mobile/registry/delivery-quotes.v2.blueprint.json     # la citation
 ```
 
+## Les Blueprints de référence
+
+[`reference/`](reference/) porte le livrable du jalon 3-G : **un cas d'usage mobile réel décrit
+intégralement en Blueprints**, sans une ligne de JavaScript injecté écrite à la main. Ce sont les
+ports des cinq sources d'une application universitaire en production — quatre API tierces et un
+parcours authentifiant — et ils visent les **vrais** services, pas des bacs à sable.
+
+| Fichier | Act | Ce qu'il porte | Prérequis |
+|---------|-----|----------------|-----------|
+| [`ukit-campus-annonces`](reference/ukit-campus-annonces.blueprint.json) | vector | Un fichier éditorial servi par CDN, filtré par un prédicat déclaratif | Aucun |
+| [`ukit-campus-restaurants`](reference/ukit-campus-restaurants.blueprint.json) | vector | La restauration universitaire : catégorie écartée par `where` sur un champ **imbriqué**, date `DD-MM-YYYY` produite par `format_date` | Aucun |
+| [`ukit-campus-affluence`](reference/ukit-campus-affluence.blueprint.json) | vector | L'affluence des bibliothèques : en-têtes imités, corps JSON, extraction imbriquée | Aucun |
+| [`ukit-celcat-semaine`](reference/ukit-celcat-semaine.blueprint.json) | vector | L'emploi du temps : POST form-encodé, clé répétée, borne de fin **exclusive**, constantes magiques devenues des `vars` — et le **relais disparaît**, la requête partant nativement de l'appareil | Aucun |
+| [`ukit-scolarite-sso`](reference/ukit-scolarite-sso.blueprint.json) | continuum | Le parcours authentifiant, mode **froid** : CAS puis dossier administratif | Secrets `bordeaux_user`/`bordeaux_pass` dans `.env` |
+| [`ukit-scolarite-messagerie`](reference/ukit-scolarite-messagerie.blueprint.json) | continuum | Le mode **chaud** : la messagerie seule, qui rebondit d'elle-même sur le CAS. Porte une **pause explicite** après le login — voir la limite dans [docs/embedded.md](../../docs/embedded.md#sondes-du-jalon-3-g) | Mêmes secrets |
+
+Les deux derniers remplacent 323 lignes de composant WebView, dont environ 176 de JavaScript en
+gabarits de chaîne. Ils sont **deux** et non un parce que l'application d'origine distingue déjà ces
+deux parcours, et parce que chaque service sait rebondir seul sur l'authentification unifiée — voir
+[docs/mobile-migration.md](../../docs/mobile-migration.md#découper-selon-les-parcours-de-lapplication-pas-selon-les-pages).
+Ils ne sont **pas** zéro configuration et ne comptent donc pas comme l'exemple exécutable requis ;
+c'est `webview-quotes` qui tient ce rôle pour l'Act II.
+
+Le mode d'emploi complet — ce qui descend dans un Blueprint, ce qui reste applicatif, et ce qui
+reste fragile après la migration — est dans
+[docs/mobile-migration.md](../../docs/mobile-migration.md).
+
 ## Ce qu'on doit voir
 
 Un run affiche sa progression puis son `Result`. Les valeurs attendues, à comparer avec
@@ -188,6 +215,12 @@ Un run affiche sa progression puis son `Result`. Les valeurs attendues, à compa
 | `ukit-planning` | la liste d'événements de la semaine, identique à `aetherius run` — c'est l'encodage `form` (clé répétée `federationIds[]`) éprouvé sur l'appareil |
 | `session-persist-probe` | `connecte: 1` si la session tient, `0` sinon — voir ci-dessous |
 | `delivery-quotes` | « Réponse inattendue » avant Rafraîchir, la citation d'Einstein après — voir ci-dessus |
+| `reference-annonces` | la liste des annonces publiées, **identique** à `aetherius run` |
+| `reference-restaurants` | les restaurants moins la catégorie écartée, puis les repas et les plats d'un jour |
+| `reference-affluence` | les sites d'affluence du point de balayage, et l'état d'ouverture de l'un d'eux |
+| `reference-celcat` | la liste des groupes et la semaine de cours, **identiques** à `aetherius run` — et sans passer par le relais qu'interroge l'application d'origine |
+| `reference-sso` | les cinq champs du dossier administratif — à comparer **champ à champ** avec `aetherius run` ; `LOGIN_FAILED` avec un mauvais mot de passe |
+| `reference-messagerie` | `Réception (n)` et `non_lus: n` en **entier** — l'expression régulière du code d'origine a disparu |
 
 ## La sonde de persistance
 
@@ -351,6 +384,10 @@ que décrit.
   fichiers statiques comme un autre.
 - **Un seul Blueprint livrable** dans le banc. Le registre en gère autant qu'on veut, mais une carte
   suffit à éprouver le parcours, et l'application doit rester minimale.
+- **Pas d'application migrée.** Le jalon 3-G livre les Blueprints de référence et le guide, pas le
+  code applicatif d'un projet consommateur : celui-ci vit dans son propre dépôt, et la migration s'y
+  fait service par service, derrière les signatures existantes
+  ([docs/mobile-migration.md](../../docs/mobile-migration.md#migrer-sans-casser--la-stratégie-incrémentale)).
 
 L'application n'est pas construite en CI : elle demande un appareil. Ce qui est gardé
 automatiquement, c'est le moteur (`make check-all`) et l'accord entre les deux moteurs

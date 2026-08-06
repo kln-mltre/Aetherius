@@ -667,7 +667,15 @@ les appels en vol échouent en le disant, au lieu d'attendre une page morte jusq
 
 Le **user-agent** est configurable (`options.stealth.user_agent`) : c'est la seule bribe de
 discrétion retenue par la phase, et elle est porteuse — un portail sert souvent un DOM différent aux
-UA mobiles.
+UA mobiles. Mesuré au jalon 3-G sur la messagerie d'une université : avec un UA Chrome desktop, la
+page servie est `/mail#1` et le sélecteur du compteur existe ; avec un UA Safari iOS, c'est
+`/modern/`, un DOM entièrement différent où il **n'existe pas**. La clé n'est donc pas un
+raffinement, c'est ce qui rend la page atteignable depuis un téléphone.
+
+> La clé était honorée ici depuis le jalon 3-D mais **absente du schéma partagé** : les deux moteurs
+> refusaient tout Blueprint qui la déclarait, et aucun ne le disait, puisqu'aucun ne l'utilisait.
+> Ajoutée à `contracts/blueprint.schema.json` au jalon 3-G, et honorée aussi par le moteur Python
+> (contexte Playwright), sans rien activer d'autre — voir [docs/stealth.md](stealth.md#user_agent-à-part-des-autres).
 
 ### Ce que l'Act II embarqué ne fait pas
 
@@ -1121,6 +1129,42 @@ première correction — et un manifeste dont l'empreinte ment est exactement ce
 On passerait la soirée à déboguer une garde qui fonctionne. Un test rejoue ce calcul sur le manifeste
 d'exemple livré : un manifeste périmé dans le dépôt se voit en CI.
 
+## Porter un cas d'usage réel
+
+Jalon 3-G. Les jalons précédents ont construit le moteur ; celui-ci répond à la seule question qui
+restait : **remplace-t-il vraiment le code qu'il prétend remplacer ?** La réponse tient dans cinq
+Blueprints ([`examples/mobile/reference/`](../examples/mobile/reference/)) qui portent les cinq
+sources d'une application universitaire en production — quatre API tierces et un parcours
+authentifiant qui remplace 323 lignes de composant WebView — et dans un guide,
+[docs/mobile-migration.md](mobile-migration.md), qui dit comment on passe de l'un à l'autre.
+
+Le jalon ne devait produire **aucun code**. C'est son intérêt : si porter un cas d'usage réel
+demande de toucher au moteur, c'est que la phase n'est pas finie. Il a fallu y toucher **huit
+fois**, et chaque correctif est un défaut que ni la suite de tests ni le corpus de conformance ne
+voyaient, parce qu'aucun Blueprint livré n'écrivait la forme qui le déclenche — ou parce qu'aucun
+test ne pouvait produire une page qui répond en retard.
+
+| Trouvé | Correction |
+|--------|------------|
+| `{{ vars.api }}/{{ inputs.id }}` — une URL construite de deux variables — **levait** sur les deux moteurs : le motif de l'expression nue rebroussait jusqu'au **dernier** `}}` et lisait la chaîne entière comme une expression malformée. Un cas de conformance figeait la bizarrerie comme voulue | Le corps d'une expression nue ne peut plus contenir `}}`. Corrigé **des deux côtés le même jour** — c'est ce qui préserve l'invariant que le cas protégeait —, et le cas dit maintenant l'inverse |
+| Un prédicat `where` sur un champ **imbriqué** (`item.type.code != 4`, le filtre exact d'un service réel) **levait** côté Python et **filtrait** côté embarqué : deux moteurs, deux jeux de données, aucun bruit | Le Python enveloppe désormais les dictionnaires **récursivement**. Les listes restent des listes : l'indexation est refusée par les deux grammaires, donc leurs éléments sont de toute façon inatteignables |
+| `item.is_active == true` : le litéral en minuscules est un **nom indéfini** en Python brut, alors que l'évaluateur embarqué (et Jinja) l'acceptent | `true`/`false`/`none` sont liés dans la portée du prédicat. Une seule orthographe à apprendre |
+| `default('', true)` — le mode booléen de Jinja, qui fait prendre le repli à **toute** valeur fausse — n'était pas implémenté côté embarqué : un `null` restait un `null` | Second argument honoré. Trouvé sur une heure de fermeture nulle quand un lieu est fermé, c'est-à-dire par une donnée réelle et non par un test |
+| `options.stealth.user_agent` était documenté ici et implémenté dans le driver WebView, mais **absent du schéma partagé** : les deux moteurs refusaient tout Blueprint qui le déclarait | Ajouté au contrat, et honoré aussi par le moteur Python (contexte Playwright), sans rien activer d'autre |
+| `on_timeout: "fail:LOGIN_FAILED"` posait son code sur l'exception côté Python, et **personne ne le lisait** : l'appelant ne pouvait pas distinguer « mot de passe refusé » de « la page a changé » | Le code passe en tête du message porté par le `Result` et l'événement `error`. Côté embarqué il était déjà exposé par `describeFailure(...).code` |
+| La grâce que l'appelant accordait à l'agent au-delà de son échéance était un **forfait** de 2 s, alors que la dérive des minuteurs d'une page grandit avec l'attente qu'elle couvre. Sur un client web lourd, **toute** lecture revenait en silence plutôt qu'avec le message précis de l'agent | La grâce suit le budget (`callerDeadlineMs`), et le message d'un silence **nomme les sélecteurs** du step. Trouvé sur appareil uniquement : une page de test répond instantanément et ne produit jamais le cas |
+
+Aucun de ces défauts n'était visible depuis le dépôt : il fallait écrire un Blueprint contre une
+source qu'on n'a pas choisie. C'est exactement ce qu'un corpus de fixtures ne peut pas simuler, et
+la raison pour laquelle ce jalon existe.
+
+**Ce que le port n'a pas pu descendre dans un Blueprint** est aussi un résultat, écrit dans le guide
+et résumé ici : le calcul (distances, tris, agrégats), toute règle qui a besoin de l'heure courante,
+un filtre qui doit indexer une liste, et la relecture d'une date reçue dans un format non ISO.
+Aucun n'est un manque à combler — chacun demanderait d'ajouter au vocabulaire une capacité qu'il
+faudrait ensuite reproduire à l'identique dans les deux moteurs, pour une décision qui appartient à
+l'application.
+
 ## Les événements
 
 Le moteur émet exactement les types de `contracts/events.schema.json`, pour qu'une même UI consomme
@@ -1161,8 +1205,16 @@ const { running, events, result, failure, run, cancel } = useAetheriusRun(client
   l'application repart sur son socle embarqué.
 - **Pas de plugins.** Une action de plugin est acceptée par le moteur Python sur tous les Acts ;
   côté embarqué elle est refusée comme action inconnue.
-- **Les options hors périmètre sont ignorées, pas refusées.** `options.proxy`, `options.stealth` et
-  `options.agent` restent valides au schéma — le moteur embarqué les accepte et n'en fait rien. Le
+- **Une opération émise pendant un enchaînement de navigations se perd.** Mesuré au jalon 3-G sur
+  une authentification unifiée à plusieurs sauts suivie d'un client qui pose son propre fragment :
+  le host n'apprend pas tous les remplacements de document que la cascade produit, donc il ne rejoue
+  pas l'opération comme il le fait pour un `DocumentLostError`, et l'échec arrive en silence. Le
+  contournement tient en un `wait` après le clic, et il est **visible dans le Blueprint livré**
+  plutôt que caché — parce que ce n'est pas la façon dont ce moteur attend. Détail et démonstration
+  [ici](#une-lecture-qui-ne-répond-pas--lhorloge-de-lagent-nest-pas-la-vôtre).
+- **Les options hors périmètre sont ignorées, pas refusées.** `options.proxy`, `options.stealth`
+  (hors `user_agent`, honoré) et `options.agent` restent valides au schéma — le moteur embarqué les
+  accepte et n'en fait rien. Le
   choix est délibéré (décision 8 de la phase) : refuser un Blueprint parfaitement bon parce qu'il
   porte une option destinée à l'autre moteur casserait la promesse « le même Blueprint des deux
   côtés ». La contrepartie est à connaître : un Blueprint qui compte sur `options.proxy` sortira par
@@ -1318,12 +1370,13 @@ tous les cas comme passants transformerait une suite verte en affirmation fausse
 
 ### Parité sur le corpus livré
 
-Au-delà du corpus de conformance, les **29 Blueprints d'`examples/`** ont été passés aux deux
-moteurs et leurs verdicts comparés : **22 identiques, 7 divergents**, et chaque divergence est l'une
-de celles que le socle déclare — quatre Blueprints Oracle/Phantom, une composition dont un step
-escalade vers `oracle`, une capture d'écran, une notification (ce dernier Blueprint touche depuis
-3-B **deux** limites, et la marche s'arrête au premier refus : l'extraction XPath). Aucune
-divergence inattendue.
+Au-delà du corpus de conformance, **tous les Blueprints d'`examples/`** sont passés aux deux moteurs
+et leurs verdicts comparés. Au jalon 3-G : **41 fichiers, 34 identiques, 7 divergents**, et chaque
+divergence est l'une de celles que le socle déclare — trois Blueprints Oracle, un Phantom, une
+composition dont un step escalade vers `oracle`, une capture d'écran, et une notification (ce
+dernier Blueprint touche depuis 3-B **deux** limites, et la marche s'arrête au premier refus :
+l'extraction XPath). Aucune divergence inattendue, y compris pour les cinq Blueprints de référence
+ajoutés par le jalon, acceptés des deux côtés.
 
 Deux sondes plus dures ont été jouées à la livraison du jalon 3-B, hors suite automatisée :
 
@@ -1493,6 +1546,126 @@ reçoit **rien**.
 Ces sondes-là n'ont trouvé aucun défaut, et c'est cohérent avec la nature du jalon : tout s'y décide
 sur des octets et des empreintes. Ce qui dépendait d'une plateforme, en revanche, n'a été visible que
 sur un téléphone — la campagne sur appareil, elle, a trouvé un défaut structurant (ci-dessous).
+
+### Sondes du jalon 3-G
+
+Les sondes de ce jalon ne visent aucun bac à sable : elles jouent les **vraies sources** d'une
+application en production — un CDN, deux API tierces, un serveur d'emplois du temps et
+l'authentification unifiée d'une université — avec de vrais identifiants lus depuis `.env`. C'est la
+seule façon de savoir si le moteur remplace le code qu'il prétend remplacer.
+
+| Sonde | Résultat |
+|-------|----------|
+| Les trois Blueprints Act I zéro configuration, joués **des deux côtés** (moteur Python, puis moteur embarqué sous Node) | `success` des deux côtés, et **`outputs`, `StepResult` et séquence d'événements identiques** au JSON canonique. C'est la démonstration de parité demandée par le jalon, sur des données réelles et non sur des fixtures |
+| Le parcours authentifiant (CAS → dossier administratif, puis CAS → messagerie), moteur Python | `success` des deux côtés : les cinq champs du dossier, et `non_lus: 788` extrait en **entier** par `as: "number"` — l'expression régulière du code d'origine a disparu |
+| **Conçue pour échouer** : mauvais mot de passe sur le CAS réel | `failed`, `LOGIN_FAILED: wait_for timed out for selector '#gwt-uid-41'`. L'échec porte le nom que le Blueprint lui a donné, au step qui l'a rencontré |
+| **Conçue pour échouer** : le relais d'emplois du temps de l'application d'origine était en panne | `failed`, « Expected HTTP 200, got 522 », avec l'URL. Un tiers mort produit un échec **nommé**, pas une liste vide — c'est exactement ce que la migration achète |
+| La question qui a suivi : *pourquoi ce relais, alors que le service de l'université répond en direct ?* | Parce qu'une page web ne peut pas appeler un autre domaine sans son accord, et que l'application était une WebView. Une requête émise **nativement** ne l'est pas : le Blueprint vise le service directement, et **un serveur à héberger sort de l'architecture** |
+| Le user-agent, mesuré plutôt que supposé : la même messagerie, deux UA | Chrome desktop → `/mail#1`, sélecteur présent ; Safari iOS → `/modern/`, sélecteur **absent**. La clé `options.stealth.user_agent` n'est pas un raffinement |
+| Les identifiants positionnels du dossier administratif, relus | Ils correspondent toujours — et le Blueprint lit désormais **les libellés voisins** et les `assert`, de sorte qu'un décalage devienne un échec nommé au lieu d'une donnée fausse |
+
+#### Une lecture qui ne répond pas : l'horloge de l'agent n'est pas la vôtre
+
+La sonde la plus instructive du jalon n'a pas été trouvée sur le poste. Sur un téléphone, le
+parcours authentifiant écrit **d'un seul tenant** (dossier puis messagerie) échouait toujours au même
+endroit, WebView cachée **comme visible** :
+
+```
+extract timed out after 30000 ms: the page never reported back
+(an off-screen WebView throttles its own timers, so the deadline is the caller's)
+```
+
+Ce n'est pas « l'élément est absent » : c'est **l'absence de réponse**. Le `wait_for` qui précède
+avait pourtant trouvé le sélecteur. La sonde qui a tranché est la plus bête possible — remplacer le
+sélecteur de la lecture par un `#nexistepas` garanti absent : le message n'a **pas changé**. Un
+élément absent devrait produire « aucun élément ne correspond » ; il produisait un silence. Ce n'est
+donc pas le DOM, c'est la **réponse** qui n'arrive pas à temps.
+
+La cause est une **asymétrie d'horloges** que le moteur documentait sans en tirer les conséquences :
+l'agent mesure sa propre échéance avec les minuteurs de la page, qu'un document occupé — ou hors
+écran, donc ralenti — fait dériver, pendant que l'appelant compte en temps réel. La grâce que
+l'appelant accordait au-delà de l'échéance de l'agent était **fixe** (2 s), alors que la dérive
+grandit avec l'attente qu'elle couvre : généreuse pour une opération de 200 ms, insuffisante pour
+une attente de 5 s. L'appelant abandonnait donc le premier, systématiquement, sur un client web
+lourd.
+
+| Trouvé | Correction |
+|--------|------------|
+| **Un changement de fragment était pris pour un nouveau document.** Ce client web pose `location.hash` une seconde après son premier rendu ; la vue signale une fin de chargement, le host incrémentait sa génération, et **l'agent se réinstallait par-dessus une opération en vol** — qui ne répondait alors plus jamais. C'est la cause : toute lecture sur cette page échouait, WebView cachée comme visible | Une URL qui ne diffère que par son fragment **garde la génération** (`isFragmentChange`) : l'installation redevient idempotente et l'opération en vol survit. Un rechargement garde la **même** URL, fragment compris, donc il n'est pas confondu avec un changement de fragment et gagne bien une génération neuve |
+| La grâce de l'appelant était un forfait de 2 s, alors que la dérive des minuteurs grandit avec l'attente qu'elle couvre : sur un client lourd, une lecture en échec revenait en silence au lieu du « aucun élément ne correspond » de l'agent, ce qui envoie l'auteur chercher un bug du moteur plutôt que son sélecteur | La grâce **suit le budget** qu'elle couvre (`callerDeadlineMs`). Le minuteur ne se déclenche que sur un chemin déjà en échec : l'allonger ne coûte rien au chemin nominal |
+| Un silence ne disait **pas sur quoi** l'opération portait. Un `extract` à cinq sorties rapportait une échéance et rien d'autre — diagnostiquer demandait d'éditer le Blueprint et de rejouer, ce qui est littéralement ce qu'a coûté ce port, deux fois | Le message **nomme les sélecteurs** du step (`extract timed out … on "#compteur", ".ligne"`) |
+
+Le diagnostic a demandé quatre passes sur l'appareil, et chacune a déplacé le symptôme : la lecture
+échouait, puis l'attente échouait, selon l'instant où le client posait son fragment. La sonde qui a
+le plus appris est celle qui ne prouve rien sur la page mais tout sur le canal — un sélecteur
+volontairement absent, qui aurait dû produire une réponse et n'en produisait aucune.
+
+**Et ça ne suffisait pas.** Les correctifs ci-dessus sont réels, gardés par des tests, et ils n'ont
+pas rendu cette messagerie jouable sur l'appareil. Quatre passes ont éliminé une hypothèse chacune,
+sans jamais toucher la cause — jusqu'à celle qui ne demandait rien à la page mais lui demandait **ce
+qu'elle était** : cinq `evaluate` immédiats, après une pause fixe.
+
+Ils ont tous répondu, avec exactement les valeurs du poste : `/mail#1`, `Zimbra: Réception (788)`,
+1902 nœuds portant un identifiant, et le compteur **présent et lisible**. Autrement dit : agent
+vivant, page correcte, élément là. Il ne restait alors qu'une variable — la sonde attendait **15 s
+sans rien demander**, là où le Blueprint lançait son attente juste après le clic, c'est-à-dire
+pendant la cascade `CAS → preauth → /mail → pose du fragment`.
+
+**Une opération émise pendant un enchaînement de navigations se perd**, et elle se perd en silence :
+le host n'apprend pas tous les remplacements de document que cette cascade produit, donc il ne rejoue
+pas l'opération comme il le fait pour un `DocumentLostError`. Laisser la page arriver avant de
+l'interroger suffit, et c'est ce que fait le Blueprint livré :
+
+```json
+{ "action": "click",   "selector": "input[type=submit]" },
+{ "action": "wait",    "ms": 15000 },
+{ "action": "wait_for", "selector": "#zti__main_Mail__2_textCell", "timeout_ms": 30000,
+  "on_timeout": "fail:MESSAGERIE_INDISPONIBLE" }
+```
+
+Vérifié sur l'appareil : `success`, `Réception (788)`, `non_lus: 788` — identique au moteur Python.
+
+Il faut dire ce que cette pause est et ce qu'elle n'est pas. Ce n'est **pas** la façon dont ce moteur
+attend : l'auto-attente existe précisément pour ne pas semer des délais fixes, et c'est l'argument
+central du jalon 3-D. C'est un **contournement d'une limite du moteur**, écrit ici pour qu'on ne le
+prenne pas pour un motif à imiter : idéalement le host absorberait cette cascade tout seul, comme il
+absorbe une navigation isolée. Le faire demande de reproduire la séquence exacte de signaux qu'une
+plateforme mobile émet pendant une redirection multi-sauts — une instrumentation sur appareil qui
+sort du périmètre de ce jalon. La limite est donc **nommée, mesurée, et contournée en une ligne
+visible** plutôt que masquée.
+
+Trois conséquences côté Blueprint, en plus des correctifs :
+
+- **Une lecture qui suit un `wait_for` porte son propre `timeout_ms`, court** (5 s dans les
+  Blueprints livrés). Elle n'a rien à attendre : la présence vient d'être prouvée. Le budget court
+  garantit que l'agent réponde **avant** l'échéance de l'appelant, donc qu'un échec soit *lisible*
+  au lieu d'être un silence.
+- **Un enchaînement d'authentification à plusieurs sauts se laisse arriver avant d'être
+  interrogé.** La règle vaut au-delà de ce portail : dès qu'un clic déclenche une redirection en
+  cascade suivie d'un client qui pose son propre fragment, la première opération qui suit part dans
+  le vide.
+- **Le parcours est scindé en deux Blueprints** — l'identité et la messagerie —, ce qui n'est pas un
+  contournement : c'est exactement la distinction que l'application d'origine fait entre son
+  parcours « froid » et son parcours « chaud ». Chacun ouvre son service, qui rebondit lui-même sur
+  l'authentification unifiée. Un Blueprint de référence long à cause d'un enchaînement que
+  l'application ne fait jamais d'un bloc n'aurait rien démontré de réel.
+
+La limite qui reste, écrite ici parce qu'elle est structurelle : **sur un appareil, l'agent n'est
+pas une horloge fiable**. Le moteur le sait déjà (`NoAnswerError` existe pour ça, et le driver la
+renomme en l'échec que le Blueprint a nommé), mais un step **sans** `on_timeout` — une lecture, une
+évaluation — n'a pas de nom à porter et retombe donc sur « la page a changé ». C'est le bon défaut
+par défaut ; le budget court et la grâce proportionnelle sont ce qui le rend rare, et le message
+nomme désormais le sélecteur pour que le rare reste diagnosticable.
+
+Ces sondes ont trouvé **huit défauts** que ni la suite de tests ni le corpus ne voyaient, tous
+détaillés avec leur correctif dans [Porter un cas d'usage réel](#porter-un-cas-dusage-réel). Deux
+méritent d'être répétés ici, parce qu'ils disent quelque chose sur la méthode :
+
+- une URL construite de **deux variables** ne se rendait pas — la forme la plus banale qui soit,
+  qu'aucun Blueprint livré n'utilisait, et qu'un cas de conformance figeait comme un comportement
+  voulu ;
+- un prédicat sur un champ **imbriqué** rendait des données différentes selon le moteur. Le corpus
+  ne l'a pas vu parce qu'aucun cas n'imbriquait : un corpus ne protège que des formes qu'il écrit.
 
 ### Sur appareil
 
@@ -1708,3 +1881,23 @@ Une leçon de méthode, la même qu'aux jalons 3-D et 3-E : le symptôme ne ress
 qui a désigné le vrai coupable, c'est le **journal du serveur statique** — il ne recevait plus rien.
 Un banc de vérification doit donc montrer les deux bouts : ce que l'application affiche, et ce que la
 source a réellement vu passer.
+
+#### Les Blueprints de référence, sur appareil
+
+Jalon 3-G. Ce sont les **vraies** sources d'une application en production, jouées depuis un iPhone
+(Expo Go SDK 54) et comparées ligne à ligne à `aetherius run` sur le poste.
+
+| Blueprint | Observé |
+|-----------|---------|
+| `ukit-campus-annonces` | `success`, sorties **identiques** au moteur Python |
+| `ukit-campus-restaurants` | `success`, sorties **identiques** — dont la catégorie écartée par un `where` sur un champ imbriqué et la date produite par `format_date` |
+| `ukit-campus-affluence` | `success`, sorties **identiques** |
+| `ukit-celcat-semaine` | `success`, sorties **identiques** — après avoir cessé de passer par le relais de l'application d'origine, qui était d'ailleurs en panne (statut 522, échec **nommé** et non liste vide). Voir ci-dessous |
+| `ukit-scolarite-sso` | authentification unifiée traversée et dossier administratif lu sur l'appareil. Un mauvais mot de passe donne `LOGIN_FAILED`, en pastille |
+| `ukit-scolarite-messagerie` | `success`, `Réception (788)` et `non_lus: 788` — **identiques** au moteur Python, après quatre passes qui ont fini par nommer la cause (voir plus haut) |
+
+La première passe de cette campagne s'est faite sur un réseau dégradé et **quatre des cinq cartes
+ont expiré**, y compris des Blueprints déjà vérifiés aux jalons précédents. Le diagnostic n'a coûté
+que trois taps parce que le banc porte des cartes de référence connues : rejouer `device-ip-check`
+et une carte ancienne sépare « le téléphone n'a pas de réseau » de « ce Blueprint est cassé ». C'est
+la raison d'être des cartes anciennes dans le banc, et il vaut mieux l'écrire que la redécouvrir.

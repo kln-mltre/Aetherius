@@ -125,6 +125,17 @@ test("an absent variable is observable without raising", () => {
   assert.equal(run("missing | default('fallback')"), "fallback");
 });
 
+test("'default' honours Jinja's boolean mode", () => {
+  // Without the second argument only an *undefined* value takes the fallback. With it, any falsy
+  // one does — which is how a Blueprint turns a nullable field into an empty string. Missing it
+  // kept the `null`: a different value, with the same run status.
+  assert.equal(run("nothing | default('x', true)", { nothing: null }), "x");
+  assert.equal(run("nothing | default('x')", { nothing: null }), null);
+  assert.equal(run("zero | default(9, true)", { zero: 0 }), 9);
+  assert.equal(run("zero | default(9)", { zero: 0 }), 0);
+  assert.equal(run("value | default('x', true)", { value: "ok" }), "ok");
+});
+
 test("'first' on an empty sequence yields undefined, not null", () => {
   assert.ok(isUndefined(run("values | first", { values: [] })));
   assert.match(failure("values | first | upper", { values: [] }), /sequence was empty/);

@@ -1,0 +1,9 @@
+{
+  "name": "example-reference-celcat",
+  "description": "Le POST form-encode avec sa cle repetee et sa borne de fin exclusive.",
+  "blueprint_path": "examples/mobile/reference/ukit-celcat-semaine.blueprint.json",
+  "expect": {
+    "python": { "outcome": "accepted" },
+    "embedded": { "outcome": "accepted" }
+  }
+}

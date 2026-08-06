@@ -39,12 +39,33 @@ _ALLOWED_NODES = (
 )
 
 
+# Jinja spells its literals in lower case, and so does the embedded engine's single evaluator —
+# which serves both `{{ }}` and `where`. Here `where` is raw Python, where `true` is an undefined
+# name: the same predicate would filter on one engine and raise on the other. Bind the three
+# aliases rather than teach authors two spellings for one language.
+_JINJA_LITERALS: dict[str, Any] = {"true": True, "false": False, "none": None}
+
+
 @dataclass
 class ExtractSpec:
     from_: str  # "json" | "html"
     path: str  # JSONPath expression, e.g. "$[*]"
     where: str | None = None  # per-item predicate, e.g. "item.eventCategory != 'Vacances'"
     fields: dict[str, str] = field(default_factory=dict)  # name -> JSONPath relative to item
+
+
+def _namespace(value: Any) -> Any:
+    """Wrap dicts in SimpleNamespace, recursively, so `item.a.b` reaches a nested object.
+
+    Recursion matters for parity: the embedded engine walks a plain object graph, so
+    ``item.type.code`` reads the nested value there. Converting only the top level made the same
+    predicate raise on this side — two engines disagreeing about real data, silently. Lists are
+    left alone on purpose: subscripting is refused by both grammars, so their items are
+    unreachable anyway, and converting them would change how ``in`` compares.
+    """
+    if isinstance(value, dict):
+        return types.SimpleNamespace(**{key: _namespace(sub) for key, sub in value.items()})
+    return value
 
 
 def _eval_predicate(expr: str, item: Any) -> bool:
@@ -77,14 +98,11 @@ def _eval_predicate(expr: str, item: Any) -> bool:
                 f"Disallowed dunder name {node.id!r} in where expression {expr!r}."
             )
 
-    ns: Any
-    if isinstance(item, dict):
-        ns = types.SimpleNamespace(**item)
-    else:
-        ns = item
+    ns: Any = _namespace(item)
 
     try:
-        return bool(eval(compile(tree, "<where>", "eval"), {"__builtins__": {}}, {"item": ns}))
+        scope = {"item": ns, **_JINJA_LITERALS}
+        return bool(eval(compile(tree, "<where>", "eval"), {"__builtins__": {}}, scope))
     except Exception as exc:
         raise ExtractionError(f"Error evaluating where expression {expr!r}: {exc}") from exc
 

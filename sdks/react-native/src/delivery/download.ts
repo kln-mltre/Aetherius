@@ -35,9 +35,20 @@ const NO_CACHE = { "Cache-Control": "no-cache, no-store", Pragma: "no-cache" };
  *
  * Le prix est connu et assume : chaque rafraichissement traverse le cache de bord d'un CDN. Pour un
  * document de quelques centaines d'octets qui decide d'un retour arriere, c'est le bon echange.
+ *
+ * L'horloge seule ne suffit pas a rendre le jeton unique : deux requetes emises dans la meme
+ * milliseconde produisaient la MEME URL, donc le contournement cessait de contourner. Sur un
+ * appareil le cas ne se voyait pas (deux rafraichissements sont separes par un geste humain), mais
+ * un rafraichissement en boucle ou une resolution servie depuis un cache local le rencontre. Un
+ * compteur monotone est ajoute au temps : le jeton reste court, lisible dans un journal de serveur,
+ * et unique par construction plutot que par chance.
  */
+let sequence = 0;
+
 function uncached(url: string): string {
-  return `${url}${url.includes("?") ? "&" : "?"}_aeth=${Date.now().toString(36)}`;
+  sequence += 1;
+  const token = `${Date.now().toString(36)}-${sequence.toString(36)}`;
+  return `${url}${url.includes("?") ? "&" : "?"}_aeth=${token}`;
 }
 
 /**

@@ -203,8 +203,18 @@ test("every delivery request defeats the platform HTTP cache", async () => {
     [FIX_URL]: fix,
   });
 
-  await subject.refresh();
-  await subject.refresh();
+  // L'horloge est GELEE le temps du test : deux rafraichissements dans la meme milliseconde sont
+  // exactement le cas que la CI a rencontre et qu'une machine plus lente masque. L'unicite du jeton
+  // ne doit pas dependre de la resolution de `Date.now()`, sinon le contournement cesse de
+  // contourner sans que rien ne le dise.
+  const clock = Date.now;
+  Date.now = () => 1_700_000_000_000;
+  try {
+    await subject.refresh();
+    await subject.refresh();
+  } finally {
+    Date.now = clock;
+  }
 
   const manifests = network.raw.filter((call) => call.url.startsWith(MANIFEST_URL));
   assert.equal(manifests.length, 2);

@@ -5,6 +5,30 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.1] - 2026-08-07
+
+Correctifs d'outillage et de livraison, sans changement de comportement du moteur : la CI redevient
+verte sur un dépôt que personne n'avait touché, et le contournement du cache de plateforme cesse de
+dépendre de la résolution de l'horloge.
+
+### Corrigé
+- **La CI virait au rouge sur un dépôt que personne n'avait touché.** `ruff` était déclaré
+  `>=0.4` : la CI installait donc la dernière version publiée, quand un poste de développement
+  gardait celle de son environnement. La 0.16 a durci ses règles — **366 constats** de
+  modernisation (`UP037`, `UP017`, `UP035`, `RUF100`, `I001`…), sur des fichiers sans rapport avec
+  le moindre changement en cours —, et `make lint` échouait en CI alors qu'il passait en local.
+  C'est l'invariant du dépôt qui cassait, pas le code : *ce qui passe en local passe en CI, et
+  inversement*. `ruff` est désormais épinglé sur une version mineure (`>=0.15.20,<0.16`). Monter de
+  version devient une tâche à part entière, faite exprès. À noter : `mypy` porte le même risque
+  latent (`>=1.9`), non traité ici.
+- **Le contournement du cache de plateforme n'était unique que par chance.** Le jeton ajouté à
+  chaque requête de livraison (`?_aeth=…`) ne portait que `Date.now()` : deux requêtes émises dans
+  la **même milliseconde** produisaient la même URL, donc le contournement cessait de contourner —
+  et l'interrupteur d'arrêt du jalon 3-F avec lui. Invisible sur un appareil, où deux
+  rafraîchissements sont séparés par un geste humain ; visible en intégration continue, où ils sont
+  séparés par des microsecondes. Un compteur monotone s'ajoute désormais à l'horloge, et le test qui
+  garde l'invariant **gèle l'horloge** au lieu de compter sur la chance.
+
 ## [0.5.0] - 2026-08-07
 
 Phase 3 — le moteur sur l'appareil : un **second moteur** écrit en TypeScript rejoue les **mêmes**
@@ -884,7 +908,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.0...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.1
 [0.5.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.3.0

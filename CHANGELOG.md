@@ -5,6 +5,59 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [Non publié]
+
+### Ajouté
+- **Jalon 3-H — Étendre la surcouche : les noms réservés**
+  ([docs/embedded.md](docs/embedded.md#étendre--les-noms-réservés)) : un appendice à la Phase 3,
+  ouvert par un port réel. La règle du jalon 3-F — *le manifeste ne peut que mettre à jour des noms
+  déjà embarqués* — est la bonne pour **corriger**, et elle ne tient plus pour **étendre** : ajouter
+  le portail d'une nouvelle faculté coûtait une publication sur les stores, alors que tout ce qui la
+  distingue est un fichier de données.
+  - **`allowNew: { prefix, secrets }`** sur `BlueprintRegistry` : un **préfixe de noms réservé** sous
+    lequel un manifeste a le droit d'*ajouter* un Blueprint que le binaire ne contient pas. La levée
+    tient à un déséquilibre, et c'est lui qui la rend défendable : des deux raisons de la règle
+    d'origine, seule « garantir un repli hors ligne » est **sans objet** pour un nom nouveau — il
+    n'existe pas encore pour l'utilisateur, il n'y a rien à quoi retomber ; « ne pas exécuter ce que
+    personne n'a relu » reste entière, et c'est ce que le périmètre borne.
+  - **Le format de manifeste ne change pas, octet pour octet.** C'est le point le plus important : un
+    manifeste écrit pour ce jalon reste lisible par une application qui ne l'active pas, laquelle
+    ignore simplement les entrées qu'elle n'embarque pas — exactement ce qu'elle faisait déjà. La
+    déclaration est entièrement côté application.
+  - **Le périmètre de secrets devient obligatoire et sans défaut** — surtout pas « l'union des secrets
+    du socle » comme `allowedSecrets` : ce défaut-là est raisonnable pour un fichier qui en remplace
+    un relu, et ne l'est pas pour un fichier que personne n'a lu. L'écrire, c'est décider ce qu'un
+    inconnu aura le droit de demander. Un tableau vide est une réponse valide, et la plus
+    restrictive.
+  - **Gardes de construction** : un préfixe vide ou qui ne finit pas par un point est **refusé au
+    démarrage**, parce que `ukit` couvrirait `ukit.planning.semaine` — précisément les Blueprints que
+    l'application embarque. Refuser tôt et bruyamment vaut mieux qu'une surface ouverte par
+    inadvertance.
+  - **Retirer le préfixe désinstalle** : une entrée arrivée par cette porte et qui n'est plus
+    couverte est **purgée** à la lecture suivante, sans réseau. Un interrupteur d'arrêt qui laisse en
+    place ce qu'il a laissé entrer n'en est pas un.
+  - Un nom **à la fois** embarqué et couvert garde la règle de 3-F (version strictement supérieure,
+    périmètre du socle) : le préfixe ajoute des portes, il n'en élargit aucune. Un nom nouveau, lui,
+    n'a pas de version à battre. `list()` expose désormais ce qui est arrivé par la porte, après ce
+    que le binaire embarque ; `resolve()` d'un nom couvert mais pas encore livré **lève**, comme
+    n'importe quel nom inconnu. **Aucune nouvelle famille d'erreur** : un nom refusé est une entrée
+    `ignored` du rapport, avec sa raison.
+  - **Le modèle de menace gagne une ligne, et une seule** : un Blueprint ajouté sous un nom que
+    personne n'a relu est *partiellement* couvert (validé, vérifié, borné par le périmètre et le
+    préfixe) — ce qu'il fait de ces secrets et où il envoie ses requêtes ne l'est pas, comme pour
+    n'importe quel Blueprint distant depuis 3-F. Le jalon augmente le **nombre de portes**, pas leur
+    solidité.
+  - **Exemple exécutable** : [`examples/mobile/registry/`](examples/mobile/registry/) publie
+    désormais un portail sous le préfixe **et** un second hors préfixe, dans le **même** manifeste.
+    C'est le contraste qui montre la garde, pas le cas qui marche.
+  - **Vérifié sur iPhone** : les sept parcours joués, dont les trois qui ne se vérifient que là — un
+    Blueprint **absent du binaire** survit à la mort de l'application, retirer `allowNew` le
+    **désinstalle** sans réseau, et le rallumer ne le ressuscite pas. Le journal du serveur statique
+    ajoute la preuve que le rapport seul ne donnait pas : le Blueprint hors préfixe n'a **jamais été
+    téléchargé**.
+  - Rien d'autre ne bouge : ni le moteur, ni `contracts/`, ni `make conformance` — la livraison est
+    applicative, et le moteur Python n'en a pas.
+
 ## [0.5.1] - 2026-08-07
 
 Correctifs d'outillage et de livraison, sans changement de comportement du moteur : la CI redevient

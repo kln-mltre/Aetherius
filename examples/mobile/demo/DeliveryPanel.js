@@ -1,14 +1,18 @@
 /**
  * Le panneau de livraison : d'ou vient le Blueprint qu'on s'apprete a jouer.
  *
- * Il n'apparait que pour la carte livrable. Trois choses a l'ecran, et ce sont les trois gestes du
- * jalon : voir l'**origine** (embarque / distant, avec sa version), **rafraichir** depuis le
+ * Il n'apparait que pour une carte livrable. Trois choses a l'ecran, et ce sont les trois gestes du
+ * jalon 3-F : voir l'**origine** (embarque / distant, avec sa version), **rafraichir** depuis le
  * manifeste, et **revenir a l'embarque** — l'interrupteur d'arret, sans lequel un mecanisme de
  * deploiement n'en est pas un.
  *
+ * Depuis le jalon 3-H, l'origine a un troisieme etat, et il n'est pas une panne : **absent**. Un
+ * portail ajoute a distance n'existe pas tant qu'un manifeste ne l'a pas livre — il n'a pas de socle
+ * ou retomber, et c'est la contrepartie assumee de la levee de garde.
+ *
  * Le rapport de rafraichissement est affiche tel quel, entree par entree : c'est lui qui dit
- * *pourquoi* une correction n'a pas ete prise (empreinte fausse, secret hors perimetre, moteur trop
- * ancien), et un publieur qui ne le voit pas debuggue a l'aveugle.
+ * *pourquoi* une correction n'a pas ete prise (empreinte fausse, secret hors perimetre, nom hors
+ * prefixe, moteur trop ancien), et un publieur qui ne le voit pas debuggue a l'aveugle.
  */
 
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -22,21 +26,25 @@ const OUTCOME_COLOR = {
   rejected: COLORS.pompeian,
 };
 
-export default function DeliveryPanel({ delivery }) {
-  const { manifestUrl, setManifestUrl, status, report, busy, refresh, revert } = delivery;
-  const remote = status?.origin === "remote";
+/** Ce que le panneau dit de l'origine, pour le Blueprint de la carte courante. */
+function origin(status, bundledNote) {
+  if (status === undefined) return { label: "…", color: COLORS.stone };
+  if (status === null) return { label: "absent — rien de livre sous ce nom", color: COLORS.amber };
+  return status.origin === "remote"
+    ? { label: `distant · v${status.version}`, color: COLORS.laurel }
+    : { label: `embarque · v${status.version}${bundledNote}`, color: COLORS.stone };
+}
+
+export default function DeliveryPanel({ delivery, name, bundledNote = "" }) {
+  const { manifestUrl, setManifestUrl, statusOf, report, busy, refresh, revert } = delivery;
+  const { label, color } = origin(statusOf(name), bundledNote);
 
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Livraison</Text>
 
-      <Text style={[styles.origin, { color: remote ? COLORS.laurel : COLORS.stone }]}>
-        {status === null
-          ? "…"
-          : `${remote ? "distant" : "embarque"} · v${status.version}${
-              remote ? "" : " (la version cassee)"
-            }`}
-      </Text>
+      <Text style={styles.name}>{name}</Text>
+      <Text style={[styles.origin, { color }]}>{label}</Text>
 
       <Text style={styles.hint}>
         L'URL du manifeste. Sur le reseau du poste : http://IP-DU-POSTE:8000/manifest.json
@@ -93,6 +101,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: { color: COLORS.violet, fontSize: 13, letterSpacing: 2, textTransform: "uppercase" },
+  name: { color: COLORS.stone, fontFamily: "monospace", fontSize: 12 },
   origin: { fontSize: 15, fontWeight: "700" },
   hint: { color: COLORS.stone, fontSize: 12, lineHeight: 17 },
   input: {

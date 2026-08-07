@@ -112,6 +112,18 @@ Sa correction n'est **pas** dans l'application : elle est publiée par le manife
 résolution et le modèle de menace sont dans
 [docs/embedded.md](../../docs/embedded.md#la-livraison-des-blueprints).
 
+Le même manifeste publie deux autres fichiers, et ils portent le jalon 3-H — **ajouter** un
+Blueprint que l'application n'embarque pas :
+
+| Fichier publié | Nom | Ce qu'il doit faire |
+|---|---|---|
+| [`delivery-quotes.v2`](registry/delivery-quotes.v2.blueprint.json) | `mobile.delivery.quotes` | **corriger** un nom embarqué (jalon 3-F) |
+| [`portail-demo`](registry/portail-demo.blueprint.json) | `mobile.portail.demo` | **entrer**, parce que le registre réserve le préfixe `mobile.portail.` |
+| [`hors-perimetre`](registry/hors-perimetre.blueprint.json) | `mobile.autre.demo` | **rester dehors** : même manifeste, même empreinte, nom hors préfixe |
+
+C'est le contraste qui montre la garde, pas le cas qui marche. Les deux nouveaux sont exécutables
+tels quels côté machine (`aetherius run`) : la borne est celle de l'appareil, pas celle du fichier.
+
 ### Servir le manifeste
 
 Deux voies, selon la configuration réseau ; l'URL est éditable dans l'application, donc on choisit au
@@ -130,9 +142,9 @@ Dans le panneau **Livraison** : `http://<cette-adresse>:8000/manifest.json`.
 **b) Un hébergement HTTPS statique** — un gist GitHub (URL *raw*), des Pages, n'importe quel dépôt de
 fichiers derrière un CDN. C'est la seule voie qui marche quand le téléphone est en données
 cellulaires derrière `expo start --tunnel`, et c'est aussi ce à quoi ressemble la production. Y
-déposer `manifest.json` **et** `delivery-quotes.v2.blueprint.json` — si l'hébergement ne garde pas
-les fichiers côte à côte, mettre l'URL absolue du Blueprint dans le champ `url` du manifeste avant de
-le publier.
+déposer `manifest.json` **et les trois Blueprints publiés** — si l'hébergement ne garde pas les
+fichiers côte à côte, mettre l'URL absolue de chacun dans le champ `url` de son entrée avant de
+publier.
 
 ### Publier une correction
 
@@ -159,6 +171,22 @@ l'appareil rejette, et on chercherait longtemps une panne qui est une garde qui 
 | Modifier `delivery-quotes.v2.blueprint.json` **sans** régénérer le manifeste, puis Rafraîchir | `rejected`, avec l'empreinte attendue et celle obtenue ; ce qui est en place ne bouge pas. **Purger d'abord** avec « Revenir à l'embarqué » : sinon le rafraîchissement répond `kept` sans retélécharger, et il n'y a rien à rejeter |
 | Publier `"disabled": true` sur l'entrée, puis Rafraîchir | `ignored · disabled by the manifest`, retour à l'embarqué — l'interrupteur d'arrêt distant |
 
+### Le parcours du jalon 3-H : ajouter, et ce qui reste dehors
+
+Sur les deux cartes **Livraison : ajouter sans republier** et **Livraison : ce que le préfixe
+refuse**. L'application ne contient ni l'un ni l'autre de ces Blueprints ; le registre déclare
+`allowNew: { prefix: "mobile.portail.", secrets: [] }`, et rien d'autre.
+
+| Geste | Ce qui doit se passer |
+|-------|------------------------|
+| Carte « ajouter », lancer le run **avant** tout rafraîchissement | « Rien à jouer sous ce nom » : le portail n'existe pas encore, et il n'a pas de socle où retomber. Le panneau affiche `absent` |
+| **Rafraîchir** | `updated v1` pour `mobile.portail.demo`, **et** `ignored` pour `mobile.autre.demo` avec `outside the reserved prefix 'mobile.portail.'` — les deux lignes du même rapport |
+| Relancer le run | `success`, une citation de Jane Austen et `livre_par: "le préfixe réservé (jalon 3-H)"` |
+| Carte « ce que le préfixe refuse », lancer le run | « Rien à jouer sous ce nom », quoi qu'on ait rafraîchi. Le panneau reste `absent` |
+| Tuer l'application, la relancer, rejouer **sans rafraîchir** | le portail ajouté est toujours là : le cache a franchi la frontière du processus, y compris pour un nom que le binaire ne contient pas |
+| Commenter la ligne `allowNew` de [`demo/delivery.js`](demo/delivery.js), recharger | le portail est **désinstallé** — panneau `absent`, run refusé — et **sans réseau**. Le rallumer sans rafraîchir ne le ramène pas : la purge est durable, pas une mise en veille |
+| Publier un portail qui déclare un secret (ajouter `"secrets": ["cas_pass"]`, puis `build-manifest.mjs`) | `rejected`, avec le nom du secret et le périmètre autorisé. Rien n'entre |
+
 Garde le terminal du serveur sous les yeux : chaque requête y apparaît avec son paramètre
 d'unicité (`GET /manifest.json?_aeth=…`). C'est ce qui distingue « le registre a refusé » de « le
 téléphone n'a jamais demandé » — et c'est exactement ce qui a permis de trouver le défaut de cache de
@@ -169,7 +197,12 @@ Comparer avec le moteur Python, qui joue les deux mêmes fichiers :
 ```bash
 aetherius run examples/mobile/delivery-quotes.blueprint.json                 # echoue (404)
 aetherius run examples/mobile/registry/delivery-quotes.v2.blueprint.json     # la citation
+aetherius run examples/mobile/registry/portail-demo.blueprint.json           # le portail ajoute
+aetherius run examples/mobile/registry/hors-perimetre.blueprint.json         # et celui qui reste dehors
 ```
+
+Les deux derniers tournent des deux côtés : ce qui les sépare n'est pas leur contenu, c'est le nom
+sous lequel ils sont publiés.
 
 ## Les Blueprints de référence
 

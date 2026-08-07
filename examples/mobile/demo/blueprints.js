@@ -4,16 +4,18 @@
  * They are the *same files* `aetherius run` plays on a machine, not copies: bundling anything else
  * would make this app prove something other than what it exists to prove.
  *
- * One card is different since milestone 3-F, and it is the point of that milestone: it declares
- * `delivered`, so the screen asks the **registry** for its Blueprint instead of using the import.
- * The bundled baseline is deliberately broken; the fix arrives from a manifest.
+ * Three cards are different, and they are the point of milestones 3-F and 3-H: they declare
+ * `delivered`, so the screen asks the **registry** for their Blueprint instead of using an import.
+ * The first has a bundled baseline, deliberately broken, and its fix arrives from a manifest. The
+ * other two have **no bundled document at all** — one is covered by the reserved prefix and must
+ * arrive, the other is not and must never arrive.
  *
  * Each entry carries a `status`, and it is the point of the bench rather than decoration: this
  * screen exists to walk a checklist on a device, and after a few passes nobody remembers what has
  * already been observed. `done` means *seen on a phone*, not "the tests pass".
  */
 
-import { DELIVERED } from "./delivery";
+import { DELIVERED, OUT_OF_SCOPE, PORTAL } from "./delivery";
 
 import deviceIpCheck from "../device-ip-check.blueprint.json";
 import quotesLoginConfirm from "../quotes-login-confirm.blueprint.json";
@@ -112,6 +114,25 @@ export const BLUEPRINTS = [
     // deux interrupteurs d'arret. La premiere passe a trouve le cache HTTP de la plateforme.
     status: "done",
     note: "Les neuf parcours vus sur telephone. Le fichier altere doit donner « integrity check failed » : purger avec « Revenir a l'embarque » avant, sinon le rafraichissement repond kept sans retelecharger.",
+  },
+  {
+    key: "portail-ajoute",
+    title: "Livraison : ajouter sans republier",
+    hint: "Ce Blueprint n'est PAS dans l'application. Avant de rafraichir, le run doit echouer proprement (rien a jouer) ; apres, il tourne — il est entre par le prefixe reserve mobile.portail.",
+    // Aucun `blueprint` et aucun socle : c'est tout le sujet du jalon 3-H.
+    delivered: PORTAL,
+    // Les sept parcours vus sur iPhone, dont les trois qui ne se verifient que la : survie a la mort
+    // de l'application, desinstallation par retrait d'`allowNew`, et purge qui ne ressuscite pas.
+    status: "done",
+    note: "Le geste decisif est le dernier : rallumer allowNew laisse « absent » jusqu'au rafraichissement suivant. Une purge qui serait une mise en veille ne se verrait pas autrement.",
+  },
+  {
+    key: "portail-hors-perimetre",
+    title: "Livraison : ce que le prefixe refuse",
+    hint: "Publie dans le MEME manifeste, mais hors du prefixe reserve. Il doit rester introuvable quoi qu'on fasse, et le rapport doit dire pourquoi. C'est le cas qui echoue qui prouve la borne.",
+    delivered: OUT_OF_SCOPE,
+    status: "done",
+    note: "Le journal du serveur est la vraie preuve : ce fichier n'a JAMAIS ete telecharge. La garde mord a la lecture du manifeste, pas apres le telechargement.",
   },
   {
     key: "quotes-login-confirm",

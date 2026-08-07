@@ -108,7 +108,9 @@ exécutable.
                                                                                   │
                                                                                   └──► 3-F Livraison
                                                                                             │
-                                                                                            └──► 3-G References
+                                                                                            ├──► 3-G References
+                                                                                            │
+                                                                                            └──► 3-H Noms reserves
 ```
 
 | Jalon | Spécification | Dépend de | Résumé |
@@ -120,6 +122,11 @@ exécutable.
 | 3-E | [3-e-integration.md](3-e-integration.md) | 3-D | La surface applicative : façade `Aetherius`, `SecretResolver` sur le trousseau, hygiène des secrets, flux d'événements pour l'UI, action `confirm` en modal natif, annulation, et un modèle d'erreur qui distingue enfin « source en panne » de « réponse vide ». **Livré.** |
 | 3-F | [3-f-delivery.md](3-f-delivery.md) | 3-E | **Livraison des Blueprints** : socle embarqué dans le binaire, surcouche distante avec cache, contrôle d'intégrité, repli et interrupteur d'arrêt. Corriger un site cassé sans publier sur les stores — le vrai gain produit. **Livré.** |
 | 3-G | [3-g-reference.md](3-g-reference.md) | 3-F | Blueprints de référence exécutables sous `examples/mobile/reference/` (quatre API réelles et un parcours SSO complet) et **guide de migration** : comment un service HTTP et une WebView cachée deviennent des Blueprints. **Livré.** |
+| 3-H | [3-h-portails.md](3-h-portails.md) | 3-F | Étendre la surcouche : un préfixe de noms **réservé** sous lequel un manifeste a le droit d'*ajouter* un Blueprint absent du binaire, en opt-in et borné par un périmètre de secrets obligatoire. Le besoin vient du consommateur — ajouter le portail d'une nouvelle faculté sans publier sur les stores. Le format de manifeste ne change pas. **Livré.** |
+
+Le jalon **3-H** est un appendice : la phase était terminée sans lui, et il ne s'est ouvert que parce
+qu'un port réel a rencontré la limite de la garde posée en 3-F. C'était le bon moment pour le
+traiter — après avoir vu la règle d'origine tenir, pas avant.
 
 **Ordre recommandé :** strictement séquentiel, de 3-A à 3-G — chaque jalon consomme le précédent.
 Deux avertissements de charge : **3-B** est le jalon à risque (c'est là que se paie la contrainte du
@@ -142,14 +149,15 @@ Deux adaptations pour un jalon TypeScript :
 
 > **Note de portée.** Comme en Phase 2, tout ce qui toucherait la table des `capabilities`, les
 > contrats (`contracts/*.json|yaml`), l'enum `EventType` ou le dispatch d'un driver est **différé au
-> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les **sept jalons sont
-> livrés** : `contracts/actions.json` existe (généré depuis le registre Python et gardé), les deux
+> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les **huit jalons sont
+> livrés** (3-A à 3-G, plus l'appendice 3-H) : `contracts/actions.json` existe (généré depuis le registre Python et gardé), les deux
 > mini-langages sont là, les Blueprints `vector` **et** `continuum` **s'exécutent** sur l'appareil,
 > une application les consomme par une **façade** (secrets, `confirm`, annulation, modèle d'erreur),
 > et ils ne sont plus figés dans le binaire — un **registre** les résout entre un socle embarqué et
 > une surcouche distante vérifiée. Le jalon 3-F définit d'ailleurs le seul **nouveau** contrat de la
-> phase, et il est *applicatif* (le format du manifeste). Enfin, le jalon 3-G **porte un cas d'usage
-> mobile réel** en Blueprints et livre le guide de migration.
+> phase, et il est *applicatif* (le format du manifeste). Le jalon 3-G **porte un cas d'usage
+> mobile réel** en Blueprints et livre le guide de migration. Le jalon 3-H, enfin, laisse ce même
+> manifeste **ajouter** un Blueprint sous un préfixe réservé, sans changer son format d'un octet.
 > Le corpus de conformance vit sous [`conformance/`](../../conformance/README.md) et
 > `make conformance` rejoue les deux moteurs — depuis 3-C sur des **runs entiers**, pas seulement des
 > verdicts, et depuis 3-D sur des runs **navigateur** (un cas déclare alors `requires: "browser"`,

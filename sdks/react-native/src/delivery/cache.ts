@@ -77,6 +77,30 @@ export async function readCache(
 }
 
 /**
+ * Ecarte les entrees qu'on n'a plus le droit de servir.
+ *
+ * C'est l'interrupteur d'arret du jalon 3-H : une entree arrivee par le prefixe reserve et qui n'est
+ * plus couverte — parce que l'application a change son prefixe ou retire `allowNew` — doit
+ * **disparaitre**, pas dormir dans le cache en attendant qu'on rouvre la porte. Un interrupteur qui
+ * laisse en place ce qu'il a laisse entrer n'en est pas un.
+ *
+ * Pure, et rendant `dropped` : c'est l'appelant qui decide de reecrire, un seul endroit ou l'etat
+ * change. Reecrire a chaque lecture pour rien couterait une ecriture par run.
+ */
+export function prune(
+  entries: Readonly<Record<string, CachedBlueprint>>,
+  keep: (name: string) => boolean,
+): { entries: Record<string, CachedBlueprint>; dropped: readonly string[] } {
+  const kept: Record<string, CachedBlueprint> = {};
+  const dropped: string[] = [];
+  for (const [name, entry] of Object.entries(entries)) {
+    if (keep(name)) kept[name] = entry;
+    else dropped.push(name);
+  }
+  return { entries: kept, dropped };
+}
+
+/**
  * Ecrit les entrees retenues.
  *
  * Une ecriture qui echoue est **muette** : l'application tourne alors sur ce qu'elle a en memoire,

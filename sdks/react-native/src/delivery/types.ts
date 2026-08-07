@@ -101,6 +101,20 @@ export interface RefreshReport {
   readonly entries: readonly RefreshEntry[];
 }
 
+/** La porte du jalon 3-H : sous quel prefixe un manifeste peut ajouter, et pour reclamer quoi. */
+export interface AllowNew {
+  /**
+   * Le prefixe reserve. Doit finir par un point : `"ukit.portail."`.
+   *
+   * Un prefixe, pas un motif — une comparaison de debut de chaine, sans joker ni expression
+   * reguliere. Un motif serait plus expressif et beaucoup plus facile a ecrire de travers, et une
+   * garde qu'on ecrit de travers est une garde absente.
+   */
+  readonly prefix: string;
+  /** Les secrets qu'un Blueprint **ajoute** a le droit de declarer. Obligatoire, sans defaut. */
+  readonly secrets: readonly string[];
+}
+
 export interface RegistryConfig {
   /** Le socle embarque, indexe par le `name` du Blueprint. Sans lui, rien ne tourne hors ligne. */
   readonly bundled: Readonly<Record<string, BundledBlueprint>>;
@@ -116,6 +130,18 @@ export interface RegistryConfig {
    * demander le contenu du trousseau et l'exfiltrer par une simple requete.
    */
   readonly allowedSecrets?: readonly string[];
+  /**
+   * Autorise un manifeste a **ajouter** des Blueprints sous un prefixe reserve (jalon 3-H).
+   *
+   * Absent — le defaut — le manifeste ne peut que *mettre a jour* ce que l'application embarque,
+   * exactement comme au jalon 3-F. Present, il ouvre une porte, et une seule : un nom couvert par
+   * `prefix` peut arriver sans etre embarque. Toutes les autres gardes s'appliquent inchangees.
+   *
+   * `secrets` est **obligatoire** et n'a pas de defaut — surtout pas celui d'`allowedSecrets`, qui
+   * est raisonnable pour un fichier remplaçant un fichier relu, et ne l'est pas pour un fichier que
+   * personne n'a relu.
+   */
+  readonly allowNew?: AllowNew;
   /** Remplace le `fetch` de l'hote (interception, epinglage de certificat, test). */
   readonly fetch?: FetchLike;
   /** Delai d'une requete de livraison. 10 s par defaut. */

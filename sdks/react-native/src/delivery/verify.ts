@@ -10,7 +10,8 @@
  *
  *   1. **integrite** — l'empreinte du texte doit etre celle qu'annonce le manifeste ;
  *   2. **compatibilite** — un Blueprint ecrit pour un moteur plus recent est ignore ;
- *   3. **anteriorite** — le distant ne gagne que s'il est plus recent que l'embarque ;
+ *   3. **anteriorite** — le distant ne gagne que s'il est plus recent que l'embarque (sans objet
+ *      pour un nom **ajoute** sous le prefixe reserve du jalon 3-H : il n'y a pas d'embarque) ;
  *   4. **validite** — schema, modele, et portabilite sur ce moteur (`validateForAct`) ;
  *   5. **perimetre** — les secrets reclames sont bornes par l'application, pas par le fichier.
  *
@@ -44,8 +45,13 @@ export interface Candidate {
 }
 
 export interface Bounds {
-  /** La version embarquee que le candidat doit battre. */
-  readonly bundledVersion: string;
+  /**
+   * La version embarquee que le candidat doit battre.
+   *
+   * Absente pour un nom **ajoute** sous le prefixe reserve (jalon 3-H) : il n'y a rien a battre, et
+   * exiger une comparaison contre une version qui n'existe pas reviendrait a inventer un socle.
+   */
+  readonly bundledVersion?: string | undefined;
   readonly engineVersion: string;
   readonly allowedSecrets: ReadonlySet<string>;
 }
@@ -71,7 +77,10 @@ export function verify(candidate: Candidate, bounds: Bounds): Verdict {
     };
   }
 
-  if (compareVersions(candidate.version, bounds.bundledVersion) <= 0) {
+  if (
+    bounds.bundledVersion !== undefined &&
+    compareVersions(candidate.version, bounds.bundledVersion) <= 0
+  ) {
     return {
       ok: false,
       outcome: "ignored",

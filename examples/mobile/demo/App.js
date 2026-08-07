@@ -44,7 +44,7 @@ import {
 
 import { BLUEPRINTS, STATUS } from "./blueprints";
 import DeliveryPanel from "./DeliveryPanel";
-import { useDelivery } from "./delivery";
+import { DELIVERED, useDelivery } from "./delivery";
 import { COLORS } from "./theme";
 
 const LEVEL_COLOR = {
@@ -138,9 +138,18 @@ export default function App() {
     void (async () => {
       // Une carte livrable demande son Blueprint au registre : c'est lui qui decide si la version
       // distante a gagne. Toutes les autres jouent le fichier importe du depot.
-      const blueprint = entry.delivered
-        ? (await delivery.resolve(entry.delivered)).blueprint
-        : entry.blueprint;
+      let blueprint = entry.blueprint;
+      if (entry.delivered !== undefined) {
+        try {
+          blueprint = (await delivery.resolve(entry.delivered)).blueprint;
+        } catch (error) {
+          // Depuis le jalon 3-H, un nom peut n'avoir **rien** a jouer : un portail ajoute a
+          // distance n'existe pas avant sa livraison, et il n'a pas de socle ou retomber. Le dire a
+          // l'ecran plutot que de laisser le bouton sans effet — un banc muet ne prouve rien.
+          setNotice(`Rien a jouer sous ce nom. ${error.message}`);
+          return;
+        }
+      }
       await run(withOptions(blueprint, { debug, persist }));
     })();
   }, [entry, run, debug, persist, delivery]);
@@ -186,7 +195,13 @@ export default function App() {
           })}
         </View>
 
-        {entry.delivered !== undefined && <DeliveryPanel delivery={delivery} />}
+        {entry.delivered !== undefined && (
+          <DeliveryPanel
+            delivery={delivery}
+            name={entry.delivered}
+            bundledNote={entry.delivered === DELIVERED ? " (la version cassee)" : ""}
+          />
+        )}
 
         {needsSecrets && (
           <View style={styles.section}>

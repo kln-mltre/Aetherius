@@ -13,6 +13,7 @@ import { hostFetch, type FetchLike } from "@aetherius/engine";
 
 import { fetchText } from "./download.js";
 import { parseManifest, resolveUrl } from "./manifest.js";
+import type { Scope } from "./scope.js";
 import type {
   CachedBlueprint,
   RefreshEntry,
@@ -32,8 +33,9 @@ export interface RefreshOutput {
 
 export async function refreshOverlay(
   config: RegistryConfig,
+  scope: Scope | undefined,
   previous: Readonly<Record<string, CachedBlueprint>>,
-  bounds: (bundledVersion: string) => Bounds,
+  bounds: (name: string) => Bounds,
 ): Promise<RefreshOutput> {
   const url = config.manifest;
   if (config.remote === false) return { report: unread("remote delivery is switched off") };
@@ -56,9 +58,11 @@ export async function refreshOverlay(
   const entries: RefreshEntry[] = [];
 
   for (const [name, entry] of Object.entries(manifest.blueprints)) {
-    const bundled = config.bundled[name];
-    if (bundled === undefined) {
-      entries.push({ name, outcome: "ignored", reason: "not bundled in this application" });
+    // Le seul point de decision que le jalon 3-H deplace : un nom hors socle est traite s'il est
+    // couvert par le prefixe reserve, ignore sinon — et la raison distingue les deux, parce qu'un
+    // publieur qui ne sait pas *pourquoi* son entree est tombee debugue a l'aveugle.
+    if (config.bundled[name] === undefined && !(scope?.covers(name) ?? false)) {
+      entries.push({ name, outcome: "ignored", reason: outside(scope) });
       continue;
     }
     if (manifest.disabled || entry.disabled) {
@@ -84,7 +88,7 @@ export async function refreshOverlay(
 
     const verdict = verify(
       { name, version: entry.version, sha256: entry.sha256, text, minEngine: entry.minEngine },
-      bounds(bundled.version),
+      bounds(name),
     );
     if (!verdict.ok) {
       if (known !== undefined) kept[name] = known;
@@ -107,11 +111,24 @@ export async function refreshOverlay(
   // desactivee. L'interpretation la plus sure d'un manifeste partiel est toujours le socle.
   for (const name of Object.keys(previous)) {
     if (kept[name] === undefined && manifest.blueprints[name] === undefined) {
-      entries.push({ name, outcome: "ignored", reason: "gone from the manifest — back to bundled" });
+      // Un nom arrive par le prefixe reserve n'a pas d'embarque ou revenir : il **disparait**. Dire
+      // « retour a l'embarque » d'un Blueprint qui n'en a pas serait faux.
+      const reason =
+        config.bundled[name] === undefined
+          ? "gone from the manifest — uninstalled"
+          : "gone from the manifest — back to bundled";
+      entries.push({ name, outcome: "ignored", reason });
     }
   }
 
   return { report: { ok: true, entries }, kept };
+}
+
+/** Pourquoi une entree hors socle est tombee : la capacite est absente, ou le nom n'est pas couvert. */
+function outside(scope: Scope | undefined): string {
+  return scope === undefined
+    ? "not bundled in this application"
+    : `not bundled, and outside the reserved prefix '${scope.prefix}'`;
 }
 
 function unread(reason: string): RefreshReport {

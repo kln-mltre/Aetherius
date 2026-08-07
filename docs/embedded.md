@@ -964,7 +964,10 @@ Trois conséquences, et ce sont des règles, pas des détails :
   socle est ignoré. C'est ce qui garantit le repli hors ligne **pour chaque Blueprint**, et ce qui
   empêche un manifeste compromis d'ajouter du comportement que personne n'a relu. Ajouter un
   Blueprint reste une livraison d'application — ce qu'il faudrait de toute façon pour lui faire une
-  place à l'écran.
+  place à l'écran. **Une application qui veut pouvoir *étendre* lève cette troisième règle
+  explicitement**, sous un préfixe de noms réservé : voir
+  [Étendre : les noms réservés](#étendre--les-noms-réservés). Les deux premières, elles, ne se
+  lèvent pas.
 
 ### Le manifeste
 
@@ -1056,6 +1059,79 @@ Et, avant tout cela, la **validation complète** : un Blueprint distant passe pa
 sur ce moteur (`upload`, `screenshot`, act `oracle`…) est refusé **avant** d'atteindre le cache,
 donc il n'atteint jamais un run.
 
+### Étendre : les noms réservés
+
+Jalon 3-H, et un appendice au précédent. La troisième règle — *le manifeste ne peut que mettre à
+jour* — est la bonne pour **corriger**. Elle ne tient plus dès qu'il s'agit d'**étendre**, et le cas
+est réel : une application universitaire qui veut ajouter le portail d'une nouvelle faculté en cours
+d'année paie aujourd'hui une publication sur les stores, alors que tout ce qui distingue cette
+faculté est un fichier de données.
+
+Les deux raisons de la règle d'origine ne pèsent pas le même poids pour un nom **nouveau** :
+
+| Raison de la règle | Pour un nom déjà embarqué | Pour un nom nouveau |
+|---|---|---|
+| Garantir un repli hors ligne | **tient** — l'application doit pouvoir jouer ce Blueprint sans réseau | **sans objet** — il n'existe pas encore pour l'utilisateur, il n'y a rien à quoi retomber |
+| Empêcher l'ajout de comportement non relu | **tient** | **tient toujours** — c'est ce que le périmètre borne |
+
+La levée porte donc sur la première ligne seulement, et la seconde reste entière. C'est ce
+déséquilibre qui rend le mécanisme défendable ; sans lui, il faudrait le refuser.
+
+```ts
+new BlueprintRegistry({
+  bundled,
+  manifest: "https://…/manifest.json",
+  cache: AsyncStorage,
+  // Le seul ajout du jalon, et il est entierement cote application.
+  allowNew: { prefix: "ukit.portail.", secrets: ["portail_user", "portail_pass"] },
+});
+```
+
+**Le format de manifeste ne change pas.** C'est le point le plus important : un manifeste écrit pour
+ce jalon reste lisible par une application qui ne l'active pas, et elle ignore simplement les entrées
+qu'elle n'embarque pas — exactement ce qu'elle faisait déjà.
+
+`allowNew.secrets` est **obligatoire**, et n'a surtout pas pour défaut « l'union des secrets du
+socle » comme `allowedSecrets`. Ce défaut-là est raisonnable pour une **mise à jour** — le fichier
+remplacé déclarait déjà ces secrets, l'application a été construite pour les fournir — et il ne l'est
+pas pour un fichier que personne n'a relu. Obliger à l'écrire, c'est obliger à décider ce qu'un
+inconnu aura le droit de demander. Un tableau vide est une réponse valide, et la plus restrictive.
+
+Cinq règles portent le reste :
+
+- **Un préfixe, pas un motif.** Une comparaison de début de chaîne, sans joker ni expression
+  régulière. Un motif serait plus expressif et beaucoup plus facile à écrire de travers — et une
+  garde qu'on écrit de travers est une garde absente.
+- **Le préfixe doit finir par un point, et il est refusé à la construction sinon.** `""` ouvrirait
+  tout ; `"ukit"` couvrirait `ukit.planning.semaine`, c'est-à-dire précisément les Blueprints que
+  l'application embarque et qu'on ne veut pas voir remplaçables par un nom voisin. Le point parce
+  qu'un `name` est un identifiant pointé au contrat ; commencer strict est relaxable plus tard sans
+  casser une application existante, l'inverse ne l'est pas.
+- **Un nom embarqué garde sa règle.** Si un nom est *à la fois* dans le socle et couvert par le
+  préfixe, c'est la règle de 3-F qui s'applique : version strictement supérieure, et le périmètre du
+  socle. Le préfixe **ajoute** des portes, il n'en élargit aucune. Un nom nouveau, lui, n'a pas de
+  version à battre — il n'a pas de socle, et exiger une comparaison contre une version qui n'existe
+  pas reviendrait à en inventer un.
+- **Retirer le préfixe désinstalle.** Une entrée arrivée par cette porte et qui n'est plus couverte —
+  parce que l'application a changé son préfixe ou retiré `allowNew` — est **purgée** à la lecture
+  suivante, sans réseau. Un interrupteur d'arrêt qui laisse en place ce qu'il a laissé entrer n'en
+  est pas un.
+- **Aucune nouvelle famille d'erreur.** Un nom refusé n'est pas un échec : c'est une entrée
+  `ignored` dans le `RefreshReport`, avec sa raison — et la raison distingue « ce nom n'est pas
+  couvert » de « cette application n'a pas la capacité », parce qu'un publieur qui ne sait pas
+  *pourquoi* son entrée est tombée débugue à l'aveugle.
+
+`min_engine` prend ici tout son sens : un portail publié pour un moteur plus récent est ignoré
+**silencieusement** par les applications anciennes, ce qui permet d'en écrire un sans se demander qui
+l'exécutera.
+
+Deux conséquences à connaître avant d'activer la capacité. `resolve()` d'un nom couvert mais **pas
+encore livré lève**, comme n'importe quel nom inconnu : il n'y a rien à jouer, et répondre autre
+chose serait inventer un socle — `list()` est la façon de savoir ce qui est disponible, et il liste
+désormais ce qui est arrivé par la porte après ce que le binaire embarque. Et un Blueprint ajouté à
+distance **n'a pas de repli hors ligne** avant d'avoir été résolu une fois : c'est la contrepartie
+assumée de la levée, sans conséquence pour un portail qu'on n'a jamais joué.
+
 ### Le modèle de menace, et ce qu'il ne couvre pas
 
 Écrire ce qui est protégé sans écrire ce qui ne l'est pas donnerait une fausse assurance.
@@ -1069,7 +1145,9 @@ donc il n'atteint jamais un run.
 | Blueprint distant utilisant une capacité que ce moteur n'a pas | **couverte** — validation par act, avant le cache |
 | Blueprint écrit pour un moteur plus récent | **couverte** — `min_engine`, l'entrée est ignorée sans erreur visible |
 | Exécution de code arbitraire par une expression | **couverte par construction** — jalon 3-B |
+| Blueprint **ajouté** à distance sous un nom que l'application n'a jamais relu | **partiellement couverte.** Il est validé, son intégrité est vérifiée, il ne peut déclarer que les secrets de `allowNew.secrets`, et il n'existe que sous le préfixe réservé — que l'application a explicitement ouvert. Ce qu'il fait de ces secrets et où il envoie ses requêtes n'est **pas** borné, comme pour n'importe quel Blueprint distant depuis 3-F. |
 | **Publieur compromis** (clé du dépôt, du CDN, du compte) | **non couverte.** Un manifeste signé par le bon publieur est cru. Un attaquant qui contrôle la publication peut livrer un Blueprint qui envoie **les secrets autorisés** où il veut. Le périmètre limite le rayon de l'incendie (les secrets que l'application a déjà ouverts à ce Blueprint), il ne l'éteint pas. |
+| Nombre de portes ouvertes par le préfixe réservé | **assumé.** Un publieur compromis pouvait déjà livrer un Blueprint malveillant sous un nom existant : le jalon 3-H augmente le **nombre de portes**, pas leur solidité. C'est pourquoi la ligne ci-dessus reste la première du tableau, et pourquoi le périmètre de secrets y devient **obligatoire** plutôt que déductible. |
 | Confidentialité et authenticité du transport | **déléguées à TLS.** Il n'y a pas de signature d'auteur : ce serait la réponse à la ligne précédente, et elle demanderait une gestion de clés qu'un dépôt de fichiers statiques ne fournit pas. Servir le manifeste en HTTPS n'est donc pas un détail de configuration. |
 | Destination des requêtes d'un Blueprint distant | **non bornée.** Une URL de Blueprint peut être un gabarit (`{{ vars.domain }}/…`), donc une liste blanche d'hôtes vérifiée statiquement serait contournable — et une vérification à l'exécution ferait échouer des Blueprints corrects. Mieux vaut une limite écrite qu'une garde qui rassure sans mordre. |
 
@@ -1195,9 +1273,12 @@ const { running, events, result, failure, run, cancel } = useAetheriusRun(client
 - **Pas de système de fichiers.** `parseBlueprint` prend du texte, pas un chemin. La livraison
   (ressource embarquée, téléchargement, cache) passe par le registre du jalon 3-F, dont le magasin
   est lui aussi **injecté** : le moteur ne connaît aucun chemin.
-- **La livraison ne peut que mettre à jour des Blueprints déjà embarqués.** Un nom absent du socle
-  est ignoré par le manifeste. C'est ce qui garantit le premier lancement hors ligne pour chaque
-  Blueprint ; ajouter une tâche reste une livraison d'application.
+- **La livraison ne met à jour que des Blueprints déjà embarqués, sauf sous un préfixe réservé.** Par
+  défaut, un nom absent du socle est ignoré par le manifeste : c'est ce qui garantit le premier
+  lancement hors ligne pour chaque Blueprint. Une application peut ouvrir une porte, explicitement et
+  bornée (`allowNew`, jalon 3-H) ; ce qui entre par là **n'a pas de repli hors ligne** avant d'avoir
+  été résolu une fois, et ne peut déclarer que les secrets qu'elle a écrits. Voir
+  [Étendre : les noms réservés](#étendre--les-noms-réservés).
 - **Un publieur compromis n'est pas couvert.** Il n'y a pas de signature d'auteur : l'intégrité
   protège le transport et le stockage, pas la source. Voir
   [le modèle de menace](#le-modèle-de-menace-et-ce-quil-ne-couvre-pas).
@@ -1308,10 +1389,11 @@ exécuteurs se recouvrent au lieu de se partager le corpus : aucun cas ne peut t
 parce que quelqu'un l'aurait mal étiqueté, et chacun échoue si les cas `requires: browser`
 disparaissent.
 
-La **livraison** (jalon 3-F) n'a, elle, aucun cas de conformance, et c'est délibéré : le moteur
-Python n'a pas de couche de livraison — il lit des fichiers sur une machine —, il n'y a donc aucun
-« même Blueprint, deux moteurs » à figer. Ce qu'elle a, ce sont ses tests miroir
-(`sdks/react-native/test/delivery*.test.js`) et une garde sur le manifeste d'exemple livré.
+La **livraison** (jalons 3-F et 3-H) n'a, elle, aucun cas de conformance, et c'est délibéré : le
+moteur Python n'a pas de couche de livraison — il lit des fichiers sur une machine —, il n'y a donc
+aucun « même Blueprint, deux moteurs » à figer. Ce qu'elle a, ce sont ses tests miroir
+(`sdks/react-native/test/delivery*.test.js`) et une garde sur le manifeste d'exemple livré, qui
+rejoue le calcul d'empreinte sur **chaque** fichier publié.
 
 L'agent injecté est en outre joué dans un **vrai Chromium** piloté depuis les tests Python
 (`tests/integration/test_webview_agent.py`, marker `browser`) : la même page est lue deux fois, une
@@ -1348,6 +1430,10 @@ moyen de vérifier que les gardes mordent toujours.
 | Rendre `matchStrict` levant sur zéro correspondance (l'action cesse d'auto-attendre) | `npm test` (react-native) : « acting on nothing waits for it » échoue en 6 ms au lieu d'attendre son échéance. |
 | Retyper un échec de sélecteur en `ActionError` | `npm test` (engine + react-native) : `describeFailure` le classe `engine`, et un sélecteur périmé va sur l'écran « remonter ce bug ». |
 | Laisser le bail de la WebView pris après un `teardown` en échec | `npm test` (react-native) : le second run `continuum` est refusé pour toujours. |
+| Faire hériter un nom **ajouté** du périmètre de secrets du socle | `npm test` (react-native) : « the scope of a new name is allowNew.secrets alone » — un portail obtient `cas_pass` parce que le socle le déclarait. |
+| Cesser de purger le cache des noms que le préfixe ne couvre plus | `npm test` (react-native) : « dropping allowNew uninstalls what it let in » — l'interrupteur d'arrêt laisse en place ce qu'il avait laissé entrer. |
+| Retirer l'exigence de séparateur sur le préfixe | `npm test` (react-native) : « a prefix that would cover the bundle is refused at construction » — `demo` est accepté, et couvre `demo.delivery`. |
+| Traiter *tout* nom hors socle dès qu'`allowNew` est déclaré (oublier `covers`) | `npm test` (react-native) : « a name outside the prefix stays out » — le préfixe cesse d'être une borne. |
 | Oublier une ré-exportation dans `index.ts` | `npm test` (react-native) : « the package's public surface is one door ». |
 | Garer un `confirm` alors qu'aucune surface n'écoute | `npm test` (react-native) : « nobody listening means unattended » — le run attend au lieu de refuser tout de suite. |
 | Ne pas relayer l'échec de chargement de la WebView à l'hôte | `npm test` (react-native) : « a view that cannot load the document fails the run as unreachable » — hors ligne, l'Act II retombe sur `engine` au lieu d'`unavailable`. |
@@ -1667,6 +1753,35 @@ méritent d'être répétés ici, parce qu'ils disent quelque chose sur la méth
 - un prédicat sur un champ **imbriqué** rendait des données différentes selon le moteur. Le corpus
   ne l'a pas vu parce qu'aucun cas n'imbriquait : un corpus ne protège que des formes qu'il écrit.
 
+### Sondes du jalon 3-H
+
+Mêmes conditions qu'au jalon 3-F, et pour la même raison : ce jalon ne livre pas une fonctionnalité
+isolée mais un **parcours de publication**. Un vrai serveur statique
+(`python3 -m http.server` sur `examples/mobile/registry/`), les vrais fichiers du dépôt, la vraie
+source (`quotes.toscrape.com`), un cache **sur le disque**, et la façade `Aetherius` pour exécuter ce
+que le registre a résolu. L'application de la sonde n'embarque **rien** : le portail n'existe que
+s'il est livré.
+
+| Sonde | Résultat |
+|-------|----------|
+| `resolve()` avant tout rafraîchissement | `BlueprintLoadError` — « it is covered by `'mobile.portail.'` but no manifest has delivered it yet ». `list()` rend `[]` : il n'y a pas de socle, et le message le dit plutôt que de le laisser deviner |
+| `refresh()` sur le manifeste qui publie **les deux** | `updated mobile.portail.demo v1` **et** `ignored mobile.autre.demo — not bundled, and outside the reserved prefix 'mobile.portail.'`. Deux lignes du **même** rapport : c'est le contraste qui montre la garde |
+| Le portail ajouté, joué par la façade | `origin: "remote"`, run `success`, `livre_par: "le préfixe réservé (jalon 3-H)"` et la citation de Jane Austen. **Un Blueprint que le binaire ne contient pas a tourné sur l'appareil** |
+| Le nom hors préfixe, après rafraîchissement | toujours `BlueprintLoadError` — « outside `'mobile.portail.'` ». Le rafraîchissement ne l'a pas rendu résoluble |
+| Registre neuf sur le même magasin, **sans réseau** (un `fetch` qui lève) | `remote v1` : le portail a franchi la frontière du processus, sans socle et sans CDN |
+| **Interrupteur d'arrêt** : `allowNew` retiré, registre neuf sur le même magasin | le portail est **désinstallé** — `resolve` refuse, `list()` rend `[]`, aucune requête |
+| La même porte **rouverte** ensuite, toujours sans réseau | rien à retrouver : la purge est **durable**, pas une mise en veille |
+| **Conçue pour échouer** : un portail publié en déclarant `cas_pass`, manifeste régénéré proprement | `rejected` — « declares secrets the application does not allow: cas_pass (allowed: none) ». Le fichier est arrivé entier et signé juste ; c'est le périmètre qui a mordu |
+| **Conçue pour échouer** : un octet ajouté au portail **après** la publication du manifeste | `rejected` — « integrity check failed (expected d0421a79f932, got c33b08698214) ». Le journal du serveur montre les **deux** requêtes (`GET /manifest.json?_aeth=…`, `GET /portail-demo.blueprint.json?_aeth=…`) : le fichier est arrivé, c'est la garde qui l'a refusé |
+| **Parité** : `aetherius run` sur les deux fichiers publiés | le moteur Python les joue **tous les deux**, et rend les mêmes sorties. Ce qui les sépare n'est pas leur contenu, c'est le nom sous lequel ils sont publiés |
+
+Ces sondes n'ont trouvé aucun défaut, et c'est cohérent avec la nature du jalon : comme en 3-F, tout
+s'y décide sur des octets, des noms et des empreintes — il n'y a pas de plateforme dans la boucle.
+Les quatre gardes ont en revanche été **vues échouer** par mutation du code (lignes ajoutées au
+tableau [Éprouver les gardes](#éprouver-les-gardes)), ce qui est la seule preuve qu'elles mordent :
+faire hériter un nom ajouté du périmètre du socle, cesser de purger, retirer l'exigence de
+séparateur, oublier `covers`.
+
 ### Sur appareil
 
 Le point 5 de [CONTRIBUTING](../CONTRIBUTING.md#définition-de--terminé-) — « le vrai run, pas
@@ -1901,3 +2016,50 @@ ont expiré**, y compris des Blueprints déjà vérifiés aux jalons précédent
 que trois taps parce que le banc porte des cartes de référence connues : rejouer `device-ip-check`
 et une carte ancienne sépare « le téléphone n'a pas de réseau » de « ce Blueprint est cassé ». C'est
 la raison d'être des cartes anciennes dans le banc, et il vaut mieux l'écrire que la redécouvrir.
+
+#### Les noms réservés, sur appareil
+
+Jalon 3-H. Le banc gagne **deux cartes**, et elles vont par paire : `Livraison : ajouter sans
+republier` (nom couvert par le préfixe) et `Livraison : ce que le préfixe refuse` (nom hors préfixe,
+publié dans le **même** manifeste). Aucune des deux n'a de Blueprint dans le binaire — c'est tout le
+sujet, et c'est aussi la seule chose que les sondes hors appareil ne peuvent pas montrer : qu'un
+Blueprint **absent de l'application** franchit la frontière du processus et survit à sa mort.
+
+Le parcours à jouer est dans
+[`examples/mobile/README.md`](../examples/mobile/README.md#le-parcours-du-jalon-3-h--ajouter-et-ce-qui-reste-dehors).
+
+**Campagne sur iPhone** (iOS, Expo Go SDK 54, poste sur le partage de connexion du téléphone,
+manifeste servi par `python3 -m http.server`). Une seule passe a suffi.
+
+| Parcours | Observé |
+|----------|---------|
+| Le portail ajouté, **avant** tout rafraîchissement | « Rien à jouer sous ce nom », panneau `absent`. Un nom sans socle n'a rien à quoi retomber, et l'écran le dit au lieu de rester muet |
+| Rafraîchir | `updated v2 · mobile.delivery.quotes`, `updated v1 · mobile.portail.demo`, `ignored · mobile.autre.demo` — **les trois natures du manifeste dans un seul rapport** : une correction, un ajout, un refus |
+| Relancer le run | `success` : la citation de Jane Austen et `livre_par: "le préfixe réservé (jalon 3-H)"`. **Un Blueprint absent du binaire a tourné sur le téléphone** |
+| La carte hors préfixe, après ce rafraîchissement | « Rien à jouer sous ce nom », panneau `absent`. Le rafraîchissement ne l'a pas rendu résoluble |
+| **Tuer l'application** (vignette balayée du sélecteur), rouvrir, rejouer **sans rafraîchir** | `distant · v1` dès l'ouverture du panneau, zone de rapport **vide**, run `success`. Le cache a franchi la frontière du processus **pour un nom que le binaire ne contient pas** — c'est le parcours que ce jalon existe pour prouver, et le seul qu'aucun test hors appareil ne peut produire |
+| **Interrupteur d'arrêt** : `allowNew` commenté, application rechargée | `absent — rien de livré sous ce nom`. Le portail est **désinstallé** |
+| La capacité **rallumée**, application rechargée, **sans rafraîchir** | toujours `absent`. La purge était **durable**, pas une mise en veille : il a fallu un rafraîchissement pour que `distant · v1` revienne, donc par le réseau et non par un cache qui aurait fait semblant d'oublier |
+| Rafraîchissements suivants | `kept` pour les deux versions en place — rien n'est retéléchargé sans raison |
+
+Le **journal du serveur statique** dit la même chose depuis l'autre bout, et c'est là qu'il devient
+une preuve plutôt qu'un confort :
+
+| Ce que le téléphone a demandé | Fois |
+|---|---|
+| `manifest.json` | 11 |
+| `portail-demo.blueprint.json` | 2 |
+| `delivery-quotes.v2.blueprint.json` | 1 |
+| **`hors-perimetre.blueprint.json`** | **0** |
+
+Le Blueprint hors préfixe n'a **jamais été téléchargé** : la garde mord à la lecture du manifeste,
+avant la moindre requête — ce que le rapport seul ne pouvait pas distinguer d'un refus après
+téléchargement. Onze rafraîchissements pour deux téléchargements du portail confirment de leur côté
+que `kept` ne retélécharge rien, et chaque ligne porte un `_aeth=` **distinct** : le contournement du
+cache de plateforme trouvé au jalon 3-F tient aussi pour les noms ajoutés.
+
+**Aucun défaut trouvé**, et une leçon de banc plutôt que de moteur : la première tentative de
+rafraîchissement a répondu « manifeste non lu » sans que rien ne soit cassé — le serveur statique
+n'était simplement pas lancé. C'est encore le journal du serveur qui l'a dit, en ne montrant
+**rien** ; le symptôme, lui, ressemblait à un défaut de livraison. Un banc doit montrer les deux
+bouts, et c'est vrai jusque dans les faux départs.

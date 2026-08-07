@@ -1,0 +1,25 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.portail.demo",
+  "description": "LE BLUEPRINT AJOUTÉ À DISTANCE (jalon 3-H). L'application de démonstration ne l'embarque pas : il n'existe nulle part dans son binaire. Il entre parce qu'il est couvert par le préfixe réservé que le registre déclare (allowNew.prefix = 'mobile.portail.'), et il tombe si on retire cette capacité. C'est le portail d'une faculté ajouté en cours d'année, sans publication sur les stores. Exécutable tel quel (aetherius run), zéro configuration.",
+  "act": "vector",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "steps": [
+    {
+      "id": "page",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.domain }}/tag/books/",
+      "expect": { "status": 200 },
+      "extract": {
+        "citations": { "from": "html", "selector": "div.quote span.text::text" },
+        "auteurs": { "from": "html", "selector": "div.quote small.author::text" }
+      }
+    }
+  ],
+  "outputs": {
+    "livre_par": "le préfixe réservé (jalon 3-H)",
+    "citation": "{{ steps.page.citations | first }}",
+    "auteur": "{{ steps.page.auteurs | first }}"
+  }
+}

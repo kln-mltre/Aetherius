@@ -343,7 +343,8 @@ Le cœur est en Python ; il est exposé à tous les langages via un **daemon loc
 > Blueprints directement sur l'appareil, sans daemon ni serveur. L'Act I y tourne
 > ([`@aetherius/engine`](sdks/engine), jalon 3-C) et l'Act II aussi, dans une WebView cachée
 > ([`@aetherius/react-native`](sdks/react-native), jalon 3-D) ; depuis le jalon 3-F, ces Blueprints se
-> **corrigent à distance** sans republier l'application. Un cas d'usage mobile réel est porté de bout
+> **corrigent à distance** sans republier l'application, et depuis le jalon 3-H une application peut
+> réserver un préfixe de noms sous lequel il devient possible d'en **ajouter**. Un cas d'usage mobile réel est porté de bout
 > en bout dans [`examples/mobile/reference/`](examples/mobile/reference/), avec son
 > [guide de migration](docs/mobile-migration.md). Voir
 > [docs/embedded.md](docs/embedded.md) et [docs/phase-3/](docs/phase-3/README.md).
@@ -431,7 +432,7 @@ sdks/          workspace npm + python
   client/        @aetherius/client — pilote le daemon depuis TypeScript
   engine/        @aetherius/engine — moteur embarqué, neutre plateforme (Phase 3)
   react-native/  @aetherius/react-native — Act II sur WebView + façade mobile + livraison
-                 des Blueprints (registre, manifeste, cache) (Phase 3)
+                 des Blueprints (registre, manifeste, cache, noms réservés) (Phase 3)
 examples/      Blueprints de démonstration (par Act + plugins/ + mobile/ : moteur embarqué,
                son application de démonstration, sa livraison distante et les Blueprints
                de référence d'un cas d'usage mobile réel)
@@ -732,7 +733,9 @@ natif, annulation, modèle d'erreur exploitable), et depuis le jalon 3-F il n'es
 binaire : un **registre** le résout entre un socle embarqué et une surcouche distante vérifiée, donc
 **un site qui change se répare sans republier sur les stores**. Le jalon 3-G clôt la phase en
 **portant un cas d'usage mobile réel** — quatre API tierces et un parcours authentifiant complet —
-et en livrant le guide de migration. Référence d'usage : [docs/embedded.md](docs/embedded.md).
+et en livrant le guide de migration ; le jalon 3-H, appendice ouvert par ce port, laisse le même
+manifeste **ajouter** un Blueprint sous un préfixe réservé. Référence d'usage :
+[docs/embedded.md](docs/embedded.md).
 
 - [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
   Blueprint à l'identique du moteur Python. Validation **en deux temps** — JSON Schema **précompilé
@@ -901,9 +904,39 @@ et en livrant le guide de migration. Référence d'usage : [docs/embedded.md](do
   contourner une contrainte de navigateur, à laquelle une requête native n'est pas soumise.
   [docs/embedded.md](docs/embedded.md#porter-un-cas-dusage-réel),
   [docs/phase-3/3-g-reference.md](docs/phase-3/3-g-reference.md).
+- [x] **3-H** — **Étendre la surcouche : les noms réservés.** Un appendice, ouvert par le port du
+  jalon précédent : la règle de 3-F — *le manifeste ne peut que mettre à jour des noms déjà
+  embarqués* — est la bonne pour **corriger** et ne tient plus pour **étendre**. Ajouter le portail
+  d'une nouvelle faculté coûtait une publication sur les stores, alors que tout ce qui la distingue
+  est un fichier de données. La levée tient à un déséquilibre, et c'est lui qui la rend défendable :
+  des deux raisons de la règle, seule la première — garantir un repli hors ligne — est **sans objet**
+  pour un nom nouveau, qui n'existe pas encore pour l'utilisateur ; la seconde — ne pas exécuter ce
+  que personne n'a relu — reste entière, et c'est ce que le périmètre borne. Une application déclare
+  donc un **préfixe de noms réservé** (`allowNew: { prefix, secrets }`), et **rien d'autre ne
+  change** : le format de manifeste est intact octet pour octet, si bien qu'un manifeste écrit pour
+  ce jalon reste lisible par une application qui ne l'active pas — elle ignore ce qu'elle n'embarque
+  pas, exactement comme avant. Le périmètre de secrets devient **obligatoire et sans défaut** (surtout
+  pas « l'union du socle » : ce défaut est raisonnable pour un fichier qui en remplace un relu, pas
+  pour un fichier que personne n'a lu) ; un préfixe qui ne finit pas par un point est **refusé à la
+  construction**, parce que `ukit` couvrirait `ukit.planning.semaine` ; un nom à la fois embarqué et
+  couvert garde la règle de 3-F ; et **retirer le préfixe désinstalle** — ce qui était entré par là
+  est purgé à la lecture suivante, sans réseau, sinon l'interrupteur d'arrêt n'en serait pas un.
+  Aucune nouvelle famille d'erreur : un nom refusé est une entrée `ignored` du rapport, avec sa
+  raison. Le modèle de menace gagne une ligne et une seule — le jalon augmente le **nombre de
+  portes**, pas leur solidité. Exemple exécutable : un portail publié sous le préfixe **et** un
+  second hors préfixe, dans le **même** manifeste
+  ([`examples/mobile/registry/`](examples/mobile/registry/)) — c'est le contraste qui montre la
+  garde, pas le cas qui marche. Le parcours de publication est éprouvé contre un vrai serveur
+  statique — gardes comprises : secret hors périmètre, octet altéré, désinstallation sans réseau —
+  puis **sur un iPhone**, où le cache a porté un Blueprint **absent du binaire** à travers la mort de
+  l'application, et où retirer la capacité l'a désinstallé pour de bon. Le journal du serveur y
+  ajoute la preuve que le rapport seul ne donnait pas : le Blueprint hors préfixe n'a **jamais été
+  téléchargé** — la garde mord à la lecture du manifeste, pas après.
+  [docs/embedded.md](docs/embedded.md#étendre--les-noms-réservés),
+  [docs/phase-3/3-h-portails.md](docs/phase-3/3-h-portails.md).
 
-**Phase 3 terminée (A–G).** Le même Blueprint tourne sur une machine et sur un téléphone, se corrige
-à distance, et un cas d'usage réel le prouve.
+**Phase 3 terminée (A–H).** Le même Blueprint tourne sur une machine et sur un téléphone, se corrige
+et s'ajoute à distance, et un cas d'usage réel le prouve.
 
 ## Sources de référence
 

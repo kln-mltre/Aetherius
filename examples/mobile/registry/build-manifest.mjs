@@ -24,13 +24,35 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  *
  * `version` est la version **du Blueprint**, ordonnee, et elle doit battre celle que l'application
  * embarque (declaree dans `examples/mobile/demo/delivery.js`) : le distant ne gagne que s'il est
- * plus recent. `min_engine` dit a partir de quelle version du moteur la correction est jouable.
+ * plus recent. Un nom que l'application n'embarque pas n'a rien a battre — il n'a pas de socle —,
+ * et sa version sert alors seulement a dire ce qui a change. `min_engine` dit a partir de quelle
+ * version du moteur le fichier est jouable ; il parle des **capacites** que le Blueprint utilise,
+ * pas du mecanisme de livraison.
+ *
+ * Les trois entrees sont volontairement de trois natures differentes, et c'est le contraste qui
+ * documente la livraison :
+ *
+ *   - une **correction** d'un nom embarque (jalon 3-F) ;
+ *   - un **ajout** sous le prefixe reserve (jalon 3-H) ;
+ *   - un ajout **hors prefixe**, que l'appareil doit ignorer — le cas qui echoue.
  */
 const PUBLISHED = [
   {
     name: "mobile.delivery.quotes",
     file: "delivery-quotes.v2.blueprint.json",
     version: "2",
+    min_engine: "0.4.0",
+  },
+  {
+    name: "mobile.portail.demo",
+    file: "portail-demo.blueprint.json",
+    version: "1",
+    min_engine: "0.4.0",
+  },
+  {
+    name: "mobile.autre.demo",
+    file: "hors-perimetre.blueprint.json",
+    version: "1",
     min_engine: "0.4.0",
   },
 ];

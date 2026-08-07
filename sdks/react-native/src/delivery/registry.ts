@@ -17,11 +17,18 @@
  *      du socle est ignore : c'est ce qui garantit la regle 1 pour chaque Blueprint, et ce qui
  *      empeche un manifeste compromis d'ajouter du comportement que personne n'a relu.
  *
+ * Le jalon 3-H leve la troisieme, **en opt-in et bornee** : `allowNew` reserve un prefixe de noms
+ * sous lequel un manifeste a le droit d'*ajouter*. La regle 1 n'y perd rien — un nom nouveau n'a pas
+ * de repli hors ligne a preserver, il n'existe pas encore pour l'utilisateur — et la seconde raison
+ * reste entiere, portee par un perimetre de secrets **obligatoire** (voir `scope.ts`).
+ *
  * ```ts
  * const registry = new BlueprintRegistry({
  *   bundled: { "mobile.delivery.quotes": { version: "1", document: quotesV1 } },
  *   manifest: "https://cdn.exemple.fr/aetherius/manifest.json",
  *   cache: AsyncStorage,
+ *   // Optionnel (jalon 3-H) : ce que le manifeste a le droit d'ajouter.
+ *   allowNew: { prefix: "mobile.portail.", secrets: ["portail_user", "portail_pass"] },
  * });
  *
  * const { blueprint, origin } = await registry.resolve("mobile.delivery.quotes");
@@ -41,8 +48,9 @@ import {
   type Blueprint,
 } from "@aetherius/engine";
 
-import { readCache, writeCache } from "./cache.js";
+import { prune, readCache, writeCache } from "./cache.js";
 import { refreshOverlay } from "./refresh.js";
+import { NO_SECRETS, bundledSecrets, resolveScope, type Scope } from "./scope.js";
 import type {
   BlueprintStatus,
   CachedBlueprint,
@@ -54,6 +62,7 @@ import { verify, type Bounds } from "./verify.js";
 
 export class BlueprintRegistry {
   private readonly allowed: ReadonlySet<string>;
+  private readonly scope: Scope | undefined;
   private readonly parsed = new Map<string, Blueprint>();
   private overlay: Record<string, CachedBlueprint> | undefined;
 
@@ -70,6 +79,7 @@ export class BlueprintRegistry {
       }
     }
     this.allowed = new Set(config.allowedSecrets ?? bundledSecrets(config));
+    this.scope = resolveScope(config);
   }
 
   /**
@@ -79,34 +89,47 @@ export class BlueprintRegistry {
    * sinon l'embarquee. Une entree de cache qui echoue une garde est purgee au passage — un cache
    * corrompu ou perime se soigne tout seul, il ne se traine pas.
    *
-   * @throws {BlueprintLoadError} aucun Blueprint de ce nom n'est embarque.
+   * Un nom couvert par `allowNew` (jalon 3-H) et pas encore livre leve, comme n'importe quel nom
+   * inconnu : il n'y a rien a jouer, et repondre autre chose serait inventer un socle. `list()` est
+   * la façon de savoir ce qui est disponible avant d'essayer.
+   *
+   * @throws {BlueprintLoadError} aucun Blueprint de ce nom n'est embarque ni livre.
    * @throws {BlueprintSchemaError} le document embarque n'est pas un Blueprint valide.
    * @throws {BlueprintValidationError} le document embarque n'est pas jouable ici.
    */
   async resolve(name: string): Promise<ResolvedBlueprint> {
-    const bundled = this.config.bundled[name];
-    if (bundled === undefined) {
-      const known = Object.keys(this.config.bundled).join(", ") || "none";
-      throw new BlueprintLoadError(`No bundled Blueprint named '${name}' (known: ${known}).`);
-    }
-
-    const cached = await this.remote(name, bundled.version);
+    const cached = await this.remote(name);
     if (cached !== undefined) {
       return { name, version: cached.version, origin: "remote", blueprint: cached.blueprint };
     }
+
+    const bundled = this.config.bundled[name];
+    if (bundled === undefined) throw new BlueprintLoadError(this.unknown(name));
     return { name, version: bundled.version, origin: "bundled", blueprint: this.bundled(name) };
   }
 
-  /** L'etat de la livraison, un Blueprint par ligne. De quoi l'afficher sans tout charger. */
+  /**
+   * L'etat de la livraison, un Blueprint par ligne. De quoi l'afficher sans tout charger.
+   *
+   * Le socle d'abord, dans son ordre de declaration, puis ce qui est arrive par le prefixe reserve,
+   * trie — une application qui affiche un catalogue a besoin d'un ordre stable, et ce qui vient du
+   * reseau n'en a pas naturellement.
+   */
   async list(): Promise<readonly BlueprintStatus[]> {
     const out: BlueprintStatus[] = [];
     for (const [name, bundled] of Object.entries(this.config.bundled)) {
-      const cached = await this.remote(name, bundled.version);
+      const cached = await this.remote(name);
       out.push(
         cached === undefined
           ? { name, version: bundled.version, origin: "bundled" }
           : { name, version: cached.version, origin: "remote" },
       );
+    }
+
+    for (const name of Object.keys(await this.entries()).sort()) {
+      if (this.config.bundled[name] !== undefined) continue;
+      const cached = await this.remote(name);
+      if (cached !== undefined) out.push({ name, version: cached.version, origin: "remote" });
     }
     return out;
   }
@@ -123,8 +146,11 @@ export class BlueprintRegistry {
    * manifeste partiel est ainsi toujours le socle.
    */
   async refresh(): Promise<RefreshReport> {
-    const { report, kept } = await refreshOverlay(this.config, await this.entries(), (version) =>
-      this.bounds(version),
+    const { report, kept } = await refreshOverlay(
+      this.config,
+      this.scope,
+      await this.entries(),
+      (name) => this.bounds(name),
     );
     // Un manifeste illisible ne rend pas de surcouche, et rien n'est touche : c'est la difference
     // entre « le CDN n'a rien a dire » et « le CDN dit qu'il n'y a rien ».
@@ -159,7 +185,6 @@ export class BlueprintRegistry {
   /** La version distante utilisable pour *name*, ou `undefined`. Purge ce qui ne passe pas. */
   private async remote(
     name: string,
-    bundledVersion: string,
   ): Promise<{ version: string; blueprint: Blueprint } | undefined> {
     if (this.config.remote === false) return undefined;
     const entries = await this.entries();
@@ -174,7 +199,7 @@ export class BlueprintRegistry {
         text: cached.text,
         minEngine: cached.min_engine,
       },
-      this.bounds(bundledVersion),
+      this.bounds(name),
     );
     if (verdict.ok) return { version: cached.version, blueprint: verdict.blueprint };
 
@@ -201,38 +226,51 @@ export class BlueprintRegistry {
     return blueprint;
   }
 
-  private bounds(bundledVersion: string): Bounds {
-    return {
-      bundledVersion,
-      engineVersion: this.config.engineVersion ?? ENGINE_VERSION,
-      allowedSecrets: this.allowed,
-    };
+  /**
+   * Les bornes applicables a *name*. C'est le **nom** qui les decide, pas la version.
+   *
+   * Un nom embarque garde la regle de 3-F, meme s'il est aussi couvert par le prefixe : version
+   * strictement superieure, et les secrets du socle. Le prefixe **ajoute** des noms, il n'assouplit
+   * rien pour ceux qui existent.
+   */
+  private bounds(name: string): Bounds {
+    const bundled = this.config.bundled[name];
+    const engineVersion = this.config.engineVersion ?? ENGINE_VERSION;
+    if (bundled !== undefined) {
+      return { bundledVersion: bundled.version, engineVersion, allowedSecrets: this.allowed };
+    }
+    return { engineVersion, allowedSecrets: this.scope?.secrets ?? NO_SECRETS };
   }
 
-  /** Le document de cache, lu une fois puis tenu en memoire (la resolution est sur le chemin d'un run). */
+  /** Ce qu'on repond a un nom qu'on ne sait pas jouer. */
+  private unknown(name: string): string {
+    const known = Object.keys(this.config.bundled).join(", ") || "none";
+    if (this.scope === undefined) {
+      return `No bundled Blueprint named '${name}' (known: ${known}).`;
+    }
+    return this.scope.covers(name)
+      ? `No Blueprint named '${name}': it is covered by '${this.scope.prefix}' but no manifest ` +
+          `has delivered it yet (bundled: ${known}).`
+      : `No bundled Blueprint named '${name}', and it is outside '${this.scope.prefix}' ` +
+          `(bundled: ${known}).`;
+  }
+
+  /**
+   * Le document de cache, lu une fois puis tenu en memoire (la resolution est sur le chemin d'un run).
+   *
+   * C'est ici que la porte du jalon 3-H se referme : une entree qui n'est ni embarquee, ni couverte
+   * par le prefixe courant est **purgee** — retirer `allowNew` ou changer le prefixe desinstalle ce
+   * qui etait entre par la, sans reseau et des la lecture suivante.
+   */
   private async entries(): Promise<Record<string, CachedBlueprint>> {
-    if (this.overlay === undefined) this.overlay = await readCache(this.config.cache);
-    return this.overlay;
-  }
-}
+    if (this.overlay !== undefined) return this.overlay;
 
-/**
- * Les secrets que le socle embarque declare : la borne par defaut du perimetre.
- *
- * C'est ce que l'application a ete construite pour fournir — un secret de plus demanderait de toute
- * façon qu'elle le range dans le trousseau, donc une livraison. Lu sans valider : le socle est
- * valide ailleurs, et un document casse ne doit pas empecher le registre d'exister.
- */
-function bundledSecrets(config: RegistryConfig): string[] {
-  const names = new Set<string>();
-  for (const entry of Object.values(config.bundled)) {
-    const declared = (entry.document as { secrets?: unknown } | null)?.secrets;
-    if (!Array.isArray(declared)) continue;
-    for (const name of declared) if (typeof name === "string") names.add(name);
+    const { entries, dropped } = prune(
+      await readCache(this.config.cache),
+      (name) => this.config.bundled[name] !== undefined || (this.scope?.covers(name) ?? false),
+    );
+    this.overlay = entries;
+    if (dropped.length > 0) await writeCache(this.config.cache, entries);
+    return entries;
   }
-  return [...names];
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

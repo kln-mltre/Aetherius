@@ -18,7 +18,10 @@ Deux décisions structurantes prises à l'implémentation, et écrites parce qu'
 
 - **le manifeste ne peut que mettre à jour des noms déjà embarqués.** C'est ce qui garantit le
   premier lancement hors ligne *pour chaque Blueprint*, et ce qui empêche un manifeste compromis
-  d'ajouter du comportement que personne n'a relu ;
+  d'ajouter du comportement que personne n'a relu. Le jalon [3-H](3-h-portails.md) lève cette règle
+  **en opt-in et bornée** — un préfixe de noms réservé, un périmètre de secrets obligatoire — parce
+  qu'elle ne tient plus dès qu'il s'agit d'*étendre* plutôt que de corriger ; les deux autres, elles,
+  ne se lèvent pas ;
 - **le manifeste décrit l'état voulu.** Une entrée qui en disparaît ramène son Blueprint à
   l'embarqué, comme une entrée `disabled` : l'interprétation la plus sûre d'un manifeste partiel est
   toujours le socle.

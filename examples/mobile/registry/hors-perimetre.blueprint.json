@@ -1,0 +1,23 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.autre.demo",
+  "description": "LE CONTRE-EXEMPLE DU JALON 3-H, et la vraie démonstration de la garde. Publié dans le MÊME manifeste que mobile.portail.demo, avec la même empreinte et le même sérieux — mais son nom est hors du préfixe réservé, donc l'appareil l'ignore quoi qu'il arrive : le rapport de rafraîchissement le dit, et il n'est jamais résolu. C'est le cas qui échoue qui prouve la borne, pas celui qui marche. Exécutable tel quel (aetherius run) : côté machine, rien ne l'interdit.",
+  "act": "vector",
+  "vars": { "domain": "https://quotes.toscrape.com" },
+  "steps": [
+    {
+      "id": "page",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.domain }}/tag/truth/",
+      "expect": { "status": 200 },
+      "extract": {
+        "citations": { "from": "html", "selector": "div.quote span.text::text" }
+      }
+    }
+  ],
+  "outputs": {
+    "livre_par": "personne : ce nom est hors du préfixe réservé",
+    "citation": "{{ steps.page.citations | first }}"
+  }
+}

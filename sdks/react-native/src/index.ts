@@ -5,7 +5,8 @@
  * l'**Act II** sur une WebView cachee pilotee par un agent JavaScript injecte (jalon 3-D), la
  * **surface applicative** (jalon 3-E) — la facade `Aetherius`, les secrets par le trousseau de
  * l'OS, `confirm` en modal natif, l'annulation d'un run — et la **livraison des Blueprints**
- * (jalon 3-F) : socle embarque, surcouche distante, cache et interrupteur d'arret.
+ * (jalon 3-F) : socle embarque, surcouche distante, cache et interrupteur d'arret — etendue au
+ * jalon 3-H par le prefixe reserve sous lequel un manifeste peut *ajouter*.
  *
  * ```tsx
  * import * as SecureStore from "expo-secure-store";
@@ -39,6 +40,7 @@ export {
   parseManifest,
   resolveUrl,
   sha256Hex,
+  type AllowNew,
   type BlueprintCacheStore,
   type BlueprintOrigin,
   type BlueprintStatus,

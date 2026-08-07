@@ -1,12 +1,26 @@
 {
   "manifest": "1",
-  "generated_at": "2026-08-04T21:52:48.628Z",
+  "generated_at": "2026-08-07T11:56:50.414Z",
   "disabled": false,
   "blueprints": {
     "mobile.delivery.quotes": {
       "version": "2",
       "url": "delivery-quotes.v2.blueprint.json",
       "sha256": "627fa03a4e5922323babc5bd5608d6d165069694c2bc571dc61a4d214f416538",
+      "min_engine": "0.4.0",
+      "disabled": false
+    },
+    "mobile.portail.demo": {
+      "version": "1",
+      "url": "portail-demo.blueprint.json",
+      "sha256": "070fe2e5f951e5df47055871b11d378010cd84fca0eedd47c2649af8c6818971",
+      "min_engine": "0.4.0",
+      "disabled": false
+    },
+    "mobile.autre.demo": {
+      "version": "1",
+      "url": "hors-perimetre.blueprint.json",
+      "sha256": "9b4659dabfe06715f562ef64c64efe1beb865c1ae233a637cfb7f8a6be866e0c",
       "min_engine": "0.4.0",
       "disabled": false
     }

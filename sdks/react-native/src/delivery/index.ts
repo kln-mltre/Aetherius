@@ -1,6 +1,7 @@
 /**
  * La livraison des Blueprints (jalon 3-F) : socle embarque, surcouche distante, cache,
- * interrupteur d'arret. Voir `registry.ts`.
+ * interrupteur d'arret. Et, depuis le jalon 3-H, le prefixe reserve sous lequel un manifeste a le
+ * droit d'*ajouter* (`allowNew`). Voir `registry.ts`.
  */
 
 export { CACHE_KEY, memoryCache } from "./cache.js";
@@ -14,6 +15,7 @@ export {
 export { BlueprintRegistry } from "./registry.js";
 export { sha256Hex } from "./sha256.js";
 export type {
+  AllowNew,
   BlueprintCacheStore,
   BlueprintOrigin,
   BlueprintStatus,

@@ -5,7 +5,11 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
-## [Non publié]
+## [0.5.2] - 2026-08-07
+
+Un appendice à la Phase 3, ouvert par un port réel : la livraison distante sait désormais
+**ajouter** un Blueprint que le binaire ne contient pas, sous un préfixe de noms réservé que
+l'application déclare explicitement. Le format de manifeste ne change pas d'un octet.
 
 ### Ajouté
 - **Jalon 3-H — Étendre la surcouche : les noms réservés**
@@ -961,7 +965,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.1...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.2
 [0.5.1]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.1
 [0.5.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.4.0

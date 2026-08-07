@@ -1,6 +1,6 @@
 {
   "name": "@aetherius/react-native",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Act II (Continuum) sur WebView : agent JavaScript injecte, RPC correlee, auto-attente et extraction DOM, pour React Native.",
   "type": "module",
   "main": "dist/index.js",
@@ -24,7 +24,7 @@
   },
   "license": "CC-BY-NC-4.0",
   "dependencies": {
-    "@aetherius/engine": "0.5.1"
+    "@aetherius/engine": "0.5.2"
   },
   "peerDependencies": {
     "react": ">=18",

@@ -1,9 +1,19 @@
 # Automated release. Publishing lives here (as infra), not in a doc to remember.
 #
 # To cut a release:
-#   1. Bump the version in BOTH src/aetherius/version.py and sdks/client/package.json (same X.Y.Z).
-#   2. Add a "## [X.Y.Z] - <date>" section at the top of CHANGELOG.md (becomes the release notes).
-#   3. Commit, then: git tag vX.Y.Z && git push && git push --tags
+#   1. Bump the version to the same X.Y.Z in, all of them:
+#        - src/aetherius/version.py           (pyproject reads it: its version is `dynamic`)
+#        - sdks/client/package.json
+#        - sdks/engine/package.json
+#        - sdks/react-native/package.json     AND its exact "@aetherius/engine" dependency
+#        - examples/mobile/demo/{package.json,app.json}   (cosmetic, kept in lockstep)
+#      The react-native dependency is the trap: it pins an *exact* version, so leaving it behind
+#      makes npm stop resolving the workspace link, look the package up on the registry, and fail
+#      the install — which takes `make check-all` and `make conformance` down with it.
+#   2. Add a "## [X.Y.Z] - <date>" section at the top of CHANGELOG.md (becomes the release notes),
+#      and its two link lines at the bottom of the file.
+#   3. `make check-all && make conformance`, then commit.
+#   4. git tag vX.Y.Z && git push && git push --tags   (vX.Y.Z, not vX.Y: the check below is exact)
 #
 # Pushing the tag triggers this workflow, which — after checking the tag matches the versions —
 # publishes to PyPI and npm and creates the GitHub Release. Nothing else to run by hand.
@@ -60,13 +70,25 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
-      # Le workspace `sdks/` porte trois paquets ; seul @aetherius/client est publie a ce stade.
-      # @aetherius/engine et @aetherius/react-native sont `private: true` tant que la Phase 3 n'a
-      # pas livre leur premier jalon runnable ; les publier vides n'aurait aucun sens.
+      # Le workspace `sdks/` porte trois paquets, et les trois sont publies depuis la 0.5.0 :
+      # @aetherius/client pilote un daemon, @aetherius/engine est le moteur embarque neutre
+      # plateforme, @aetherius/react-native y ajoute l'Act II sur WebView et la facade applicative.
+      # Les deux derniers ne l'etaient pas tant que la Phase 3 n'avait pas livre de jalon runnable ;
+      # elle est complete, et une application ne peut pas les consommer autrement.
       - run: npm install --no-audit --no-fund
         working-directory: sdks
-      - run: npm run build --workspace @aetherius/client
+      - run: npm run build --workspaces
         working-directory: sdks
+      # L'ordre compte : @aetherius/react-native epingle une version EXACTE de @aetherius/engine,
+      # donc le moteur doit exister sur le registre avant que quiconque installe le second.
+      - run: npm publish --access public --workspace @aetherius/engine
+        working-directory: sdks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --access public --workspace @aetherius/react-native
+        working-directory: sdks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish --access public --workspace @aetherius/client
         working-directory: sdks
         env:

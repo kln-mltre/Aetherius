@@ -74,6 +74,6 @@ dist: ## Build the Python distribution (wheel + sdist) into dist/
 	rm -rf dist
 	$(PY) -m build
 
-release-check: ## Build and validate the distribution metadata before uploading (see RELEASING.md)
+release-check: ## Build and validate the distribution metadata (recipe: .github/workflows/release.yml)
 	@$(MAKE) dist
 	$(PY) -m twine check dist/*

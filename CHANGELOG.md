@@ -3,9 +3,15 @@
 Toutes les évolutions notables du projet sont consignées ici. Le format s'inspire de
 [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versionnage suit
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
-évoluer entre deux versions mineures (durcissement de la Phase 1 en conditions réelles).
+évoluer entre deux versions mineures.
 
-## [Non publié]
+## [0.5.0] - 2026-08-07
+
+Phase 3 — le moteur sur l'appareil : un **second moteur** écrit en TypeScript rejoue les **mêmes**
+Blueprints directement sur le téléphone, sans daemon ni serveur. Acts I et II, le flux et `confirm`,
+une **façade** applicative (secrets par le trousseau, modal natif, annulation, modèle d'erreur), et
+une **livraison distante** qui répare un site cassé sans republier sur les stores. Un cas d'usage
+mobile réel est porté de bout en bout et joué sur un vrai appareil. Phase 3 complète (A–G).
 
 ### Ajouté
 - **Jalon 3-G — Blueprints de référence & guide de migration**
@@ -878,7 +884,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.4.0...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.2.0

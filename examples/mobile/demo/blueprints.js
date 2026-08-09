@@ -21,6 +21,7 @@ import deviceIpCheck from "../device-ip-check.blueprint.json";
 import quotesLoginConfirm from "../quotes-login-confirm.blueprint.json";
 import sessionCookieProbe from "../session-cookie-probe.blueprint.json";
 import sessionPersistProbe from "../session-persist-probe.blueprint.json";
+import unreachableProbe from "../unreachable-probe.blueprint.json";
 import webviewQuotes from "../webview-quotes.blueprint.json";
 import bordeauxCasLogin from "../../continuum/bordeaux-cas-login.blueprint.json";
 import jsonplaceholderFlow from "../../vector/jsonplaceholder-flow.blueprint.json";
@@ -154,6 +155,17 @@ export const BLUEPRINTS = [
     secrets: ["bordeaux_user", "bordeaux_pass"],
     status: "done",
     note: "Bons identifiants -> peut_se_deconnecter: 1, et un mauvais mot de passe -> LOGIN_FAILED : les deux vus. Sert aussi a tester l'annulation (bascule WebView ON).",
+  },
+  {
+    key: "unreachable-probe",
+    title: "Reseau : une source injoignable",
+    hint: "Concue pour echouer. Le titre doit etre « Service indisponible », et l'erreur doit tomber sur le step nav — pas sur l'attente qui suit. Relancer aussitot doit redonner exactement le meme echec.",
+    blueprint: unreachableProbe,
+    // Verifie sur iPhone : « Service indisponible », [error] sur nav, aucune ligne DIAGNOSTIC, et le
+    // meme echec a chaque relance. La premiere passe visait le port 1 et rendait PAGE_ABSENTE — c'est
+    // elle qui a trouve le filtre de react-native-webview.
+    status: "done",
+    note: "Remplace le mode avion : rien a changer sur le telephone. L'adresse est choisie — port 4, qui REFUSE la connexion. Un port bloque par politique (1, 7, 9…) fait rendre a WebKit une erreur 'cannot show URL' que react-native-webview avale : l'hote n'apprend rien et la sonde ne prouve rien. Une pastille PAGE_ABSENTE signifie que le defaut corrige en 0.5.3 est revenu ; le step DIAGNOSTIC dit alors sur quel document l'agent a atterri.",
   },
   {
     key: "session-persist-probe",

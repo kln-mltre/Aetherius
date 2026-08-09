@@ -938,6 +938,20 @@ manifeste **ajouter** un Blueprint sous un préfixe réservé. Référence d'usa
 **Phase 3 terminée (A–H).** Le même Blueprint tourne sur une machine et sur un téléphone, se corrige
 et s'ajoute à distance, et un cas d'usage réel le prouve.
 
+> **Correctif 0.5.3 — une source injoignable atteint enfin `unavailable`.** La phase reste close ;
+> ceci n'ouvre pas de jalon. Le port d'UKit a trouvé sur iPhone que le signal d'échec de chargement
+> d'une WebView, câblé depuis le jalon 3-E, n'était **jamais lu** : la plateforme tire un événement
+> de fin de chargement pour une navigation en échec, l'agent s'installait sur sa page d'erreur, et la
+> navigation passait pour réussie. Aucune panne réseau de l'Act II n'ouvrait donc de bouton
+> Réessayer. Le correctif tient en deux règles — un événement de chargement n'efface pas un verdict
+> d'échec, et le verdict se lit **avant** la génération — plus deux défauts latents du même chemin
+> (une reprise condamnée par l'échec précédent, un `reload()` sur une vue sans document). Le moteur
+> **Python** avait le même angle mort et le corrige aussi : `navigate` type un échec de transport en
+> `NetworkError`. Trois gardes, dont un cas de conformance partagé, et un double jsdom qui reproduit
+> désormais la séquence de la plateforme — c'est son silence qui avait laissé passer le défaut deux
+> jalons durant. [docs/embedded.md](docs/embedded.md#une-source-injoignable-atteint-unavailable-corrigé-en-053),
+> [docs/acts/continuum.md](docs/acts/continuum.md#une-source-injoignable-est-une-networkerror).
+
 ## Sources de référence
 
 Ce README et [`legacy_examples/README.md`](legacy_examples/README.md) constituent la documentation

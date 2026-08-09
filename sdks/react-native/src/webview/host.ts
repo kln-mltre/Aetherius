@@ -71,7 +71,14 @@ export interface WebViewHost {
  * exercise the same navigation lifecycle the phone runs, rather than a simplified copy of it.
  */
 export interface PageControl {
-  /** Start loading *url*. Completion is signalled back through `BridgedHost.onDocumentLoaded`. */
+  /**
+   * Start loading *url*. Completion is signalled back through `BridgedHost.onDocumentLoaded`.
+   *
+   * **Even when the view already carries that URL.** The host asks for a `load` rather than a
+   * `reload` in exactly one case — the previous navigation failed, so there is no document to
+   * reload — and an implementation that treats "same URL" as "nothing to do" would turn that retry
+   * into a silent wait. Reusing a prop is not honouring this call.
+   */
   load(url: string): void;
   goBack(): void;
   goForward(): void;

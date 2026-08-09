@@ -116,3 +116,32 @@ def test_continuum_wait_for_timeout_fails_with_code() -> None:
     result = RunEngine().run(bp)
     assert result.status is RunStatus.FAILED
     assert result.error is not None
+
+
+def test_continuum_unreachable_source_is_a_network_failure() -> None:
+    """A refused connection stops the run at ``navigate``, typed as unreachable.
+
+    The whole point is the *class*: left as a raw Playwright error it came back wrapped in a
+    ``RunError``, which an application reads as "report this bug" rather than "the service is
+    down". Port 4 is privileged and on no browser's blocked list, so the refusal is a real one and
+    needs no fixture server. Twin of the embedded engine's host test
+    (``sdks/react-native/test/rpc.test.js``) and of the shared conformance case.
+    """
+    bp = Blueprint.model_validate(
+        {
+            "aetherius": "1.0",
+            "name": "test.continuum.unreachable",
+            "act": "continuum",
+            "options": {"timeout_ms": 5000},
+            "steps": [
+                {"id": "go", "action": "navigate", "url": "http://127.0.0.1:4/"},
+                {"id": "jamais", "action": "wait_for", "selector": "#absent"},
+            ],
+        }
+    )
+    result = RunEngine().run(bp)
+    assert result.status is RunStatus.FAILED
+    assert result.error is not None and "unreachable" in result.error
+    # The run stops *there*: the wait must never start, or the failure would be named after the
+    # page instead of after the connection.
+    assert [step.step_id for step in result.step_results] == ["go"]

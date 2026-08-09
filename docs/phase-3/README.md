@@ -128,6 +128,14 @@ Le jalon **3-H** est un appendice : la phase était terminée sans lui, et il ne
 qu'un port réel a rencontré la limite de la garde posée en 3-F. C'était le bon moment pour le
 traiter — après avoir vu la règle d'origine tenir, pas avant.
 
+> **Correctif 0.5.3, sans jalon.** Le même port a ensuite trouvé, sur iPhone, qu'une source
+> injoignable n'atteignait **jamais** la famille `unavailable` : le signal d'échec de chargement de
+> la WebView était bien câblé et jamais lu. Ce n'est pas une capacité qui manquait, c'est une
+> promesse du jalon 3-E qui ne tenait pas — donc un correctif, pas un jalon de plus. Il corrige
+> l'angle mort **des deux côtés** (le `navigate` du moteur Python levait une erreur Playwright brute)
+> et ajoute un cas de conformance qui fige que les deux échouent au step `navigate`. Récit complet :
+> [docs/embedded.md](../embedded.md#une-source-injoignable-atteint-unavailable-corrigé-en-053).
+
 **Ordre recommandé :** strictement séquentiel, de 3-A à 3-G — chaque jalon consomme le précédent.
 Deux avertissements de charge : **3-B** est le jalon à risque (c'est là que se paie la contrainte du
 point 4, et la surface exacte de Jinja2 à reproduire ne se découvre qu'en écrivant le corpus), et

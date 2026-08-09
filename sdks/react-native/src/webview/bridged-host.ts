@@ -13,7 +13,7 @@
  * simplified copy of it.
  */
 
-import { ActionError, NetworkError, StepTimeoutError } from "@aetherius/engine";
+import { ActionError, NetworkError, StepTimeoutError, TimeoutError } from "@aetherius/engine";
 
 import { sleep } from "../timers.js";
 import type { PageControl, SessionConfig, WebViewHost } from "./host.js";
@@ -38,7 +38,12 @@ export class BridgedHost implements WebViewHost {
   private loading = false;
   private url = "";
   private disposed = false;
-  /** The last load failure the view reported, cleared as soon as a document does load. */
+  /**
+   * The last load failure the view reported, cleared only when a **new attempt** starts.
+   *
+   * Not "cleared as soon as a document loads", and the difference is the whole defect: a load event
+   * is not proof that a document loaded. See `onDocumentLoaded`.
+   */
   private loadError: string | undefined;
   /** `options.session.persist` of the run in progress: it decides whether `dispose` keeps the view. */
   private persistent = false;
@@ -59,7 +64,8 @@ export class BridgedHost implements WebViewHost {
     this.loading = true;
     this.url = url;
     // A new attempt clears the previous verdict: a retry after a lost connection must be able to
-    // succeed rather than inherit the failure that preceded it.
+    // succeed rather than inherit the failure that preceded it. The twin of `beginNavigation`, for
+    // the loads the *page* starts on its own.
     this.loadError = undefined;
     this.bridge.invalidate("a new document started loading");
   }
@@ -79,9 +85,17 @@ export class BridgedHost implements WebViewHost {
     // back as silence. Observed on a real web client that sets `location.hash` a second after its
     // first render: every read on it failed, WebView hidden or visible. A reload keeps the *same*
     // URL, fragment included, so it is not mistaken for one and still earns a fresh generation.
+    // **A load event does not clear a load failure**, and this line used to. `react-native-webview`
+    // fires `onError` and then `onLoadEnd` for the *same* failed navigation, in the same tick
+    // (`WebViewShared.onLoadingError`). Clearing the verdict here erased it before anyone could read
+    // it: the generation advanced, the agent installed itself on whatever document survived — the
+    // platform's error page, or a blank one — announced itself as on any other document, and the
+    // navigation was declared a success. Measured on an iPhone against an address that refuses the
+    // connection: every Act II network failure came back as "the page changed" instead of "the
+    // source is unreachable". The verdict is now cleared by the *start* of the next attempt, and
+    // nothing else.
     const sameDocument = isFragmentChange(this.url, url);
     this.loading = false;
-    this.loadError = undefined;
     this.url = url;
     if (!sameDocument) this.generation += 1;
     this.page.inject(installSource(this.agentSource, this.generation));
@@ -133,6 +147,8 @@ export class BridgedHost implements WebViewHost {
     // the *view*, it does not retire the host, so a second run revives it here. Getting this wrong
     // is invisible on the first run and fatal on the second.
     this.disposed = false;
+    // A run does not inherit the previous run's verdict, whether or not the view was recreated.
+    this.loadError = undefined;
     this.persistent = config.persist;
     // Session options (incognito, shared cookies, user agent) are bound when the view is created on
     // both platforms: changing them means recreating it, not setting a property.
@@ -159,25 +175,36 @@ export class BridgedHost implements WebViewHost {
     // agent to be present there made the second run hang until its deadline. `this.url` is empty
     // whenever the view was released or recreated, so it says exactly what it must: is this view
     // already on that page?
-    if (url === this.url) this.page.reload();
+    //
+    // …unless that page never loaded. A view whose last navigation failed has **no document to
+    // reload**, and `reload()` on it does nothing at all — which turns the retry an application
+    // offers after "service unavailable" into a wait for the deadline. A fresh load is the honest
+    // request there, and `PageControl.load` is required to honour it even for the URL the view
+    // already carries.
+    const failed = this.loadError !== undefined;
+    this.beginNavigation();
+    if (url === this.url && !failed) this.page.reload();
     else this.page.load(url);
     return this.awaitNavigation(timeoutMs);
   }
 
   goBack(timeoutMs: number): Promise<string> {
     this.assertLive();
+    this.beginNavigation();
     this.page.goBack();
     return this.awaitNavigation(timeoutMs);
   }
 
   goForward(timeoutMs: number): Promise<string> {
     this.assertLive();
+    this.beginNavigation();
     this.page.goForward();
     return this.awaitNavigation(timeoutMs);
   }
 
   reload(timeoutMs: number): Promise<string> {
     this.assertLive();
+    this.beginNavigation();
     this.page.reload();
     return this.awaitNavigation(timeoutMs);
   }
@@ -248,6 +275,18 @@ export class BridgedHost implements WebViewHost {
     }
   }
 
+  /**
+   * A new attempt starts: whatever the view said about the previous one no longer applies.
+   *
+   * Cleared **here** and not only in `onLoadStarted`, because the page command is asynchronous: the
+   * view's own signal arrives well after `awaitGenerationAfter` has begun polling, and the loop
+   * would read the previous attempt's verdict on its very first turn. A retry after a failure would
+   * then fail instantly, inheriting a failure it never met.
+   */
+  private beginNavigation(): void {
+    this.loadError = undefined;
+  }
+
   private async awaitNavigation(timeoutMs: number): Promise<string> {
     const before = this.generation;
     // A navigation is over when a *new* generation announces itself; the current one, still ready
@@ -259,13 +298,26 @@ export class BridgedHost implements WebViewHost {
   private async awaitGenerationAfter(previous: number, timeoutMs: number): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      if (this.generation > previous && this.bridge.agentPresent) return;
-      // Reported by the view rather than deduced from silence: waiting out the deadline to then
-      // blame the engine would be the wrong answer, slowly.
+      // **The failure is read first, and the order is the fix.** A failed navigation sets the error
+      // and then advances the generation in the *same* tick (`onError` then `onLoadEnd`), so both
+      // conditions are true on the same turn of this loop and only their order decides. Testing the
+      // generation first meant a document that announced itself after a failed load — the browser's
+      // own error page — was taken for the page we asked for.
       if (this.loadError !== undefined) throw this.networkFailure();
+      if (this.generation > previous && this.bridge.agentPresent) return;
       await sleep(10);
     }
     if (this.loadError !== undefined) throw this.networkFailure();
+    // A load that started and never came back is not an engine problem: the view said it was
+    // working on it and the deadline arrived first. `TimeoutError` extends `NetworkError`, so
+    // `describeFailure` puts it in `unavailable` — the one family an application retries — instead
+    // of sending a phone on a slow or unresolvable connection to the "report this bug" screen.
+    if (this.loading) {
+      throw new TimeoutError(
+        `the page did not finish loading within ${timeoutMs} ms ` +
+          "(the view reported a load that never completed)",
+      );
+    }
     throw new ActionError(
       `the page did not finish loading within ${timeoutMs} ms ` +
         "(no new document announced itself)",

@@ -71,8 +71,11 @@ Ce qu'il montre, et qu'il faut regarder dans cet ordre :
 | Approuver au modal | le run repart, `decision: "approved"`, `connecte: 1` |
 | Refuser | les quatre steps gardés passent en `skipped` et le run reste un **succès** — le refus par défaut compose, il ne casse pas |
 | Ne rien faire | même issue que le refus : c'est le comportement qui arrive tout seul quand l'application est en arrière-plan |
-| Passer en mode avion | « Service indisponible », **pas** un résultat vide — c'est toute la raison d'être du modèle d'erreur |
 | Quitter l'écran en cours de run | le run est annulé et la WebView libérée (visible en `options.debug`) |
+
+Pour « la source est en panne » — l'autre moitié du modèle d'erreur — voir
+[la sonde de source injoignable](#la-sonde-de-source-injoignable) : elle le vérifie sans toucher aux
+réglages du téléphone.
 
 Une note d'ergonomie qui a coûté deux tentatives : le bouton **Annuler le run** est *flottant*, en bas
 à droite, et rendu **après** la WebView. En mode debug la vue occupe tout l'écran, et un bouton placé
@@ -99,6 +102,36 @@ Elle **rapporte** l'asymétrie au lieu d'échouer, ce qui la rend lisible d'un c
 limite décrite dans [docs/embedded.md](../../docs/embedded.md#cookies-redirections-et-sessions),
 rendue observable — et la seule manière de vérifier sur un vrai téléphone une promesse qui, sinon,
 resterait une affirmation.
+
+## La sonde de source injoignable
+
+[`unreachable-probe.blueprint.json`](unreachable-probe.blueprint.json) est **conçue pour échouer**, et
+c'est son seul emploi : elle vérifie qu'une source qu'on n'atteint pas est **annoncée comme telle**.
+Elle est déterministe, ne demande aucun réseau et **remplace le passage en mode avion** : rien à
+changer sur l'appareil.
+
+> **L'adresse est choisie, pas prise au hasard.** Le port 4 du loopback **refuse** la connexion. Un
+> port *bloqué par politique* (1, 7, 9 …) est une autre erreur : WebKit rend « cannot show URL »
+> (`WebKitErrorDomain` 101), que `react-native-webview` **avale** avant d'appeler `onError`. L'hôte
+> n'apprend alors rien, et la sonde ne prouve rien — c'est ce qui a coûté une passe de vérification.
+> Détail dans [docs/embedded.md](../../docs/embedded.md#2-certains-échecs-narrivent-jamais-jusquici-et-cest-la-vue-qui-décide).
+
+| Geste | Ce qui doit se passer |
+|-------|------------------------|
+| Lancer le run | échec en **quelques secondes**, titre **« Service indisponible »**, et dans Progression `step_started nav` puis `error` **sur ce même step** — le step `DIAGNOSTIC` et l'attente qui suit ne démarrent jamais |
+| Relancer **aussitôt**, sans rien changer | exactement le même échec, dans le même délai : ni échec instantané hérité du précédent, ni attente jusqu'à l'échéance |
+| Remplacer `vars.injoignable` par `https://un-nom-qui-nexiste-pas.invalid/`, recharger | « Service indisponible » là aussi, après l'échéance du step — l'autre symptôme, un nom qui ne résout pas |
+
+Ce qu'un échec **au step suivant** signifierait — une pastille `PAGE_ABSENTE`, ou « La page a
+changé » — est le défaut corrigé en 0.5.3, revenu. La ligne `DIAGNOSTIC` de la progression dit alors
+sur quel document l'agent a atterri, ce qui est la première question à poser. Le récit complet est
+dans [docs/embedded.md](../../docs/embedded.md#une-source-injoignable-atteint-unavailable-corrigé-en-053).
+
+Le même fichier, côté machine, doit échouer de la même façon :
+
+```bash
+aetherius run examples/mobile/unreachable-probe.blueprint.json    # NetworkError, au step nav
+```
 
 ## La livraison des Blueprints
 
@@ -247,6 +280,7 @@ Un run affiche sa progression puis son `Result`. Les valeurs attendues, à compa
 | `bordeaux-cas-login` | `peut_se_deconnecter: 1` avec les bons identifiants ; `LOGIN_FAILED` avec de mauvais |
 | `ukit-planning` | la liste d'événements de la semaine, identique à `aetherius run` — c'est l'encodage `form` (clé répétée `federationIds[]`) éprouvé sur l'appareil |
 | `session-persist-probe` | `connecte: 1` si la session tient, `0` sinon — voir ci-dessous |
+| `unreachable-probe` | un **échec** « Service indisponible » au step `nav` — voir ci-dessus |
 | `delivery-quotes` | « Réponse inattendue » avant Rafraîchir, la citation d'Einstein après — voir ci-dessus |
 | `reference-annonces` | la liste des annonces publiées, **identique** à `aetherius run` |
 | `reference-restaurants` | les restaurants moins la catégorie écartée, puis les repas et les plats d'un jour |

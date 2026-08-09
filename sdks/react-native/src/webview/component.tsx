@@ -93,10 +93,20 @@ export function AetheriusWebView({ onLoadError }: AetheriusWebViewProps = {}): R
   // every operation would be both pointless and a source of stale closures.
   const sessionRef = useRef(session);
   sessionRef.current = session;
+  // Same reason, for the URI: `page` is memoised once and would otherwise read the value of the
+  // render that built it.
+  const uriRef = useRef(uri);
+  uriRef.current = uri;
 
   const host = useMemo(() => {
     const page: PageControl = {
       load: (target) => {
+        // Setting the URI the view already has changes no prop, so React re-renders nothing and the
+        // view does not load — while the host is waiting for a document. The host only asks for a
+        // `load` on a URL the view already carries when the previous navigation *failed*, which is
+        // precisely the retry an application offers after "service unavailable". A new key is the
+        // reliable way to say "start over" here, exactly as a session change does.
+        if (uriRef.current === target) setMountKey((key) => key + 1);
         setUri(target);
       },
       goBack: () => ref.current?.goBack(),

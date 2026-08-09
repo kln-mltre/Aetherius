@@ -11,9 +11,13 @@ from unittest.mock import MagicMock
 import pytest
 
 from aetherius.acts.continuum import actions
-from aetherius.core.errors import ActionError
+from aetherius.core.errors import ActionError, NetworkError
 
 pytestmark = pytest.mark.unit
+
+
+class _PlaywrightError(Exception):
+    """Stand-in for ``playwright.Error``: the class is opaque, only the message carries the code."""
 
 
 def _id(value: Any) -> Any:
@@ -32,6 +36,38 @@ def test_navigate_calls_goto_and_returns_status() -> None:
 def test_navigate_requires_url() -> None:
     with pytest.raises(ActionError):
         actions.navigate(MagicMock(), {}, _id)
+
+
+def test_navigate_types_a_transport_failure_as_network() -> None:
+    """An unreachable source is a source in trouble, not an engine bug.
+
+    Left raw, Playwright's error is wrapped in a ``RunError`` and the caller reads "internal error"
+    for a phone that is simply offline. The embedded engine reaches the same verdict from its
+    WebView (docs/embedded.md); the two must agree.
+    """
+    page = MagicMock()
+    page.goto.side_effect = _PlaywrightError(
+        "Page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:1/"
+    )
+    with pytest.raises(NetworkError) as caught:
+        actions.navigate(page, {"url": "http://127.0.0.1:1/"}, _id)
+    assert "http://127.0.0.1:1/" in str(caught.value)
+
+
+def test_navigate_leaves_a_slow_page_on_its_own_path() -> None:
+    """A page too slow to load is not a page that cannot be reached: it keeps ``as_step_timeout``."""
+    page = MagicMock()
+    page.goto.side_effect = TimeoutError("Timeout 30000ms exceeded.")
+    with pytest.raises(TimeoutError):
+        actions.navigate(page, {"url": "https://slow.test/"}, _id)
+
+
+def test_reload_types_a_transport_failure_as_network() -> None:
+    page = MagicMock()
+    page.url = "https://ex.com/x"
+    page.reload.side_effect = _PlaywrightError("Page.reload: net::ERR_NAME_NOT_RESOLVED")
+    with pytest.raises(NetworkError):
+        actions.reload(page, {}, _id)
 
 
 def test_click_uses_css_locator_by_default() -> None:

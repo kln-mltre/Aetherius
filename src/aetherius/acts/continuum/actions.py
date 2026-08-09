@@ -11,10 +11,37 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping
 
-from ...core.errors import ActionError
+from ...core.errors import ActionError, NetworkError
+from .bridge import is_timeout
 
 Renderer = Callable[[Any], Any]
 PageAction = Callable[[Any, Mapping[str, Any], Renderer], dict[str, Any]]
+
+#: Chromium reports a transport failure with a ``net::ERR_*`` code in the message, and it is the
+#: only browser this Act launches. Matching the token rather than a phrasing keeps the test narrow:
+#: a page that closes mid-navigation, or a frame that detaches, is not a network problem and must
+#: keep its own path.
+_TRANSPORT_MARKER = "net::ERR_"
+
+
+def _navigating(action: str, run: Callable[[], Any], url: Any = None) -> Any:
+    """Run a navigation, typing a transport failure as a ``NetworkError``.
+
+    Without this, an unreachable source escapes as a raw Playwright ``Error`` and the runtime wraps
+    it in a ``RunError`` — an engine bug, as far as a caller can tell. It is the same source of
+    truth the embedded engine reads from its WebView (``docs/embedded.md``): the two engines must
+    agree that a refused connection is a source in trouble, not a Blueprint or a defect.
+
+    Playwright's own ``TimeoutError`` is deliberately **not** caught here: a page too slow to finish
+    loading keeps the path it already had (``bridge.as_step_timeout``).
+    """
+    try:
+        return run()
+    except Exception as exc:  # noqa: BLE001 - re-raised untouched unless it is a transport failure
+        if is_timeout(exc) or _TRANSPORT_MARKER not in str(exc):
+            raise
+        target = f" ({url})" if url else ""
+        raise NetworkError(f"{action}: the source is unreachable{target} — {exc}") from exc
 
 
 def _locator(page: Any, params: Mapping[str, Any], render: Renderer) -> Any:
@@ -40,22 +67,22 @@ def navigate(page: Any, params: Mapping[str, Any], render: Renderer) -> dict[str
     if not url:
         raise ActionError("navigate requires a 'url'.")
     wait_until = render(params.get("wait_until", "load"))
-    response = page.goto(url, wait_until=wait_until)
+    response = _navigating("navigate", lambda: page.goto(url, wait_until=wait_until), url)
     return {"url": page.url, "status": response.status if response is not None else None}
 
 
 def back(page: Any, params: Mapping[str, Any], render: Renderer) -> dict[str, Any]:
-    page.go_back()
+    _navigating("back", page.go_back)
     return {"url": page.url}
 
 
 def forward(page: Any, params: Mapping[str, Any], render: Renderer) -> dict[str, Any]:
-    page.go_forward()
+    _navigating("forward", page.go_forward)
     return {"url": page.url}
 
 
 def reload(page: Any, params: Mapping[str, Any], render: Renderer) -> dict[str, Any]:
-    page.reload()
+    _navigating("reload", page.reload, page.url)
     return {"url": page.url}
 
 

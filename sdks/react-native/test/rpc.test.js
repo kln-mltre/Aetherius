@@ -10,7 +10,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { NetworkError, describeFailure } from "@aetherius/engine";
+import { NetworkError, TimeoutError, describeFailure } from "@aetherius/engine";
 
 import { AgentBridge } from "../dist/webview/rpc.js";
 import { BridgedHost } from "../dist/webview/bridged-host.js";
@@ -21,6 +21,21 @@ function orderIn(source) {
   const match = /handle\((".*")\);/s.exec(source);
   assert.ok(match, `no order found in injected source: ${source}`);
   return JSON.parse(JSON.parse(match[1]));
+}
+
+/** A `PageControl` double that records what the host asked of the view. */
+function recordingPage(injected = []) {
+  const calls = [];
+  return {
+    calls,
+    load: (url) => calls.push(`load:${url}`),
+    goBack: () => calls.push("goBack"),
+    goForward: () => calls.push("goForward"),
+    reload: () => calls.push("reload"),
+    inject: (source) => injected.push(source),
+    applySession: () => true,
+    destroy: () => calls.push("destroy"),
+  };
 }
 
 function bridgeWithAgent(gen = 1) {
@@ -228,27 +243,95 @@ test("a view that cannot load the document fails the run as unreachable, not as 
   assert.equal(describeFailure(error).retryable, true);
 });
 
+test("a load event that follows a failure does not turn it into a success", async () => {
+  // The device sequence, and the defect it hid: `react-native-webview` fires `onError` and then
+  // `onLoadEnd` for the *same* failed navigation, so the view reports a finished load, the platform
+  // shows its own error page, and the agent announces itself on it. The generation advanced, the
+  // navigation was declared successful, and the failure the view had just reported was never read —
+  // so no Act II network failure could ever reach `unavailable`. Measured on an iPhone against an
+  // address that refuses the connection.
+  const injected = [];
+  const page = recordingPage(injected);
+  const host = new BridgedHost(page, "/* agent */");
+  await host.configure({ persist: false, debug: false, userAgent: undefined }, 1000);
+
+  const navigating = host.navigate("https://127.0.0.1:1/", 5000);
+  host.onLoadStarted("https://127.0.0.1:1/");
+  host.onLoadFailed("Could not connect to the server.");
+  // The error page: a finished load, a fresh generation, and an agent that announces itself.
+  host.onDocumentLoaded("https://127.0.0.1:1/");
+  host.onMessage(JSON.stringify({ aeth: 1, gen: 1, ready: true, url: "https://127.0.0.1:1/" }));
+
+  const error = await navigating.then(
+    () => null,
+    (thrown) => thrown,
+  );
+  assert.ok(error instanceof NetworkError, `unexpected error: ${error}`);
+  assert.equal(describeFailure(error).kind, "unavailable");
+  assert.equal(describeFailure(error).retryable, true);
+});
+
 test("a later attempt is not condemned by the failure that preceded it", async () => {
-  const page = {
-    load: () => {},
-    goBack: () => {},
-    goForward: () => {},
-    reload: () => {},
-    inject: () => {},
-    applySession: () => true,
-    destroy: () => {},
-  };
+  // Written in the order a device produces: the command goes out first, and the view reports back
+  // afterwards. `page.load()` is asynchronous, so a verdict cleared only by the view's own
+  // `onLoadStart` arrives too late — the waiting loop reads the previous attempt's failure on its
+  // first turn and the retry dies instantly, having met nothing.
+  const page = recordingPage();
   const host = new BridgedHost(page, "/* agent */");
   await host.configure({ persist: false, debug: false, userAgent: undefined }, 1000);
 
   host.onLoadStarted("https://example.invalid/");
   host.onLoadFailed("offline");
+
+  const navigating = host.navigate("https://example.invalid/", 2000);
   // A retry after the connection comes back must be able to succeed.
   host.onLoadStarted("https://example.invalid/");
-  const navigating = host.navigate("https://example.invalid/", 2000);
   host.onDocumentLoaded("https://example.invalid/");
   host.onMessage(JSON.stringify({ aeth: 1, gen: 1, ready: true, url: "https://example.invalid/" }));
   assert.equal(await navigating, "https://example.invalid/");
+});
+
+test("a view whose last load failed is loaded afresh, never merely reloaded", async () => {
+  // A WKWebView whose provisional navigation failed carries no document, and `reload()` on it does
+  // nothing at all — which would turn the retry an application offers after "service unavailable"
+  // into a silent wait for the deadline.
+  const page = recordingPage();
+  const host = new BridgedHost(page, "/* agent */");
+  await host.configure({ persist: false, debug: false, userAgent: undefined }, 1000);
+
+  host.onLoadStarted("https://127.0.0.1:1/");
+  host.onLoadFailed("Could not connect to the server.");
+
+  await host.navigate("https://127.0.0.1:1/", 80).catch(() => {});
+  assert.deepEqual(page.calls, ["load:https://127.0.0.1:1/"]);
+
+  // The same URL after a load that *succeeded* is still a reload: nothing changed, so nothing would
+  // load, and only asking for one gets a fresh document.
+  page.calls.length = 0;
+  host.onLoadStarted("https://x.test/");
+  host.onDocumentLoaded("https://x.test/");
+  host.onMessage(JSON.stringify({ aeth: 1, gen: 1, ready: true, url: "https://x.test/" }));
+  await host.navigate("https://x.test/", 80).catch(() => {});
+  assert.deepEqual(page.calls, ["reload"]);
+});
+
+test("a load that starts and never comes back is unreachable, not an engine bug", async () => {
+  // The second symptom the device campaign saw and could not explain: a name that never resolves
+  // produces no document and no error before the step's deadline. Blaming the engine there puts
+  // "internal error" on screen for a phone on a bad connection.
+  const page = recordingPage();
+  const host = new BridgedHost(page, "/* agent */");
+  await host.configure({ persist: false, debug: false, userAgent: undefined }, 1000);
+
+  const navigating = host.navigate("https://nowhere.invalid/", 120);
+  host.onLoadStarted("https://nowhere.invalid/");
+
+  const error = await navigating.then(
+    () => null,
+    (thrown) => thrown,
+  );
+  assert.ok(error instanceof TimeoutError, `unexpected error: ${error}`);
+  assert.equal(describeFailure(error).kind, "unavailable");
 });
 
 test("an operation survives the navigation a redirect causes", async () => {

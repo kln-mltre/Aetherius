@@ -1,0 +1,56 @@
+{
+  "name": "run-continuum-unreachable-source",
+  "kind": "run",
+  "requires": "browser",
+  "description": "Une source injoignable arrete le run AU step navigate, sur les deux moteurs. Le port 4 est privilegie (rien ne peut s'y lier sans root, et l'OS ne l'attribue jamais en port ephemere) et n'est sur aucune liste de ports bloques : le refus est un VRAI refus de connexion, immediat, sans serveur de fixtures. Un port bloque par politique (1, 7, 9…) donnerait une erreur d'une autre nature — voir docs/embedded.md. Le cas fige la sequence, qui est exactement ce qui divergeait : le moteur embarque declarait la navigation reussie, et l'echec arrivait au step SUIVANT avec le nom que le Blueprint lui avait donne. Une application n'avait alors aucun moyen de distinguer une panne reseau d'une page qui a change.",
+  "server": {},
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.continuum.unreachable",
+    "act": "continuum",
+    "options": { "timeout_ms": 8000 },
+    "steps": [
+      { "id": "nav", "action": "navigate", "url": "http://127.0.0.1:4/" },
+      {
+        "id": "jamais",
+        "action": "wait_for",
+        "selector": "#absent",
+        "timeout_ms": 500,
+        "on_timeout": "fail:PAGE_ABSENTE"
+      }
+    ],
+    "outputs": { "url": "{{ steps.nav.url }}" }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "message_contains": ["the source is unreachable", "127.0.0.1:4"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [{ "step_id": "nav", "action": "navigate", "status": "failed" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "nav" },
+          { "type": "error", "step_id": "nav" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "message_contains": ["could not load", "127.0.0.1:4"],
+      "value": {
+        "status": "failed",
+        "outputs": {},
+        "steps": [{ "step_id": "nav", "action": "navigate", "status": "failed" }],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "nav" },
+          { "type": "error", "step_id": "nav" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

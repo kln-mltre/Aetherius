@@ -98,6 +98,25 @@ garde son propre chemin — tout traduire aurait caché un vrai défaut derrièr
 Le moteur embarqué classe le même échec de la même façon (voir
 [docs/embedded.md](../embedded.md#le-modèle-derreur)).
 
+### Une source injoignable est une `NetworkError`
+
+Le pendant, et il a été ajouté en 0.5.3 : `navigate`, `back`, `forward` et `reload` typent un échec
+de **transport** en `NetworkError` nommant l'URL. Sans lui, `page.goto` vers une adresse injoignable
+levait une `playwright.Error` brute, enveloppée en `RunError` — c'est-à-dire un bug du moteur pour
+quiconque lit le `Result`, alors que c'est la source qui est en panne. Un appelant qui distingue les
+deux (le `describeFailure` du moteur embarqué en fait une famille `unavailable`, la seule qu'on
+réessaie) n'avait aucun moyen de le faire.
+
+La détection est étroite **par choix** : le message doit porter un code `net::ERR_*`, celui de
+Chromium — le seul navigateur que cet Act lance. Une page qui se ferme en cours de navigation, ou un
+`frame` qui se détache, n'est pas un problème de réseau et garde son propre chemin. Le `TimeoutError`
+de Playwright aussi : une page trop lente à charger n'est pas une page qu'on n'atteint pas, et elle
+reste sur `as_step_timeout`.
+
+Le défaut jumeau côté embarqué — bien plus long à trouver — est raconté dans
+[docs/embedded.md](../embedded.md#une-source-injoignable-atteint-unavailable-corrigé-en-053), et un
+cas de conformance partagé fige désormais que les deux moteurs échouent **au step `navigate`**.
+
 ### Extraction DOM
 
 Le step `extract` mappe des noms vers des lectures typées du DOM :

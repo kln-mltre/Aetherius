@@ -209,9 +209,15 @@ export class DomPage {
       response = await this.#request(current, request);
       current = response.url;
     } catch (error) {
-      // A browser shows an error page and still fires a load event; the Blueprint then fails on its
-      // first selector, which is the behaviour a real WebView has.
-      this.#mount(`<html><body data-load-error="${String(error.message)}"></body></html>`, url);
+      // **The exact sequence a device produces**, and it is not obvious: `react-native-webview`
+      // fires `onError` and then `onLoadEnd` for the same failed navigation, in the same tick
+      // (`WebViewShared.onLoadingError`). So the view reports the failure *and* a finished load, the
+      // platform shows its own error page, and the agent installs itself on it like on any other
+      // document. Reproducing only the load event — which this double used to do — hid the defect
+      // where the corpus could never find it: the host declared the navigation a success.
+      const description = `${String(error.message)} (${url})`;
+      this.#host.onLoadFailed(description);
+      this.#mount(`<html><body data-load-error="${description}"></body></html>`, url);
       this.#host.onDocumentLoaded(url);
       return;
     }

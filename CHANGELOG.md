@@ -5,6 +5,75 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.3] - 2026-08-10
+
+Un correctif, pas un jalon : la Phase 3 reste close (3-A à 3-H). Une promesse du jalon 3-E — « une
+source injoignable dit qu'elle l'est » — ne tenait pas sur un appareil, et le port d'une application
+réelle l'a montré. Elle tient désormais **des deux côtés**, et trois gardes l'empêchent de repartir.
+
+### Corrigé
+- **Une source injoignable atteint `unavailable`, sur le moteur embarqué**
+  ([docs/embedded.md](docs/embedded.md#une-source-injoignable-atteint-unavailable-corrigé-en-053)).
+  Mesuré sur iPhone le 2026-08-09 en portant la session universitaire d'
+  [UKit](docs-ukit/README.md) : un `navigate` vers une adresse injoignable **réussissait**, et c'est
+  l'attente suivante qui échouait — en `blocked` avec le code du Blueprint, ou en `data`. Aucune
+  panne réseau de l'Act II n'ouvrait donc de bouton Réessayer, ce qui vidait de son sens le
+  paragraphe central du modèle d'erreur.
+  - **La cause n'était pas le câblage.** `react-native-webview` tire `onError` **puis** `onLoadEnd`
+    pour la *même* navigation en échec, dans le même tick. Le second effaçait le verdict, avançait
+    la génération et réinjectait l'agent — qui s'annonçait depuis la page d'erreur de la plateforme
+    comme depuis n'importe quel document. Deux erreurs, et il fallait les deux : un événement de fin
+    de chargement pris pour la **preuve** qu'un document s'est chargé, et une boucle d'attente qui
+    testait la génération **avant** le verdict alors que les deux sont vrais au même tour.
+  - **Deux défauts latents du même chemin**, trouvés en écrivant le correctif et qui mordaient
+    précisément sur le bouton Réessayer qu'il rend possible : le verdict n'était effacé que par le
+    signal de la vue, qui arrive après le premier tour de la boucle — une reprise échouait donc
+    instantanément en héritant d'un échec qu'elle n'avait pas rencontré ; et une reprise sur la même
+    URL demandait un `reload()`, que la plateforme ignore sur une vue dont la navigation provisoire
+    a échoué. `PageControl.load` exige désormais de charger **même si la vue affiche déjà cette
+    URL**, et le composant l'honore en recréant la vue.
+  - **Un chargement qui part et ne revient jamais est `unavailable`**, plus `engine` : à l'échéance,
+    un chargement que la vue a annoncé sans le terminer lève un `TimeoutError`. C'est le second
+    symptôme que la campagne d'origine avait observé sans l'élucider — un nom qui ne résout pas.
+  - **Le verdict reste borné à la navigation demandée** : `awaitReady` teste toujours la présence de
+    l'agent d'abord, parce qu'une navigation de fond qui échoue laisse le document courant intact et
+    qu'échouer là ferait régresser des runs qui marchent.
+- **Une source injoignable est une `NetworkError`, sur le moteur Python**
+  ([docs/acts/continuum.md](docs/acts/continuum.md#une-source-injoignable-est-une-networkerror)).
+  Le même angle mort, trouvé en corrigeant l'autre : `page.goto` vers une adresse injoignable levait
+  une `playwright.Error` brute, enveloppée en `RunError` — un bug du moteur, pour qui lit le
+  `Result`. `navigate`, `back`, `forward` et `reload` typent maintenant un échec de transport
+  (`net::ERR_*`, le code de Chromium, seul navigateur que cet Act lance). La détection est étroite
+  par choix : une page qui se ferme, un `frame` qui se détache ou un `TimeoutError` de Playwright
+  gardent leur chemin — une page lente n'est pas une page qu'on n'atteint pas.
+
+### Ajouté
+- **Un cas de conformance partagé** (`conformance/cases/run/17-unreachable-source.json`) : les deux
+  moteurs échouent **au step `navigate`**, et le step suivant ne démarre pas. C'est exactement la
+  séquence qui divergeait, donc c'est la bonne garde anti-dérive.
+- **Le double jsdom émet `onLoadFailed` avant `onDocumentLoaded`**, comme la plateforme. C'est la
+  leçon de méthode du correctif : le corpus jouait ce chemin depuis deux jalons et le déclarait vert
+  parce que le double ne reproduisait que la moitié de la séquence — celle qui ne contient pas le
+  bug. Un double qui n'émet pas les signaux d'une plateforme ne peut rien garder.
+- **Une sonde de banc, `examples/mobile/unreachable-probe.blueprint.json`**, conçue pour échouer :
+  déterministe, hors ligne, elle **remplace le passage en mode avion** du parcours de vérification —
+  rien à changer sur le téléphone.
+
+### Connu
+- **Un échec de chargement que la vue ne rapporte pas reste invisible**, et c'est la première passe
+  sur appareil qui l'a montré : le correctif était en place, gardé, et la sonde rendait quand même
+  `PAGE_ABSENTE`. `react-native-webview` filtre `WebKitErrorDomain` **101** (« cannot show URL »)
+  avant d'appeler `onError`, or c'est ce que WebKit rend pour un **port bloqué** — et la sonde visait
+  le port 1. La vue savait, la bibliothèque a avalé, l'hôte est resté aveugle. Le signe avant-coureur
+  était sous les yeux : côté Python la même adresse donnait `net::ERR_UNSAFE_PORT`, pas
+  `ERR_CONNECTION_REFUSED`.
+  - **Règle de sondage : viser un port qui _refuse_ (4), pas un port _bloqué_ (1, 7, 9 …).** La
+    sonde, le cas de conformance et le test navigateur l'appliquent.
+  - Le périmètre restant n'est pas celui de la production : un portail en panne rend
+    `NSURLErrorDomain` (-1001, -1004, -1009), que la bibliothèque laisse passer. Ce qu'elle avale —
+    port bloqué, schéma non supporté — désigne des Blueprints à corriger, pas des services à
+    réessayer.
+
 ## [0.5.2] - 2026-08-07
 
 Un appendice à la Phase 3, ouvert par un port réel : la livraison distante sait désormais
@@ -965,7 +1034,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.2...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.3
 [0.5.2]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.2
 [0.5.1]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.1
 [0.5.0]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.0

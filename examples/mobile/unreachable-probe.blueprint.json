@@ -1,0 +1,23 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.unreachable.probe",
+  "description": "Act II : une source injoignable doit-elle etre annoncee comme telle ? La sonde est CONCUE POUR ECHOUER — le seul resultat acceptable est un echec de famille 'unavailable' (« Service indisponible ») AU step nav. Un echec au step suivant (pastille PAGE_ABSENTE) est le defaut corrige en 0.5.3, revenu. L'adresse est choisie, pas prise au hasard : le port 4 du loopback REFUSE la connexion, la un port bloque par politique (1, 7, 9…) fait rendre a WebKit une erreur 'cannot show URL' que react-native-webview AVALE — l'hote n'apprend alors rien et la sonde ne prouve rien. Voir docs/embedded.md. Le step diagnostic ne doit JAMAIS s'executer : s'il apparait dans la progression, il dit sur quel document l'agent a atterri.",
+  "act": "continuum",
+  "vars": { "injoignable": "http://127.0.0.1:4/" },
+  "options": { "timeout_ms": 10000 },
+  "steps": [
+    { "id": "nav", "action": "navigate", "url": "{{ vars.injoignable }}" },
+    {
+      "action": "emit",
+      "message": "DIAGNOSTIC — la navigation aurait du echouer ; l'agent annonce : {{ steps.nav.url }}"
+    },
+    {
+      "id": "jamais",
+      "action": "wait_for",
+      "selector": "#absent",
+      "timeout_ms": 2000,
+      "on_timeout": "fail:PAGE_ABSENTE"
+    }
+  ],
+  "outputs": { "url": "{{ steps.nav.url }}" }
+}

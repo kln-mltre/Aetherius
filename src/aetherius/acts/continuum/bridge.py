@@ -18,10 +18,11 @@ Renderer = Callable[[Any], Any]
 _NUMBER_RE = re.compile(r"-?\d+(?:[.,]\d+)?")
 
 
-def _is_timeout(exc: Exception) -> bool:
+def is_timeout(exc: Exception) -> bool:
     """True when *exc* is a Playwright (or builtin) timeout, matched by class name.
 
-    Avoids importing Playwright here so the module stays light and unit-testable.
+    Avoids importing Playwright here so the module stays light and unit-testable. Shared with
+    ``actions.py``, which must leave a slow page on this path rather than call it unreachable.
     """
     return type(exc).__name__ == "TimeoutError"
 
@@ -38,7 +39,7 @@ def as_step_timeout(exc: Exception, action: str) -> StepTimeoutError | None:
     No ``code``: only ``wait_for`` lets a Blueprint name its failure, and it applies its own
     ``on_timeout`` before reaching here.
     """
-    if not _is_timeout(exc):
+    if not is_timeout(exc):
         return None
     return StepTimeoutError(f"{action}: the page never matched what the Blueprint expects — {exc}")
 
@@ -161,7 +162,7 @@ def wait_for(page: Any, params: Mapping[str, Any], render: Renderer) -> dict[str
         # and must not trip Playwright's strict-mode (which is reserved for acting on one element).
         page.locator(selector).first.wait_for(**kwargs)
     except Exception as exc:
-        if _is_timeout(exc):
+        if is_timeout(exc):
             code = failure_code(render(params.get("on_timeout")))
             raise StepTimeoutError(
                 f"wait_for timed out for selector {selector!r}", code=code

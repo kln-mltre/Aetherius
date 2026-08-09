@@ -614,6 +614,120 @@ annoncé sur la génération courante**. Rien d'autre ne compte comme prêt.
   *commencer* à naviguer. Si une navigation démarre, on attend le nouveau document ; sinon on
   continue. La fenêtre borne une décision, pas un chargement : attendre le chargement est le travail
   d'auto-attente de l'opération suivante.
+- Un **échec de chargement annoncé par la vue** l'emporte sur tout le reste, et il est lu **avant**
+  la génération. Ci-dessous : c'est le défaut qui a coûté deux jalons à être vu.
+
+### Une source injoignable atteint `unavailable` (corrigé en 0.5.3)
+
+Le modèle d'erreur du jalon 3-E promet qu'une WebView qui n'arrive pas à charger son document le dit,
+et que le run échoue en `NetworkError` — donc `unavailable`, la seule famille qu'une application
+réessaie. Le câblage existait depuis 3-E. Il n'a jamais fonctionné sur un appareil, et personne ne
+l'a vu pendant deux jalons parce qu'**aucun double ne produisait la séquence d'une plateforme**.
+
+Mesuré sur iPhone le 2026-08-09, en portant la session universitaire d'une application réelle
+([UKit](../docs-ukit/README.md), jalon 6-F). Reproduction : pointer le `navigate` d'un Blueprint
+`continuum` sur une adresse injoignable. Attendu : `unavailable`, et un bouton Réessayer. Obtenu : la
+navigation **réussit**, et c'est l'attente suivante qui échoue — en `blocked` avec le code du
+Blueprint quand il en a un, en `data` sinon.
+
+**Deux causes indépendantes produisent ce même symptôme**, et c'est pourquoi il a fallu deux passes
+sur l'appareil pour le clore. La première est dans ce moteur et elle est corrigée ; la seconde est
+dans la bibliothèque de vue et elle décide de la façon dont on sonde.
+
+#### 1. Le verdict était effacé, puis ignoré
+
+La cause n'était pas le câblage. `react-native-webview` tire `onError` **puis `onLoadEnd`** pour la
+*même* navigation en échec, dans le même tick ([`WebViewShared.tsx`][rnw-shared]) :
+
+```
+onLoadStart  ->  loadError = undefined
+onError      ->  loadError = "Could not connect to the server."   <- le verdict
+onLoadEnd    ->  loadError = undefined    <- il est efface ici
+                 generation += 1, l'agent est injecte
+l'agent s'annonce depuis la page d'erreur de la plateforme
+awaitGenerationAfter : generation > previous && agentPresent  ->  succes
+```
+
+Deux erreurs, et il fallait les deux : un événement de fin de chargement était pris pour la **preuve
+qu'un document s'est chargé**, et la boucle d'attente testait la génération **avant** le verdict —
+alors que les deux sont vrais au même tour, puisqu'ils sont posés dans le même tick. Le correctif est
+donc l'inverse exact : `onDocumentLoaded` n'efface plus rien, et `awaitGenerationAfter` lit le
+verdict en premier. Un document qui s'annonce après un échec de chargement est la page d'erreur du
+navigateur, pas celle qu'on a demandée.
+
+[rnw-shared]: https://github.com/react-native-webview/react-native-webview/blob/master/src/WebViewShared.tsx
+
+Trois choses à ne pas « corriger » plus tard, parce qu'elles ont l'air gratuites :
+
+- **Le verdict est effacé par la commande de navigation, pas seulement par `onLoadStarted`.**
+  `page.load()` est asynchrone : le signal de la vue arrive après le premier tour de la boucle
+  d'attente, qui lirait donc le verdict de la tentative *précédente*. Une reprise échouait
+  instantanément, en héritant d'un échec qu'elle n'avait pas rencontré — ce qui mordait exactement
+  sur le bouton Réessayer que ce correctif existe pour rendre possible.
+- **Après un échec, la même URL est *chargée*, pas *rechargée*.** Une WKWebView dont la navigation
+  provisoire a échoué ne porte aucun document, et `reload()` sur elle ne fait rien du tout. Le
+  contrat de `PageControl.load` exige donc de charger **même si la vue affiche déjà cette URL** ; le
+  composant honore ça en changeant la `key` de la vue, parce que redonner à React la valeur qu'il a
+  déjà ne re-rend rien.
+- **`awaitReady` teste toujours `agentPresent` en premier.** Le verdict réseau est borné à la
+  navigation qu'on a *demandée*. Une navigation de fond qui échoue — un client web qui tente une
+  redirection morte — laisse le document courant intact sur iOS ; échouer là ferait régresser des
+  runs qui marchent.
+
+#### 2. Certains échecs n'arrivent jamais jusqu'ici, et c'est la vue qui décide
+
+Le correctif ci-dessus était en place, gardé par trois tests, et la première sonde sur l'appareil a
+quand même rendu `PAGE_ABSENTE`. Le correctif n'était pas en cause : **l'hôte n'avait rien reçu.**
+
+`react-native-webview` filtre deux familles d'erreur avant d'appeler `onError`
+([`RNCWebViewImpl.m`][rnw-ios]) — `NSURLErrorCancelled`, et **`WebKitErrorDomain` 101 / 102**. Le
+102 (« Frame load interrupted ») est le bon geste : il arrive sur une redirection et n'est pas un
+échec. Le **101** (« cannot show URL ») l'est moins : c'est ce que WebKit rend pour un **port
+bloqué**, et la sonde visait `127.0.0.1:1` — le port 1 est sur la liste des ports que tous les
+moteurs de rendu refusent. La vue savait, la bibliothèque a avalé, l'hôte est resté aveugle, la page
+d'erreur s'est chargée et l'agent s'y est annoncé.
+
+[rnw-ios]: https://github.com/react-native-webview/react-native-webview/blob/master/apple/RNCWebViewImpl.m
+
+Le signe avant-coureur était sous les yeux : côté Python, la même adresse donnait
+`net::ERR_UNSAFE_PORT` et non `ERR_CONNECTION_REFUSED`. « Port interdit » et « connexion refusée »
+sont deux choses, et une seule des deux traverse la vue.
+
+**D'où la règle de sondage, qui n'est pas un détail de confort : sonder avec un port qui _refuse_,
+pas avec un port _bloqué_.** La sonde livrée vise donc `127.0.0.1:4` — privilégié (rien ne s'y lie
+sans root, et l'OS ne l'attribue jamais en port éphémère), sur aucune liste de blocage, donc un vrai
+`ECONNREFUSED` sur les deux moteurs.
+
+Ce qu'il reste, et qui est une **limite, pas un défaut** : quand la plateforme ou la bibliothèque de
+vue ne rapporte pas un échec, ce moteur ne peut pas l'inventer. Le périmètre est étroit et il n'est
+pas celui de la production — un portail en panne rend `NSURLErrorDomain` (-1001, -1004, -1009), que
+la bibliothèque laisse passer ; ce qui est avalé, ce sont un port bloqué et un schéma non supporté,
+c'est-à-dire des Blueprints à corriger, pas des services à réessayer.
+
+Un dernier geste traite le second symptôme, celui que la campagne d'origine avait observé sans
+l'élucider : un nom qui ne résout pas ne produisait ni document ni `onError` avant l'échéance du
+step, et retombait donc en `engine`. À l'échéance, un chargement que la vue a annoncé et n'a jamais
+terminé devient un `TimeoutError` — sous-classe de `NetworkError`, donc `unavailable`. La vue disait
+qu'elle travaillait dessus ; ce n'est pas un bug du moteur. L'`ActionError` reste pour le seul cas
+qui la mérite : un document **chargé** dont aucun agent ne s'est annoncé.
+
+Le moteur Python avait le **même angle mort**, et c'est en écrivant ce correctif qu'on l'a trouvé :
+`page.goto` vers une adresse injoignable levait une `playwright.Error` brute, que le runtime
+enveloppait en `RunError`. Une source en panne n'était donc `unavailable` d'**aucun** des deux côtés.
+`navigate`, `back`, `forward` et `reload` typent désormais un échec de transport (`net::ERR_*`) en
+`NetworkError` — voir [docs/acts/continuum.md](acts/continuum.md). Le `TimeoutError` de Playwright
+garde son chemin : une page lente n'est pas une page injoignable.
+
+Trois gardes, parce qu'une seule ne suffisait pas à voir le défaut :
+
+| Garde | Ce qu'elle fige |
+|-------|-----------------|
+| `sdks/react-native/test/rpc.test.js` | la séquence de l'appareil, jouée à la main sur l'hôte : `onLoadFailed` **puis** une génération qui s'annonce. Plus la reprise, le `load` après échec, et le chargement qui ne revient jamais. Ces tests **ne peuvent pas** attraper la cause 2 : elle est en amont d'eux, dans ce que la vue consent à dire |
+| Le double jsdom (`test/dom-host.mjs`) | il émet désormais `onLoadFailed` avant `onDocumentLoaded`, comme la plateforme. Sans ça le corpus ne pouvait rien voir — c'est précisément pourquoi il n'a rien vu pendant deux jalons |
+| `conformance/cases/run/17-unreachable-source.json` | **les deux moteurs** échouent au step `navigate`, et le step suivant ne démarre pas. C'est la séquence qui divergeait, donc c'est la bonne garde |
+
+Les trois ont été **vues échouer** par mutation du correctif : réintroduire l'effacement dans
+`onDocumentLoaded`, réinverser l'ordre des tests, retirer l'effacement par la commande.
 
 ### Sessions, cookies et mode debug
 
@@ -869,6 +983,10 @@ en échec, TLS refusé) le signale à l'hôte, et le run échoue sur un `Network
 `unavailable`, la seule famille qu'une application réessaie. Sans ce signal, le run apprendrait
 seulement qu'aucun agent ne s'est annoncé et afficherait « erreur interne » à un téléphone
 simplement hors ligne. La vue *sait* ; elle le dit.
+
+> Ce paragraphe a décrit une intention pendant deux jalons. Mesuré sur iPhone le 2026-08-09, le
+> signal était bien câblé et **jamais consulté** ; corrigé en 0.5.3, avec le récit et les gardes
+> dans [Une source injoignable atteint `unavailable`](#une-source-injoignable-atteint-unavailable-corrigé-en-053).
 
 `describeFailure` accepte les **deux canaux** — un `Result` en échec ou une exception levée —
 précisément pour qu'une application n'ait pas à savoir lequel a parlé. Pour que la classe survive à
@@ -1286,6 +1404,12 @@ const { running, events, result, failure, run, cancel } = useAetheriusRun(client
   l'application repart sur son socle embarqué.
 - **Pas de plugins.** Une action de plugin est acceptée par le moteur Python sur tous les Acts ;
   côté embarqué elle est refusée comme action inconnue.
+- **Le verdict réseau est borné à la navigation qu'on a demandée.** Une navigation *de fond* qui
+  échoue — un client web qui tente une redirection morte — n'échoue pas le step en cours : sur iOS le
+  document courant reste intact, et l'opération suivante travaille dessus. C'est un choix, et il est
+  expliqué avec le reste du correctif dans
+  [Une source injoignable atteint `unavailable`](#une-source-injoignable-atteint-unavailable-corrigé-en-053).
+  Jusqu'en 0.5.2, aucune panne réseau de l'Act II n'atteignait `unavailable` ; ce n'est plus le cas.
 - **Une opération émise pendant un enchaînement de navigations se perd.** Mesuré au jalon 3-G sur
   une authentification unifiée à plusieurs sauts suivie d'un client qui pose son propre fragment :
   le host n'apprend pas tous les remplacements de document que la cascade produit, donc il ne rejoue
@@ -1782,6 +1906,37 @@ tableau [Éprouver les gardes](#éprouver-les-gardes)), ce qui est la seule preu
 faire hériter un nom ajouté du périmètre du socle, cesser de purger, retirer l'exigence de
 séparateur, oublier `covers`.
 
+### Sondes du correctif 0.5.3 — une source injoignable
+
+La sonde tient dans un fichier, [`unreachable-probe`](../examples/mobile/unreachable-probe.blueprint.json),
+et elle est **conçue pour échouer** : c'est son seul emploi. Elle vise le port 1 du loopback de
+l'appareil — jamais servi, refusé par les moteurs de rendu — donc elle est déterministe et **remplace
+le passage en mode avion** du parcours précédent : rien à changer sur le téléphone.
+
+| Sonde | Résultat |
+|-------|----------|
+| **Première passe, sonde sur le port 1** | `PAGE_ABSENTE`. Le correctif était en place et gardé ; c'est cet échec qui a désigné la **cause 2** — l'hôte n'avait rien reçu. La sonde qui apprend le plus est celle qui échoue pour une raison qu'on n'avait pas prévue |
+| La sonde, sur iPhone, port 4 | `SERVICE INDISPONIBLE`, « Réessayer peut aboutir ». La progression tient en quatre lignes : `[progress]`, `[step_started] nav`, `[error] nav the WebView could not load the document: Could not connect to the server.`, `[done] failed`. **Aucune ligne `DIAGNOSTIC`** : le step suivant n'a jamais démarré |
+| Relancée, plusieurs fois de suite | Identique à chaque lancement — la reprise n'hérite de rien et n'attend pas son échéance |
+| L'URL remplacée par un nom qui ne résout pas (`.invalid`) | *(non joué sur appareil ; le chemin est gardé par le test d'hôte « a load that starts and never comes back »)* |
+| Non-régression : `webview-quotes`, `reference-sso`, `reference-messagerie` | Inchangés, sorties identiques au moteur Python. Ce sont les parcours qui enchaînent le plus de signaux de chargement |
+| Non-régression : le CAS réel avec un mauvais mot de passe | Pastille `LOGIN_FAILED`, **pas** « Service indisponible » : le verdict réseau n'est pas devenu gourmand |
+| **Parité** : `aetherius run` sur le même fichier | `failed`, « navigate: the source is unreachable (http://127.0.0.1:4/) — Page.goto: net::ERR_CONNECTION_REFUSED », et **un seul `StepResult`** : `nav` |
+
+Deux choses apprises, et elles valent au-delà de ce défaut.
+
+**Un double qui n'émet pas les signaux d'une plateforme ne peut rien garder.** Le corpus jouait ce
+chemin depuis deux jalons et le déclarait vert, parce que le double montait une page d'erreur sans
+jamais dire qu'un chargement avait échoué — exactement la moitié de la séquence qui contient le bug.
+Le double émet désormais `onLoadFailed` avant `onDocumentLoaded`, et le cas de conformance mord.
+
+**Une sonde qui échoue pour une raison qu'on n'avait pas prévue vaut mieux qu'une sonde qui passe.**
+La première passe a rendu `PAGE_ABSENTE` alors que le correctif était en place et gardé par trois
+tests — et c'est ce qui a désigné la cause 2, qui n'est pas dans ce moteur. Une sonde écrite pour
+confirmer un correctif n'aurait rien appris ; celle-ci était écrite pour **éprouver le comportement
+réel**, et l'écart entre les deux est tout l'objet de la règle des sondes dures
+([CONTRIBUTING](../CONTRIBUTING.md#définition-de--terminé-), point 5).
+
 ### Sur appareil
 
 Le point 5 de [CONTRIBUTING](../CONTRIBUTING.md#définition-de--terminé-) — « le vrai run, pas
@@ -1798,6 +1953,7 @@ réseaux). Les quatre Blueprints ont tourné, tous `success` :
 | `jsonplaceholder-flow` | `branch: "then"`, `user_count: 3`, et les événements `walk.each_user[0].announce` → `[1]` → `[2]` dans cet ordre | **séquence identique**, chemins imbriqués compris |
 | `device-ip-check` | `92.184.98.145` | `92.184.98.101` depuis le poste |
 | `session-cookie-probe` | `carried: true` | `true` aussi — et `false` sous Node |
+| `unreachable-probe` *(0.5.3)* | **`failed`** — « Service indisponible », `[error]` sur `nav` | `failed` aussi, `ERR_CONNECTION_REFUSED`, même step. La seule carte du banc dont le succès est un échec |
 
 La dernière ligne est celle qui comptait le plus : elle **vérifie** la stratégie de cookies au lieu
 de la supposer. Le magasin de la plateforme porte bien la session à travers la redirection, donc le

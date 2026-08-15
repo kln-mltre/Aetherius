@@ -1,0 +1,55 @@
+{
+  "aetherius": "1.0",
+  "name": "planning.ical.text",
+  "description": "Extraction 'from: text' (Jalon 3-I) : l'export iCalendar anonyme d'ADE (Bordeaux INP), ramené tel quel. Zéro configuration — les inputs sont figés sur une plage passée, dont le contenu reste servi, donc l'exemple est reproductible sans attendre une rentrée. Interpréter la RFC 5545 est le travail de l'application ; le Blueprint garde la forme minimale (BEGIN:VCALENDAR) et la présence d'accents, qui prouve que le décodage a suivi l'en-tête.",
+  "act": "vector",
+  "inputs": {
+    "resources": {
+      "type": "string",
+      "default": "1",
+      "description": "Identifiants ADE des ressources (groupes, salles), séparés par des virgules."
+    },
+    "first_date": { "type": "string", "format": "date", "default": "2025-09-01" },
+    "last_date": { "type": "string", "format": "date", "default": "2026-06-30" }
+  },
+  "vars": {
+    "domain": "https://ade.bordeaux-inp.fr",
+    "path": "/jsp/custom/modules/plannings/anonymous_cal.jsp"
+  },
+  "steps": [
+    {
+      "id": "cal",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.domain }}{{ vars.path }}",
+      "params": {
+        "resources": "{{ inputs.resources }}",
+        "projectId": "2",
+        "calType": "ical",
+        "firstDate": "{{ inputs.first_date }}",
+        "lastDate": "{{ inputs.last_date }}"
+      },
+      "headers": { "Accept": "text/calendar" },
+      "expect": { "status": 200 },
+      "extract": { "ics": { "from": "text" } }
+    },
+    {
+      "id": "shape",
+      "action": "assert",
+      "condition": "{{ 'BEGIN:VCALENDAR' in steps.cal.ics }}",
+      "message": "ICAL_INVALID: la réponse n'est pas un calendrier (page d'erreur ?)"
+    },
+    {
+      "id": "accents",
+      "action": "assert",
+      "condition": "{{ 'Bases de données' in steps.cal.ics }}",
+      "message": "ICAL_ENCODING: le corps a été décodé sans suivre le charset de la réponse"
+    }
+  ],
+  "outputs": {
+    "caracteres": "{{ steps.cal.ics | length }}",
+    "calendrier": "{{ 'BEGIN:VCALENDAR' in steps.cal.ics }}",
+    "accents": "{{ 'Bases de données' in steps.cal.ics }}",
+    "content_type": "{{ steps.cal.headers['content-type'] }}"
+  }
+}

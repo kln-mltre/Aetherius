@@ -240,3 +240,49 @@ def test_step_fallback_is_validated_with_its_path() -> None:
     bp = _make_nested("continuum", {"action": "click", "selector": "#x", "fallback": ["vector"]})
     with pytest.raises(BlueprintValidationError, match="steps\\[0\\].fallback"):
         validate_for_act(bp)
+
+
+def _with_extract(spec: dict[str, object]) -> Blueprint:
+    return Blueprint.model_validate(
+        {
+            "aetherius": "1.0",
+            "name": "test",
+            "act": "vector",
+            "steps": [
+                {"id": "cal", "action": "http.request", "url": "x", "extract": {"raw": spec}}
+            ],
+        }
+    )
+
+
+def test_text_extraction_needs_nothing_else() -> None:
+    validate_for_act(_with_extract({"from": "text"}))
+
+
+@pytest.mark.parametrize(
+    "key", ["path", "where", "fields", "selector", "selector_type", "attr", "multiple"]
+)
+def test_text_extraction_rejects_the_other_dialects_keys(key: str) -> None:
+    # A spec that carries one believes it filters, and it does not: from='text' renders the whole
+    # body. Refused at validation, and by the embedded engine too (blueprint/validator.ts).
+    with pytest.raises(BlueprintValidationError, match=key) as exc_info:
+        validate_for_act(_with_extract({"from": "text", key: "anything"}))
+    assert "steps[0].extract.raw" in str(exc_info.value)
+
+
+def test_other_dialects_keep_their_keys() -> None:
+    validate_for_act(_with_extract({"from": "json", "path": "$[*]"}))
+    validate_for_act(_with_extract({"from": "html", "selector": "h1", "multiple": False}))
+
+
+def test_text_extraction_is_checked_inside_flow_branches() -> None:
+    bp = _make_nested(
+        "vector",
+        {
+            "action": "if",
+            "condition": "{{ true }}",
+            "then": [{"action": "http.request", "extract": {"raw": {"from": "text", "path": "$"}}}],
+        },
+    )
+    with pytest.raises(BlueprintValidationError, match="steps\\[0\\].then\\[0\\].extract.raw"):
+        validate_for_act(bp)

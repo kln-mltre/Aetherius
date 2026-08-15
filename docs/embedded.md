@@ -257,6 +257,45 @@ des deux n'est du CSS standard :
   `Selector.getall()` renvoie). `::attr(nom)` et le champ `attr` lisent un attribut ; un attribut
   absent rend la chaîne vide, et `multiple: false` rend la première valeur ou `null`.
 
+### Le corps en texte, et son décodage
+
+`from: "text"` (jalon 3-I) rend le corps décodé, tel quel — la forme qui rend atteignables les
+formats à lignes (iCalendar, CSV, `text/plain`). Le dialecte n'a rien à configurer ; ce qui mérite
+d'être connu, c'est **d'où viennent les octets** et **qui décide de l'encodage**.
+
+**Le moteur ne se repose pas sur la plateforme pour décoder.** `TextDecoder` est **absent de React
+Native** et complet (ICU) sous Node : s'en servir ferait tomber d'accord la CI et diverger le
+téléphone — précisément le défaut que le corpus existe pour attraper. Le paquet porte donc ses
+décodeurs ([`extraction/charset.ts`](../sdks/engine/src/extraction/charset.ts)) : un décodeur UTF-8
+écrit à la main (l'algorithme WHATWG, qui rend un `U+FFFD` par *sous-partie maximale* — soit
+exactement ce que fait `errors="replace"` de CPython) et une table mono-octet. Toujours **aucune
+dépendance ajoutée**, et le même argument que le base64 de `BasicAuth` : les trois solutions de
+plateforme marcheraient *la plupart du temps*, ce qui est la pire propriété possible.
+
+La **table d'étiquettes est bornée et partagée** avec le moteur Python — latin-1 (strict, pas
+l'alias WHATWG vers cp1252), cp1252, et UTF-8 pour tout le reste, `us-ascii` compris. Élargir se
+fait des deux côtés à la fois ; laisser un moteur connaître plus de codecs que l'autre aurait été
+une divergence à retardement. Détail des règles :
+[docs/acts/vector.md](acts/vector.md#le-décodage-suit-len-tête).
+
+**Les octets ne sont lus que quand ils servent.** Un corps ne se lit qu'une fois, donc le driver
+décide **avant** d'envoyer la requête : il scanne le bloc `extract` — statiquement, puisque les
+specs ne sont jamais rendues, le même argument qui autorise `portability.ts` à refuser XPath à la
+validation — et n'appelle `response.arrayBuffer()` que si un `from: "text"` est déclaré. Deux
+conséquences voulues :
+
+- une requête sans extraction texte emprunte **exactement** le chemin d'avant (`response.text()`), et
+  ne paie pas, sur l'appareil, le trajet blob → base64 → pont natif par lequel React Native fait
+  passer des octets ;
+- `body` reste **toujours** la lecture UTF-8, y compris en mode octets : `expect`, l'extraction JSON
+  et l'extraction HTML voient la même chaîne dans les deux modes. Seul le dialecte texte relit les
+  octets à travers le charset déclaré.
+
+Un hôte dont la réponse n'expose pas `arrayBuffer()` obtient une **`ActionError` qui le nomme**, pas
+un décodage UTF-8 fait dans son dos — et surtout pas une `NetworkError`, qui enverrait quelqu'un
+déboguer sa connexion. Le `fetch` de React Native, lui, l'expose (réponse en blob,
+`FileReader.readAsArrayBuffer`), ce que la campagne sur appareil vérifie plutôt que de le supposer.
+
 ### Le prédicat `where`
 
 Côté Python, c'est du code exécuté derrière une liste blanche d'AST. Côté embarqué la sûreté est
@@ -274,6 +313,8 @@ c'est une `AttributeError`).
 | Limite | Quand | Pourquoi ce moment-là |
 |--------|-------|-----------------------|
 | `selector_type: "xpath"` dans un `extract` | **à la validation** (`BlueprintValidationError`) | `selector_type` est une enum du schéma : le refus est statique, sans risque de faux positif. Un Blueprint qui ne peut pas tourner doit le dire **avant** de démarrer, jamais au milieu d'un run. |
+| `from: "text"` avec un `path` (ou `where`, `fields`, `selector`, `attr`, `multiple`) | **à la validation** (`BlueprintValidationError`) | Règle du **contrat**, pas de ce moteur : les deux refusent, avec le même motif. Un texte se rend entier ; laisser passer la clé ferait croire à un filtrage qui n'a pas lieu. |
+| Réponse dont l'hôte ne sait pas rendre les octets, avec un `from: "text"` | à l'exécution (`ActionError`) | Dépend de l'objet `Response` d'un `fetch` que l'application peut avoir remplacé : rien à vérifier statiquement. Le message nomme `arrayBuffer()`. |
 | JSONPath hors sous-ensemble (`[?…]`, unions, `` `len` ``) | à l'extraction (`ExtractionError`) | Un parseur plus strict que `jsonpath-ng` refuserait à la validation des Blueprints corrects. Un faux refus est pire qu'un échec propre. |
 | Filtre ou test inconnu | au rendu (`TemplateError`, le message nomme le jeu supporté) | |
 | Date hors `YYYY-MM-DD` | au rendu (`TemplateError`) | |
@@ -1404,6 +1445,12 @@ const { running, events, result, failure, run, cancel } = useAetheriusRun(client
   l'application repart sur son socle embarqué.
 - **Pas de plugins.** Une action de plugin est acceptée par le moteur Python sur tous les Acts ;
   côté embarqué elle est refusée comme action inconnue.
+- **Trois encodages de corps, pas plus** — UTF-8, latin-1, cp1252 ; toute autre étiquette de
+  `charset` est lue en UTF-8. La table est **volontairement identique** dans les deux moteurs plutôt
+  que déléguée à leurs plateformes : Python connaît des centaines de codecs, `TextDecoder` n'existe
+  pas sous React Native, et les laisser faire aurait fait diverger la CI et l'appareil sur la
+  première source japonaise ou cyrillique. L'élargir est une décision à prendre des deux côtés à la
+  fois. Voir [Le corps en texte](#le-corps-en-texte-et-son-décodage).
 - **Le verdict réseau est borné à la navigation qu'on a demandée.** Une navigation *de fond* qui
   échoue — un client web qui tente une redirection morte — n'échoue pas le step en cours : sur iOS le
   document courant reste intact, et l'opération suivante travaille dessus. C'est un choix, et il est
@@ -1937,6 +1984,24 @@ confirmer un correctif n'aurait rien appris ; celle-ci était écrite pour **ép
 réel**, et l'écart entre les deux est tout l'objet de la règle des sondes dures
 ([CONTRIBUTING](../CONTRIBUTING.md#définition-de--terminé-), point 5).
 
+### Sondes du jalon 3-I
+
+Le jalon ajoute une valeur d'énumération, donc les sondes ne visent pas une fonctionnalité mais une
+**égalité** : le même corps, deux moteurs, la même chaîne. Elles sont donc systématiquement jouées
+**des deux côtés** — `aetherius run` puis le moteur embarqué sous Node —, sur des sources réelles.
+
+| Sonde | Résultat |
+|-------|----------|
+| [`ical-planning-text`](../examples/vector/ical-planning-text.blueprint.json) — export iCal anonyme d'ADE, `text/calendar;charset=UTF-8` | `success` des deux côtés, `caracteres: 21461` **identiques**, `accents: true`. 21 592 octets pour 21 461 caractères : les accents sont passés **par** le décodeur, pas à côté |
+| [`ical-large-body-probe`](../examples/mobile/ical-large-body-probe.blueprint.json) — ~80 Ko, second serveur | `success` des deux côtés, `caracteres: 80712` identiques |
+| **Conçue pour échouer** : [`ical-error-page-probe`](../examples/mobile/ical-error-page-probe.blueprint.json) — le même export **sans paramètres**, qui répond 500 avec une page HTML déclarée `ISO-8859-1` | `failed` au step `shape` (`ICAL_INVALID`), ligne `DIAGNOSTIC` jamais atteinte, **et le même échec mot pour mot des deux côtés**. Sans la garde de forme, ce run aurait « réussi » en rendant un calendrier vide |
+| Le corps mal étiqueté, en conformance plutôt qu'en sonde | Aucune source publique française mesurée ne sert d'accents en ISO-8859-1 (la page d'erreur d'ADE le déclare mais reste ASCII) : le cas est donc **servi par les serveurs de fixtures** des deux harnais (`run/18-text-body-and-charset`), qui est le seul endroit où l'on contrôle les octets **et** l'étiquette |
+
+L'aspérité relevée, antérieure au jalon et laissée telle quelle : l'action `assert` signale son échec
+via `StatusAssertionError`, donc le message porte un préfixe `Expected HTTP 1, got 0 — <assert>`
+avant la vraie raison. Identique sur les deux moteurs ; le changer toucherait le contrat d'erreur
+d'une action qui n'est pas le sujet de ce jalon.
+
 ### Sur appareil
 
 Le point 5 de [CONTRIBUTING](../CONTRIBUTING.md#définition-de--terminé-) — « le vrai run, pas
@@ -1969,6 +2034,28 @@ partagent leur `/24`. Le poste sortait par le **même opérateur** que le télé
 La requête part donc bien de l'appareil — l'application n'a ni daemon ni serveur, le moteur tourne
 dans Hermes —, mais la démonstration « deux réseaux vraiment distincts » demanderait un poste sur
 une connexion filaire d'un autre opérateur.
+
+**Campagne du jalon 3-I** (mêmes conditions : iPhone, Expo Go SDK 54, tunnel, téléphone en
+cellulaire). Elle a une raison d'être précise : la lecture en octets emprunte sur l'appareil un
+chemin que Node n'a pas — blob, base64, pont natif — et c'est le seul endroit où il s'observe.
+
+| Carte | Sur l'appareil | Ce que rend le moteur Python |
+|-------|----------------|------------------------------|
+| `ical-planning-text` (export ADE, `text/calendar;charset=UTF-8`) | `success`, `caracteres: 21461`, `accents: true` | **identique au caractère près** — 21 592 octets pour 21 461 caractères : le pont d'octets et le décodeur UTF-8 embarqué rendent exactement ce que rend CPython |
+| `ical-large-body-probe` (~80 Ko, second serveur) | `success`, `caracteres: 80712`, `accents: true` | identique |
+| **Conçue pour échouer** : `ical-error-page-probe` | **`failed`** au step `shape` — `[step_started] cal`, `[step_finished] cal`, `[step_started] shape`, `[error] shape … ICAL_INVALID`, `[done] failed`. **Aucune ligne `DIAGNOSTIC`** | `failed` aussi, même step, même message |
+
+La lecture en octets est donc **vérifiée** plutôt que supposée : `response.arrayBuffer()` existe bien
+dans le `fetch` de React Native, et un corps de 80 Ko le traverse sans perdre un caractère.
+
+Deux aspérités observées à l'écran, antérieures au jalon et laissées telles quelles parce qu'elles
+appartiennent au contrat d'erreur de l'action `assert`, pas à l'extraction : le message porte le
+préfixe `Expected HTTP 1, got 0 — <assert>` avant sa vraie raison, et la façade classe l'échec en
+famille `rejected` **avec `retryable: true`** (« Réessayer peut aboutir »). Le libellé de la famille
+est juste — la source a bien répondu, mais pas comme le Blueprint l'exigeait —, l'invitation à
+réessayer l'est moins pour une garde de forme, qui échouera identiquement. Les deux tiennent au fait
+qu'`assert` lève une `StatusAssertionError` ; le corriger toucherait une action hors du périmètre de
+ce jalon, et les deux moteurs de la même façon.
 
 **Ce qui reste à observer sur un appareil**, et qui est écrit ici plutôt que supposé : le corps de
 requête `form`/`json`, les reprises et le délai n'ont été éprouvés que sous Node et en test. Rien ne

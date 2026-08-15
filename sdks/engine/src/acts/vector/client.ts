@@ -20,6 +20,7 @@
 
 import type { RetriesOptions } from "../../blueprint/types.js";
 import { NetworkError, StatusAssertionError, TimeoutError, ActionError } from "../../errors.js";
+import { decodeUtf8 } from "../../extraction/charset.js";
 import {
   hostAbortController,
   hostFetch,
@@ -27,6 +28,7 @@ import {
   type AbortSignalLike,
   type FetchLike,
   type FetchRequestInit,
+  type FetchResponse,
 } from "../../http.js";
 import { cancellableSleep, throwIfCancelled } from "../../runtime/cancel.js";
 import { NoAuth, type AuthStrategy, type RequestSpec } from "./auth.js";
@@ -57,12 +59,22 @@ export interface VectorRequest {
   readonly form?: unknown;
   readonly params?: Readonly<Record<string, unknown>> | undefined;
   readonly expectedStatus?: number | undefined;
+  /**
+   * Read the body as bytes instead of text. Asked for only when the step extracts `from: "text"`,
+   * the one dialect that decodes per the declared charset: a body can be read once, so the choice
+   * has to be made before the response arrives. Every other request keeps the path it always had —
+   * and on a device, does not pay React Native's base64 bridge.
+   */
+  readonly readBytes?: boolean | undefined;
 }
 
 export interface VectorResponse {
   readonly status: number;
   readonly headers: Record<string, string>;
+  /** Always the UTF-8 reading, so `expect`, JSON and HTML behave the same either way. */
   readonly body: string;
+  /** The raw body, present only when `readBytes` was asked for. */
+  readonly bytes?: Uint8Array | undefined;
   /** Final URL after redirects, when the host reports one; the requested URL otherwise. */
   readonly url: string;
 }
@@ -105,7 +117,7 @@ export class VectorClient {
    */
   async request(request: VectorRequest): Promise<VectorResponse> {
     const spec = this.prepareRequest(request);
-    const response = await this.send(spec);
+    const response = await this.send(spec, request.readBytes === true);
 
     const { expectedStatus } = request;
     if (expectedStatus !== undefined && response.status !== expectedStatus) {
@@ -151,11 +163,11 @@ export class VectorClient {
     return this.auth.apply(spec);
   }
 
-  private async send(spec: RequestSpec): Promise<VectorResponse> {
+  private async send(spec: RequestSpec, readBytes: boolean): Promise<VectorResponse> {
     const attempts = this.retries.max > 0 ? this.retries.max + 1 : 1;
     for (let attempt = 1; ; attempt += 1) {
       try {
-        return await this.attempt(spec);
+        return await this.attempt(spec, readBytes);
       } catch (error) {
         // A status is an answer, not a transport failure: only NetworkError (and its TimeoutError
         // subclass) is worth trying again.
@@ -165,7 +177,7 @@ export class VectorClient {
     }
   }
 
-  private async attempt(spec: RequestSpec): Promise<VectorResponse> {
+  private async attempt(spec: RequestSpec, readBytes: boolean): Promise<VectorResponse> {
     throwIfCancelled(this.signal);
 
     const Controller = hostAbortController();
@@ -198,17 +210,24 @@ export class VectorClient {
     try {
       const response = await this.fetch(spec.url, init);
       this.jar.capture(response.headers);
-      const body = await response.text();
+      const bytes = readBytes ? await readAsBytes(response) : undefined;
+      // `body` stays the UTF-8 reading in both modes: it is what `expect`, JSON and HTML see, and
+      // only the text dialect re-reads the bytes through the declared charset.
+      const body = bytes === undefined ? await response.text() : decodeUtf8(bytes);
       return {
         status: response.status,
         headers: headersToObject(response.headers),
         body,
+        ...(bytes !== undefined ? { bytes } : {}),
         url: response.url ?? spec.url,
       };
     } catch (cause) {
       // Cancellation first: an aborted fetch looks exactly like a transport failure, and reporting
       // it as one would put "the source is down" on screen when the user simply left.
       throwIfCancelled(this.signal);
+      // A host that cannot hand over the bytes is a limit of the host, not a network failure:
+      // dressing it as one would send someone debugging their connection.
+      if (cause instanceof ActionError) throw cause;
       if (timedOut) {
         throw new TimeoutError(`Request timed out: ${spec.method} ${spec.url}`);
       }
@@ -218,6 +237,17 @@ export class VectorClient {
       this.signal?.removeEventListener?.("abort", onCancel);
     }
   }
+}
+
+/** The response body as bytes, or a typed error naming the host surface that is missing. */
+async function readAsBytes(response: FetchResponse): Promise<Uint8Array> {
+  if (typeof response.arrayBuffer !== "function") {
+    throw new ActionError(
+      "This host's fetch response has no arrayBuffer(): an extraction with from: \"text\" needs " +
+        "the raw body to decode it per the response charset.",
+    );
+  }
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 /** tenacity's `wait_exponential(multiplier=1, min=1, max=30)`, `wait_fixed(1)`, `wait_fixed(0)`. */

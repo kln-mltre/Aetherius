@@ -66,6 +66,7 @@ export class VectorDriver implements ActDriver {
 
     const expect = asObject(render(step["expect"] ?? {}));
     const status = expect["status"];
+    const specs = asObject(step["extract"] ?? {});
 
     const response = await client.request({
       method: String(render(step["method"] ?? "GET")),
@@ -77,6 +78,10 @@ export class VectorDriver implements ActDriver {
       form: has(step, "form") ? render(step["form"]) : undefined,
       params: asOptionalObject(render(step["params"])),
       expectedStatus: typeof status === "number" ? status : undefined,
+      // Decided before the request goes out, because a body can only be read once. Safe to read
+      // statically: extraction specs are never rendered, so `from` is a literal — the same argument
+      // that lets `portability.ts` refuse XPath at validation time.
+      readBytes: wantsText(specs),
     });
 
     const outputs: Record<string, unknown> = {
@@ -84,12 +89,35 @@ export class VectorDriver implements ActDriver {
       headers: response.headers,
     };
 
-    const specs = asObject(step["extract"] ?? {});
     // Extraction specs are taken verbatim — a selector or a JSONPath is never rendered, on either
     // engine (see core/extraction/dispatch.py).
-    if (Object.keys(specs).length > 0) Object.assign(outputs, dispatchExtract(response.body, specs));
+    if (Object.keys(specs).length > 0) {
+      Object.assign(
+        outputs,
+        dispatchExtract(response.body, specs, {
+          bytes: response.bytes,
+          contentType: contentType(response.headers),
+        }),
+      );
+    }
     return outputs;
   }
+}
+
+/** Does any spec of this `extract` block ask for the raw body? */
+function wantsText(specs: Readonly<Record<string, unknown>>): boolean {
+  return Object.values(specs).some((raw) => {
+    if (raw === null || typeof raw !== "object") return false;
+    return (raw as Record<string, unknown>)["from"] === "text";
+  });
+}
+
+/** Response headers are lower-cased by `headersToObject`, but a host may not be so tidy. */
+function contentType(headers: Readonly<Record<string, string>>): string | undefined {
+  for (const [name, value] of Object.entries(headers)) {
+    if (name.toLowerCase() === "content-type") return value;
+  }
+  return undefined;
 }
 
 function headerMap(value: unknown): Record<string, string> {

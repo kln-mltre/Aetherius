@@ -5,6 +5,78 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.4] - 2026-08-13
+
+Un second appendice à la Phase 3, ouvert par le même port réel que le premier : l'extraction d'Act I
+ne connaissait que le JSON et le HTML, si bien qu'une réponse **à lignes** — iCalendar, CSV,
+`text/plain` — était hors de portée d'un Blueprint. Elle gagne sa troisième et dernière forme,
+`from: "text"`, dans les deux moteurs. Une valeur d'énumération, et rien d'autre.
+
+### Ajouté
+- **Jalon 3-I — Extraire un corps de réponse en texte**
+  ([docs/acts/vector.md](docs/acts/vector.md#from-text--les-formats-à-lignes),
+  [docs/phase-3/3-i-extraction-texte.md](docs/phase-3/3-i-extraction-texte.md)). Le besoin vient de
+  [UKit](docs-ukit/README.md) : à peu près aucune université française n'expose un serveur de
+  planning interrogeable sans authentification, alors que presque toutes offrent un **export iCal**.
+  C'est la seule voie qui ne demande pas de porter un produit de planning par établissement.
+  - **`extract: { x: { from: "text" } }`** rend le corps décodé, tel quel. Pas de parseur, et pas de
+    `from: "regex"` : une seconde grammaire d'expressions régulières entre Python et JavaScript
+    finirait par diverger, et le filtrage d'un texte reste applicatif.
+  - **Le corps n'est jamais publié tout seul.** `http.request` continue de ne rendre que
+    `status_code` et `headers` : sans extraction nommée, la charge utile ne traîne ni dans les
+    journaux, ni dans les événements, ni dans la mémoire d'un run qui n'en a que faire. C'est
+    l'extraction qui dit **ce qu'on garde**.
+  - **Le décodage suit l'en-tête de réponse**, avec repli UTF-8 et remplacement des octets invalides
+    — un corps binaire ne lève pas : ce n'est pas au moteur de deviner qu'on s'est trompé de source.
+    Un BOM est conservé, comme le fait le codec Python.
+  - **La table d'encodages est bornée et partagée par les deux moteurs** (latin-1 **strict**, cp1252,
+    UTF-8 pour toute autre étiquette) plutôt que déléguée à leurs plateformes. C'est la décision
+    centrale du jalon : `TextDecoder` est absent de React Native et complet sous Node, donc la
+    solution paresseuse aurait mis la CI d'accord et le téléphone en désaccord — sur la première
+    source mal étiquetée, en production. Le moteur embarqué porte donc son décodeur UTF-8
+    (algorithme WHATWG, soit un `U+FFFD` par sous-partie maximale, ce que rend `errors="replace"` de
+    CPython) et sa table mono-octet, **sans dépendance ajoutée**.
+  - **Sur l'appareil, les octets ne sont lus que si un `from: "text"` est déclaré** : le driver
+    scanne le bloc `extract` avant d'envoyer la requête — lecture statique légitime, les specs
+    n'étant jamais rendues — et n'appelle `arrayBuffer()` que dans ce cas. Une requête sans
+    extraction texte emprunte exactement le chemin d'avant et ne paie pas le pont base64 de React
+    Native ; un hôte dont la réponse ne sait pas rendre ses octets obtient une erreur **typée qui le
+    nomme**, jamais un décodage UTF-8 tacite ni une erreur réseau trompeuse.
+  - **`path`, `where`, `fields`, `selector`, `selector_type`, `attr` et `multiple` sont refusés** avec
+    `from: "text"`, **à la validation** et par les deux moteurs : un Blueprint qui croit filtrer est
+    pire qu'un Blueprint qui échoue. La règle vit dans les deux validateurs sémantiques, pas dans la
+    couche de portabilité du moteur embarqué — elle appartient au contrat.
+  - **Corpus de conformance** : `run/18-text-body-and-charset` sert quatre routes (latin-1 bien
+    étiqueté, UTF-8 **mal** étiqueté — les deux moteurs doivent produire le *même* mojibake —,
+    `Content-Type` sans `charset`, corps vide qui rend `""` et non `null`), ce qui a demandé un champ
+    de route **`charset`** aux deux serveurs de fixtures ; `validation/37-text-extract-with-path`
+    fige le refus. Les tests unitaires ajoutent une table d'octets UTF-8 invalides dont les valeurs
+    attendues viennent de CPython et sont recopiées dans le test JavaScript : c'est ce qui garde les
+    deux décodeurs alignés sur les cas dégénérés qu'un serveur ne peut pas facilement servir.
+  - **Exemple exécutable zéro configuration** :
+    [`examples/vector/ical-planning-text`](examples/vector/ical-planning-text.blueprint.json)
+    (export iCal anonyme d'un vrai serveur ADE, entrées figées sur une plage passée dont le contenu
+    reste servi — donc reproductible sans attendre une rentrée), avec sa **contre-épreuve conçue pour
+    échouer**, [`ical-error-page-probe`](examples/mobile/ical-error-page-probe.blueprint.json) : le
+    même export sans paramètres répond 500 avec une page HTML, et la garde de forme doit mordre.
+  - **Vérifié sur iPhone** : `caracteres: 21461` et `80712` **identiques** au moteur Python, accents
+    compris, et la sonde conçue pour échouer échoue au même step avec le même message. C'est la seule
+    vérification qui pouvait couvrir le pont d'octets de React Native (blob → base64 → natif), qui
+    n'existe nulle part ailleurs.
+  - `contracts/blueprint.schema.json` **ne bouge pas** — le bloc `extract` y était déjà ouvert ; seule
+    l'aide du paramètre, dans le contrat **généré** `contracts/actions.json`, nomme désormais les
+    trois formes.
+
+### Corrigé
+- **Un rendez-vous d'approbation pouvait s'annoncer non expiré alors qu'il venait de l'être.** Sans
+  rapport avec le jalon, trouvé parce que la suite du moteur embarqué échouait une fois sur trois :
+  `expired` comparait l'horloge à l'échéance, or un `setTimeout` peut se déclencher une fraction de
+  milliseconde avant que `Date.now()` ne l'atteigne. L'attente rendait donc `null` — la décision
+  n'arrivera plus — pendant que `expired` répondait encore `false`, deux réponses contradictoires sur
+  le même rendez-vous. Le minuteur fait désormais foi en plus de l'horloge. Aucune décision ne
+  pouvait être appliquée à tort (`resolve` était déjà gardé par l'état « résolu »), mais une surface
+  qui lit `expired` pour cesser d'afficher sa demande pouvait la laisser à l'écran.
+
 ## [0.5.3] - 2026-08-10
 
 Un correctif, pas un jalon : la Phase 3 reste close (3-A à 3-H). Une promesse du jalon 3-E — « une
@@ -1035,6 +1107,7 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
 [Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.3...HEAD
+[0.5.4]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.4
 [0.5.3]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.3
 [0.5.2]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.2
 [0.5.1]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.1

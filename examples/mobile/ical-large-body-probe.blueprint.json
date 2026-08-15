@@ -1,0 +1,35 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.ical.large.probe",
+  "description": "Act I, extraction 'from: text' : un corps volumineux traverse-t-il intact le pont d'octets de l'appareil ? Sur React Native, une lecture en octets passe par un blob, une conversion base64 et le pont natif — un chemin que Node n'emprunte pas, donc que seul un telephone eprouve. Le calendrier des jours feries francais fait ~82 Ko et porte des accents (Noel, Paques) : un ecart d'un seul caractere entre les deux moteurs designe ce pont. Zero configuration.",
+  "act": "vector",
+  "vars": {
+    "url": "https://calendar.google.com/calendar/ical/fr.french%23holiday%40group.v.calendar.google.com/public/basic.ics"
+  },
+  "steps": [
+    {
+      "id": "cal",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.url }}",
+      "expect": { "status": 200 },
+      "extract": { "ics": { "from": "text" } }
+    },
+    {
+      "id": "shape",
+      "action": "assert",
+      "condition": "{{ 'BEGIN:VCALENDAR' in steps.cal.ics }}",
+      "message": "ICAL_INVALID: la réponse n'est pas un calendrier"
+    },
+    {
+      "id": "accents",
+      "action": "assert",
+      "condition": "{{ 'Noël' in steps.cal.ics }}",
+      "message": "ICAL_ENCODING: le corps a été décodé sans suivre le charset de la réponse"
+    }
+  ],
+  "outputs": {
+    "caracteres": "{{ steps.cal.ics | length }}",
+    "accents": "{{ 'Noël' in steps.cal.ics }}"
+  }
+}

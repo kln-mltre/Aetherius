@@ -19,10 +19,17 @@ import {
 } from "../dist/errors.js";
 import { RunEngine } from "../dist/runtime/engine.js";
 
-/** A response shaped like the slice of `fetch` the engine reads. */
-function reply({ status = 200, body = "", headers = {}, setCookie, url } = {}) {
+/**
+ * A response shaped like the slice of `fetch` the engine reads.
+ *
+ * `bytes` opts into the raw-body surface a `from: "text"` extraction needs; leaving it out is how a
+ * host without `arrayBuffer()` is reproduced, which is a case the engine has to name rather than
+ * decode as UTF-8 behind the author's back.
+ */
+function reply({ status = 200, body = "", headers = {}, setCookie, url, bytes } = {}) {
   const map = new Map(Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]));
-  return {
+  const read = { text: 0, arrayBuffer: 0 };
+  const response = {
     status,
     ...(url !== undefined ? { url } : {}),
     headers: {
@@ -30,8 +37,21 @@ function reply({ status = 200, body = "", headers = {}, setCookie, url } = {}) {
       forEach: (callback) => map.forEach((value, name) => callback(value, name)),
       ...(setCookie !== undefined ? { getSetCookie: () => setCookie } : {}),
     },
-    text: async () => body,
+    text: async () => {
+      read.text += 1;
+      return body;
+    },
+    ...(bytes !== undefined
+      ? {
+          arrayBuffer: async () => {
+            read.arrayBuffer += 1;
+            return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+          },
+        }
+      : {}),
+    read,
   };
+  return response;
 }
 
 /** Records every call and answers with whatever *handler* returns (an Error is thrown). */
@@ -365,4 +385,67 @@ test("each failure mode carries its own error class", async () => {
     ActionError,
   );
   assert.ok(new TimeoutError("x") instanceof NetworkError, "a timeout is retryable like a transport error");
+});
+
+// ── Le corps en texte ────────────────────────────────────────────────────────
+
+test("an extraction from: text reads the raw body and decodes it per the response charset", async () => {
+  const bytes = new Uint8Array(Buffer.from("BEGIN:VCALENDAR\r\nSUMMARY:Noël\r\n", "latin1"));
+  const answer = reply({
+    headers: { "Content-Type": "text/calendar; charset=iso-8859-1" },
+    body: "never read",
+    bytes,
+  });
+  const { result } = await run(
+    { url: "https://cal.test/ics", extract: { ics: { from: "text" } } },
+    () => answer,
+    { outputs: { ics: "{{ steps.call.ics }}" } },
+  );
+
+  assert.equal(result.status, "success");
+  assert.equal(result.outputs.ics, "BEGIN:VCALENDAR\r\nSUMMARY:Noël\r\n");
+  // The body is read once, as bytes: reading it twice is not allowed by any host.
+  assert.deepEqual(answer.read, { text: 0, arrayBuffer: 1 });
+});
+
+test("a step without a text extraction keeps reading the body as text", async () => {
+  // The whole point of deciding before the request: on a device the bytes go through a base64
+  // bridge, and no request that does not need them should pay for it.
+  const answer = reply({ body: '{"id": 1}', bytes: new Uint8Array([0x7b, 0x7d]) });
+  const { result } = await run(
+    { url: "https://api.test/x", extract: { id: { from: "json", path: "$.id" } } },
+    () => answer,
+    { outputs: { id: "{{ steps.call.id | first }}" } },
+  );
+
+  assert.equal(result.outputs.id, 1);
+  assert.deepEqual(answer.read, { text: 1, arrayBuffer: 0 });
+});
+
+test("a host whose response cannot hand over bytes says so, and is not a network failure", async () => {
+  const { result } = await run(
+    { url: "https://cal.test/ics", extract: { ics: { from: "text" } } },
+    () => reply({ body: "BEGIN:VCALENDAR" }),
+  );
+
+  assert.equal(result.status, "failed");
+  assert.match(result.error, /arrayBuffer\(\)/);
+  assert.match(result.error, /from: "text"/);
+  assert.doesNotMatch(result.error, /Transport error/);
+});
+
+test("the status assertion still reads the UTF-8 body in bytes mode", async () => {
+  // `expect`, JSON and HTML see the same string either way; only the text dialect re-reads.
+  const { result } = await run(
+    {
+      url: "https://cal.test/ics",
+      expect: { status: 200 },
+      extract: { ics: { from: "text" } },
+    },
+    () => reply({ status: 500, bytes: new Uint8Array(Buffer.from("boom é", "utf8")) }),
+  );
+
+  assert.equal(result.status, "failed");
+  assert.match(result.error, /Expected HTTP 200, got 500/);
+  assert.match(result.error, /boom é/);
 });

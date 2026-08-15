@@ -15,10 +15,15 @@ Route vocabulary (see conformance/README.md):
     "GET /home":   {"html": "<!doctype html>…"}
     "POST /login": {"status": 302, "body": "", "headers": {"Location": "/home"}}
     "POST /echo":  {"echo": true}
+    "GET /csv":    {"body": "Prénom", "charset": "iso-8859-1", "headers": {...}}
 
 ``echo`` answers with a JSON description of the request received — method, path, query string,
 body and headers. It is what lets a case prove that both engines encode a form body, a query
 string and a `Content-Type` identically, without the harness having to know how they should.
+
+``charset`` encodes the literal ``body`` in something other than UTF-8, which is the only way to
+serve the mislabelled and non-UTF-8 responses milestone 3-I is about. An unknown label **raises**
+rather than falling back: a case that silently served UTF-8 would pass while proving nothing.
 """
 
 from __future__ import annotations
@@ -47,9 +52,22 @@ def _render(route: dict[str, Any], request: dict[str, Any]) -> tuple[int, dict[s
         body = str(route["html"]).encode("utf-8")
         headers.setdefault("Content-Type", "text/html; charset=utf-8")
     else:
-        body = str(route.get("body", "")).encode("utf-8")
+        body = str(route.get("body", "")).encode(_charset(route))
         headers.setdefault("Content-Type", "text/plain; charset=utf-8")
     return int(route.get("status", 200)), headers, body
+
+
+# The twin server (sdks/engine/test/fixture-server.mjs) can only reach these two, and both halves
+# must serve the same bytes.
+_CHARSETS = {"utf-8": "utf-8", "iso-8859-1": "iso-8859-1", "latin-1": "iso-8859-1"}
+
+
+def _charset(route: dict[str, Any]) -> str:
+    label = str(route.get("charset", "utf-8")).lower()
+    codec = _CHARSETS.get(label)
+    if codec is None:
+        raise ValueError(f"Fixture route charset {label!r} is not supported by both harnesses.")
+    return codec
 
 
 def _handler_class(routes: dict[str, Any]) -> type[BaseHTTPRequestHandler]:

@@ -57,8 +57,9 @@ plus les dépendances sont lourdes (installées à la demande via des *extras*).
 ### Act I — Vector
 Client HTTP robuste : requêtes GET/POST, encodage form/JSON, en-têtes, retries avec backoff,
 pagination, stratégies d'authentification (cookie, bearer, basic, form-login type CAS), extraction
-déclarative (JSONPath pour le JSON, CSS/XPath pour le HTML). Remplace les services `axios` écrits à
-la main ; les constantes magiques disséminées deviennent des `inputs` typés et documentés.
+déclarative (JSONPath pour le JSON, CSS/XPath pour le HTML, le corps décodé pour les formats à
+lignes type iCalendar). Remplace les services `axios` écrits à la main ; les constantes magiques
+disséminées deviennent des `inputs` typés et documentés.
 
 ### Act II — Continuum
 Automatisation d'un vrai navigateur (Playwright) qui suit le Blueprint à la lettre : navigation,
@@ -734,7 +735,8 @@ binaire : un **registre** le résout entre un socle embarqué et une surcouche d
 **un site qui change se répare sans republier sur les stores**. Le jalon 3-G clôt la phase en
 **portant un cas d'usage mobile réel** — quatre API tierces et un parcours authentifiant complet —
 et en livrant le guide de migration ; le jalon 3-H, appendice ouvert par ce port, laisse le même
-manifeste **ajouter** un Blueprint sous un préfixe réservé. Référence d'usage :
+manifeste **ajouter** un Blueprint sous un préfixe réservé, et le jalon 3-I, ouvert par le même,
+rend atteignables les réponses qui ne sont ni JSON ni HTML (`from: "text"` — iCalendar, CSV). Référence d'usage :
 [docs/embedded.md](docs/embedded.md).
 
 - [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
@@ -935,8 +937,33 @@ manifeste **ajouter** un Blueprint sous un préfixe réservé. Référence d'usa
   [docs/embedded.md](docs/embedded.md#étendre--les-noms-réservés),
   [docs/phase-3/3-h-portails.md](docs/phase-3/3-h-portails.md).
 
-**Phase 3 terminée (A–H).** Le même Blueprint tourne sur une machine et sur un téléphone, se corrige
-et s'ajoute à distance, et un cas d'usage réel le prouve.
+- [x] **3-I** — **Extraire un corps de réponse en texte.** Second appendice, et la même origine que le
+  premier : un port réel a buté sur une limite du contrat. L'extraction d'Act I ne connaissait que
+  `json` et `html`, et `http.request` publie `status_code` et `headers` mais **jamais le corps** — une
+  réponse qui n'est ni l'un ni l'autre était donc hors de portée d'un Blueprint. C'est le cas de tous
+  les formats à lignes, dont **iCalendar**, et le besoin est concret : à peu près aucune université
+  française n'expose un serveur de planning interrogeable sans authentification, alors que presque
+  toutes offrent un lien d'abonnement. Le jalon ajoute **une valeur d'énumération**, `from: "text"`, et
+  rien d'autre — pas de parseur, pas de `regex` (deux moteurs, un contrat : ce qui n'est pas identique
+  par construction finit par diverger), et **aucune sortie de step ne grossit** : c'est l'extraction
+  nommée qui dit ce qu'on garde, un corps ne traîne pas dans les journaux de ceux qui n'en veulent pas.
+  Le point qui décidait de tout était le **décodage**, et il a été tranché à l'inverse de la facilité :
+  plutôt que chaque moteur délègue à sa plateforme, les deux portent la **même table d'encodages
+  bornée** (latin-1 strict, cp1252, UTF-8 pour tout le reste) et le moteur embarqué écrit ses propres
+  décodeurs — `TextDecoder` est absent de React Native et complet sous Node, s'en servir aurait mis la
+  CI d'accord et le téléphone en désaccord, sur la première source mal étiquetée. Sur l'appareil, les
+  octets ne sont lus (`arrayBuffer`, donc le pont base64 de React Native) **que** si un `from: "text"`
+  est déclaré : une requête qui n'en veut pas emprunte exactement le chemin d'avant. Les clés des
+  autres dialectes (`path`, `where`, `fields`, `selector`, …) sont **refusées à la validation** par les
+  deux moteurs — un Blueprint qui croit filtrer est pire qu'un Blueprint qui échoue. Exemple exécutable
+  zéro configuration : [`examples/vector/ical-planning-text`](examples/vector/ical-planning-text.blueprint.json)
+  (export iCal anonyme d'un vrai serveur ADE), avec sa contre-épreuve conçue pour échouer — la page
+  d'erreur du même serveur, qui ne doit **pas** passer pour un calendrier vide.
+  [docs/acts/vector.md](docs/acts/vector.md#from-text--les-formats-à-lignes),
+  [docs/phase-3/3-i-extraction-texte.md](docs/phase-3/3-i-extraction-texte.md).
+
+**Phase 3 terminée (A–I).** Le même Blueprint tourne sur une machine et sur un téléphone, se corrige
+et s'ajoute à distance, et un cas d'usage réel le prouve — et continue de désigner ce qui manque.
 
 > **Correctif 0.5.3 — une source injoignable atteint enfin `unavailable`.** La phase reste close ;
 > ceci n'ouvre pas de jalon. Le port d'UKit a trouvé sur iPhone que le signal d'échec de chargement

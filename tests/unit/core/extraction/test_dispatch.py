@@ -54,7 +54,28 @@ def test_html_specs_carry_their_own_defaults() -> None:
     assert extracted == {"quote": ["Hello"], "href": ["/page/2/"], "first": "Ada"}
 
 
-def test_any_from_other_than_json_routes_to_the_html_dialect() -> None:
+def test_any_from_other_than_json_or_text_routes_to_the_html_dialect() -> None:
     # The dispatch is an if/else, not a lookup table; pinning it keeps the embedded twin honest.
     extracted = dispatch_extract(_PAGE, {"quote": {"from": "dom", "selector": "span.text::text"}})
     assert extracted == {"quote": ["Hello"]}
+
+
+def test_text_dialect_carries_the_content_type_down() -> None:
+    extracted = dispatch_extract(
+        "Prénom".encode("iso-8859-1"),
+        {"raw": {"from": "text"}},
+        content_type="text/csv; charset=iso-8859-1",
+    )
+    assert extracted == {"raw": "Prénom"}
+
+
+def test_the_three_dialects_coexist_in_one_block() -> None:
+    # The text dialect follows the header, the HTML one keeps decoding as UTF-8 with replacement:
+    # adding the third form changed nothing for the other two.
+    extracted = dispatch_extract(
+        _PAGE,
+        {"quote": {"from": "html", "selector": "span.text::text"}, "raw": {"from": "text"}},
+        content_type="text/html; charset=utf-8",
+    )
+    assert extracted["quote"] == ["Hello"]
+    assert extracted["raw"] == _PAGE.decode()

@@ -10,7 +10,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { ExtractionError } from "../dist/errors.js";
-import { dispatchExtract, extractHtml, extractJson, jsonPathFind } from "../dist/extraction/index.js";
+import {
+  decodeUtf8,
+  dispatchExtract,
+  extractHtml,
+  extractJson,
+  jsonPathFind,
+  resolveCharset,
+} from "../dist/extraction/index.js";
 
 function failure(run) {
   try {
@@ -227,4 +234,94 @@ test("'multiple' is tested for truthiness, as Python does", () => {
   assert.equal(dispatchExtract(PAGE, spec(0)).a, "Ada");
   assert.equal(dispatchExtract(PAGE, spec("")).a, "Ada");
   assert.deepEqual(dispatchExtract(PAGE, spec(1)).a, ["Ada", "Alan"]);
+});
+
+// ── Le corps en texte ────────────────────────────────────────────────────────
+
+/** The dialect through its real entry point: bytes plus the header the client would have read. */
+function text(bytes, contentType) {
+  const extracted = dispatchExtract("", { raw: { from: "text" } }, { bytes, contentType });
+  return extracted.raw;
+}
+
+const bytesOf = (value, encoding = "utf8") => new Uint8Array(Buffer.from(value, encoding));
+
+test("a text extraction renders the whole decoded body", () => {
+  assert.equal(text(bytesOf("BEGIN:VCALENDAR\r\nSUMMARY:Noël\r\n"), "text/calendar; charset=utf-8"),
+    "BEGIN:VCALENDAR\r\nSUMMARY:Noël\r\n");
+});
+
+test("a declared charset is honoured, and a mislabelled body mojibakes identically", () => {
+  assert.equal(text(bytesOf("Prénom;Zoé", "latin1"), "text/csv; charset=ISO-8859-1"), "Prénom;Zoé");
+  // UTF-8 bytes served as latin-1: the mojibake is the correct answer, and the Python engine
+  // produces the same one. Guessing the encoding would make the two differ on real sources.
+  assert.equal(text(bytesOf("Prénom"), "text/csv; charset=iso-8859-1"), "PrÃ©nom");
+});
+
+test("windows-1252 maps its own window, undefined bytes included", () => {
+  assert.equal(text(new Uint8Array([0x80, 0x20, 0x99, 0x20, 0x8d]), "text/plain; charset=windows-1252"),
+    "€ ™ �");
+});
+
+test("no charset, an unknown label, or no header at all mean UTF-8", () => {
+  assert.equal(text(bytesOf("café")), "café");
+  assert.equal(text(bytesOf("café"), "text/calendar"), "café");
+  assert.equal(text(bytesOf("café"), "text/plain; charset=shift_jis"), "café");
+});
+
+test("an empty body is an empty string, not null", () => {
+  assert.equal(text(new Uint8Array(0), "text/plain"), "");
+});
+
+test("a binary body is replaced, never thrown", () => {
+  // An image means the Blueprint aimed at the wrong source; the engine is not the one who can say so.
+  assert.equal(text(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0xfe]), "image/png"),
+    "�PNG\r\n\x1a\n��");
+});
+
+test("a BOM is kept, as the Python codec keeps it", () => {
+  assert.equal(text(new Uint8Array([0xef, 0xbb, 0xbf, 0x42]), "text/plain"), "﻿B");
+});
+
+test("invalid UTF-8 replaces one character per maximal subpart", () => {
+  // Values computed with CPython's errors="replace" and copied here: the count is observable, and
+  // "close enough" would mean two engines rendering a different string for the same broken body.
+  const cases = [
+    [[0xff], "�"],
+    [[0xff, 0xfe], "��"],
+    [[0xc3], "�"],
+    [[0xc3, 0x28], "�("],
+    [[0xe0, 0xa0], "�"],
+    [[0xf0, 0x9f, 0x98], "�"],
+    [[0xf0, 0x9f, 0x98, 0x81], "\u{1F601}"],
+    [[0xc0, 0xaf], "��"],
+    [[0xed, 0xa0, 0x80], "���"],
+    [[0xf4, 0x90, 0x80, 0x80], "����"],
+    [[0xe0, 0x80, 0xaf], "���"],
+  ];
+  for (const [raw, expected] of cases) {
+    assert.equal(decodeUtf8(new Uint8Array(raw)), expected, `bytes ${raw}`);
+  }
+});
+
+test("a long body crosses the chunk boundary unharmed", () => {
+  // The decoders build the string in chunks; a body of a few hundred kilobytes is the normal size
+  // of a year of iCal, and `fromCharCode` over the whole of it would blow the stack.
+  const long = "é".repeat(20_000);
+  assert.equal(text(bytesOf(long)), long);
+  assert.equal(text(bytesOf(long, "latin1"), "text/plain; charset=latin-1"), long);
+});
+
+test("the charset parameter is read, not the media type", () => {
+  assert.equal(resolveCharset(undefined), "utf-8");
+  assert.equal(resolveCharset("text/plain"), "utf-8");
+  assert.equal(resolveCharset('text/plain; charset="ISO-8859-1"'), "iso-8859-1");
+  assert.equal(resolveCharset("text/plain;charset=latin-1"), "iso-8859-1");
+  assert.equal(resolveCharset("text/plain; charset = Windows-1252 "), "cp1252");
+  assert.equal(resolveCharset("text/plain; boundary=charset=x"), "utf-8");
+});
+
+test("without bytes, the text dialect renders the string it was given", () => {
+  // The path the conformance `extraction` cases take: no response, so nothing to re-decode.
+  assert.equal(dispatchExtract("BEGIN:VCALENDAR", { raw: { from: "text" } }).raw, "BEGIN:VCALENDAR");
 });

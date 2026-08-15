@@ -111,6 +111,8 @@ exécutable.
                                                                                             ├──► 3-G References
                                                                                             │
                                                                                             └──► 3-H Noms reserves
+
+   3-B Expressions & extraction ──────────────────────────────────────────────► 3-I Extraction texte
 ```
 
 | Jalon | Spécification | Dépend de | Résumé |
@@ -123,10 +125,23 @@ exécutable.
 | 3-F | [3-f-delivery.md](3-f-delivery.md) | 3-E | **Livraison des Blueprints** : socle embarqué dans le binaire, surcouche distante avec cache, contrôle d'intégrité, repli et interrupteur d'arrêt. Corriger un site cassé sans publier sur les stores — le vrai gain produit. **Livré.** |
 | 3-G | [3-g-reference.md](3-g-reference.md) | 3-F | Blueprints de référence exécutables sous `examples/mobile/reference/` (quatre API réelles et un parcours SSO complet) et **guide de migration** : comment un service HTTP et une WebView cachée deviennent des Blueprints. **Livré.** |
 | 3-H | [3-h-portails.md](3-h-portails.md) | 3-F | Étendre la surcouche : un préfixe de noms **réservé** sous lequel un manifeste a le droit d'*ajouter* un Blueprint absent du binaire, en opt-in et borné par un périmètre de secrets obligatoire. Le besoin vient du consommateur — ajouter le portail d'une nouvelle faculté sans publier sur les stores. Le format de manifeste ne change pas. **Livré.** |
+| 3-I | [3-i-extraction-texte.md](3-i-extraction-texte.md) | 3-B | Une extraction `from: "text"` : le corps décodé d'une réponse, dans les deux moteurs. Une réponse qui n'est ni JSON ni HTML — iCalendar, CSV, `text/plain` — était hors de portée d'un Blueprint. Le besoin vient encore du consommateur : atteindre les emplois du temps universitaires par leur export iCal, seule voie qui ne demande pas un port par produit de planning. Le décodage suit l'en-tête de réponse, avec une **table d'encodages bornée et partagée** par les deux moteurs plutôt que déléguée à leurs plateformes. **Livré.** |
 
-Le jalon **3-H** est un appendice : la phase était terminée sans lui, et il ne s'est ouvert que parce
-qu'un port réel a rencontré la limite de la garde posée en 3-F. C'était le bon moment pour le
-traiter — après avoir vu la règle d'origine tenir, pas avant.
+Les jalons **3-H** et **3-I** sont des appendices : la phase était terminée sans eux, et chacun s'est
+ouvert parce qu'un port réel a rencontré une limite — la garde de 3-F pour le premier, les deux seules
+formes d'extraction de 3-B pour le second. C'était le bon moment pour les traiter : après avoir vu la
+règle d'origine tenir, pas avant.
+
+> **Ce que 3-I a appris, et qui vaut au-delà de lui.** Une capacité qui a l'air d'être « rendre le
+> corps » cachait la seule question qui compte pour deux moteurs : **qui décide de l'encodage**. La
+> réponse paresseuse — chacun délègue à sa plateforme — aurait passé la CI (Node a ICU) et divergé
+> sur l'appareil (React Native n'a pas `TextDecoder`). Écrire la table dans le contrat, et non dans
+> les plateformes, est la même décision que le point 4 des décisions d'architecture, prise pour la
+> même raison.
+
+C'est le résultat attendu d'un consommateur réel, et non un signe que la phase avait été mal cadrée :
+le jalon 3-G en avait déjà trouvé huit en portant six sources. Un moteur qui n'a jamais servi à
+quelqu'un d'autre n'a pas de manques — il a des manques qu'on n'a pas encore vus.
 
 > **Correctif 0.5.3, sans jalon.** Le même port a ensuite trouvé, sur iPhone, qu'une source
 > injoignable n'atteignait **jamais** la famille `unavailable` : le signal d'échec de chargement de
@@ -157,15 +172,17 @@ Deux adaptations pour un jalon TypeScript :
 
 > **Note de portée.** Comme en Phase 2, tout ce qui toucherait la table des `capabilities`, les
 > contrats (`contracts/*.json|yaml`), l'enum `EventType` ou le dispatch d'un driver est **différé au
-> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les **huit jalons sont
-> livrés** (3-A à 3-G, plus l'appendice 3-H) : `contracts/actions.json` existe (généré depuis le registre Python et gardé), les deux
+> jalon concerné** — sinon les tests anti-dérive et de contrats cassent. Les **neuf jalons sont
+> livrés** (3-A à 3-G, plus les appendices 3-H et 3-I) : `contracts/actions.json` existe (généré depuis le registre Python et gardé), les deux
 > mini-langages sont là, les Blueprints `vector` **et** `continuum` **s'exécutent** sur l'appareil,
 > une application les consomme par une **façade** (secrets, `confirm`, annulation, modèle d'erreur),
 > et ils ne sont plus figés dans le binaire — un **registre** les résout entre un socle embarqué et
 > une surcouche distante vérifiée. Le jalon 3-F définit d'ailleurs le seul **nouveau** contrat de la
 > phase, et il est *applicatif* (le format du manifeste). Le jalon 3-G **porte un cas d'usage
-> mobile réel** en Blueprints et livre le guide de migration. Le jalon 3-H, enfin, laisse ce même
+> mobile réel** en Blueprints et livre le guide de migration. Le jalon 3-H laisse ce même
 > manifeste **ajouter** un Blueprint sous un préfixe réservé, sans changer son format d'un octet.
+> Le jalon 3-I, enfin, ajoute au vocabulaire d'extraction sa **troisième et dernière** forme,
+> `from: "text"` — une valeur d'énumération, aucune action ni clé de schéma.
 > Le corpus de conformance vit sous [`conformance/`](../../conformance/README.md) et
 > `make conformance` rejoue les deux moteurs — depuis 3-C sur des **runs entiers**, pas seulement des
 > verdicts, et depuis 3-D sur des runs **navigateur** (un cas déclare alors `requires: "browser"`,
@@ -175,4 +192,6 @@ Deux adaptations pour un jalon TypeScript :
 > **Une seule évolution de contrat sur toute la phase** : un fichier **ajouté** au jalon 3-A
 > (`contracts/actions.json`), et une **clé ajoutée** au jalon 3-G — `options.stealth.user_agent`,
 > qui était documentée et implémentée côté embarqué mais absente du schéma, donc refusée par les
-> deux moteurs. Un port réel l'a trouvée en une requête.
+> deux moteurs. Un port réel l'a trouvée en une requête. Le jalon 3-I n'y ajoute rien :
+> `blueprint.schema.json` laisse déjà le bloc `extract` ouvert, et seule l'aide de son paramètre —
+> une ligne du contrat **généré** — nomme désormais les trois formes.

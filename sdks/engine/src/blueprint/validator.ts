@@ -60,6 +60,7 @@ function validateStep(step: StepModel, inheritedAct: string, path: string): void
     throw rejection(step, act, path);
   }
 
+  checkExtractDialects(step, stepLabel(step), path);
   checkPortableParams(step, stepLabel(step), path);
 
   for (const field of nestedStepFields(step.action)) {
@@ -75,6 +76,41 @@ function validateStep(step: StepModel, inheritedAct: string, path: string): void
     nested.forEach((child, index) =>
       // Nested steps inherit the enclosing step's effective act.
       validateStep(child as StepModel, act, `${path}.${field}[${index}]`),
+    );
+  }
+}
+
+/**
+ * Keys of the JSON and HTML dialects. `from: "text"` renders the whole decoded body, so none of them
+ * can do anything — and a spec carrying one believes it filters when it does not. Mirror of
+ * `core/blueprint/validator.py`: this rule is the contract's, not this engine's.
+ */
+const TEXT_FOREIGN_KEYS = [
+  "path",
+  "where",
+  "fields",
+  "selector",
+  "selector_type",
+  "attr",
+  "multiple",
+] as const;
+
+/** Throw unless every extraction spec of *step* agrees with the dialect it declares. */
+function checkExtractDialects(step: StepModel, label: string, path: string): void {
+  const extract = step["extract"];
+  if (extract === null || typeof extract !== "object" || Array.isArray(extract)) return;
+
+  for (const [name, raw] of Object.entries(extract as Record<string, unknown>)) {
+    if (raw === null || typeof raw !== "object") continue;
+    const spec = raw as Record<string, unknown>;
+    if (spec["from"] !== "text") continue;
+
+    const foreign = TEXT_FOREIGN_KEYS.filter((key) => key in spec);
+    if (foreign.length === 0) continue;
+    throw new BlueprintValidationError(
+      `Step ${label}: extraction '${name}' declares from='text' with ` +
+        `${foreign.map((key) => `'${key}'`).join(", ")}: a text extraction returns the whole ` +
+        `decoded body, so there is nothing to select or filter (at ${path}.extract.${name}).`,
     );
   }
 }

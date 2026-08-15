@@ -134,6 +134,14 @@ class VectorDriver(SharedActionsMixin):
 
         extract_specs: dict[str, Any] = p.get("extract") or {}
         if extract_specs:
-            outputs.update(dispatch_extract(response.content, extract_specs))
+            # The Content-Type travels with the bytes: the text dialect decodes per the header
+            # (core/extraction/text_extractor.py), the other two do not care.
+            outputs.update(
+                dispatch_extract(
+                    response.content,
+                    extract_specs,
+                    content_type=response.headers.get("content-type"),
+                )
+            )
 
         return outputs

@@ -14,38 +14,52 @@
 import { pyTruth } from "../expr/index.js";
 import { extractHtml, type HtmlExtractSpec } from "./html.js";
 import { extractJson, type JsonExtractSpec } from "./json.js";
+import { extractText, type BodySource, type TextExtractSpec } from "./text.js";
 
 export type { HtmlExtractSpec } from "./html.js";
 export type { JsonExtractSpec } from "./json.js";
+export type { BodySource, TextExtractSpec } from "./text.js";
+export { decodeBody, decodeUtf8, resolveCharset } from "./charset.js";
 export { extractHtml } from "./html.js";
 export { extractJson } from "./json.js";
+export { extractText } from "./text.js";
 export { jsonPathFind, parseJsonPath } from "./jsonpath.js";
 export { evaluateWhere, parseWhere } from "./where.js";
 
 /**
- * Build the two spec maps from a step's raw `extract` block and run them against *body*.
+ * Build the three spec maps from a step's raw `extract` block and run them against *body*.
  *
  * Defaults mirror `core/extraction/dispatch.py` exactly: `from` defaults to `json`, `path` to `$`,
  * `selector_type` to `css`, `multiple` to `true`. Specs are taken verbatim — neither engine renders
  * `{{ }}` inside a selector or a path, and only changing both at once could.
+ *
+ * *source* carries the raw bytes and the `Content-Type` when the caller kept them; only the text
+ * dialect reads it, and only it can decode per the declared charset.
  */
 export function dispatchExtract(
   body: string,
   rawSpecs: Readonly<Record<string, unknown>>,
+  source: BodySource = {},
 ): Record<string, unknown> {
   const jsonSpecs: Record<string, JsonExtractSpec> = {};
   const htmlSpecs: Record<string, HtmlExtractSpec> = {};
+  const textSpecs: Record<string, TextExtractSpec> = {};
 
   for (const [name, raw] of Object.entries(rawSpecs)) {
     const spec = (raw ?? {}) as Record<string, unknown>;
-    if ((spec["from"] ?? "json") === "json") {
+    const from = spec["from"] ?? "json";
+    if (from === "json") {
       jsonSpecs[name] = {
         from: "json",
         path: asString(spec["path"], "$"),
         where: optionalString(spec["where"]),
         fields: asFields(spec["fields"]),
       };
+    } else if (from === "text") {
+      textSpecs[name] = { from: "text" };
     } else {
+      // Anything unknown stays HTML, as on the Python side: tightening it here would reject
+      // Blueprints that run today, for a typo the validator is better placed to catch.
       htmlSpecs[name] = {
         from: "html",
         selector: asString(spec["selector"], ""),
@@ -61,6 +75,7 @@ export function dispatchExtract(
   return {
     ...(Object.keys(jsonSpecs).length > 0 ? extractJson(body, jsonSpecs) : {}),
     ...(Object.keys(htmlSpecs).length > 0 ? extractHtml(body, htmlSpecs) : {}),
+    ...(Object.keys(textSpecs).length > 0 ? extractText(body, textSpecs, source) : {}),
   };
 }
 

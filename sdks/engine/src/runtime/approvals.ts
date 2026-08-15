@@ -66,14 +66,21 @@ export class Rendezvous {
   private decision: Decision | null = null;
   private wake: (() => void) | undefined;
   private readonly deadline: number;
+  private timedOut = false;
 
   constructor(readonly request: ApprovalRequest) {
     this.deadline = Date.now() + request.timeoutMs;
   }
 
-  /** L'echeance est-elle passee ? Une surface s'en sert pour cesser d'afficher sa demande. */
+  /**
+   * L'echeance est-elle passee ? Une surface s'en sert pour cesser d'afficher sa demande.
+   *
+   * Le minuteur fait foi **en plus** de l'horloge : un `setTimeout` peut se declencher une fraction
+   * de milliseconde avant que `Date.now()` n'atteigne l'echeance, et l'attente rendait alors `null`
+   * en annoncant `expired: false` — deux reponses contradictoires sur le meme rendez-vous.
+   */
   get expired(): boolean {
-    return Date.now() >= this.deadline;
+    return this.timedOut || Date.now() >= this.deadline;
   }
 
   /**
@@ -102,6 +109,7 @@ export class Rendezvous {
       this.wake = finish;
       const remaining = Math.max(0, this.deadline - Date.now());
       timer = setTimeout(() => {
+        this.timedOut = true;
         this.settled = true;
         finish();
       }, remaining);

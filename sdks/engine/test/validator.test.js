@@ -121,3 +121,31 @@ test("a per-step act the engine does not run is rejected", () => {
   assert.match(message, /Act 'oracle' is not supported by the embedded engine/);
   assert.match(message, /step 'look'/);
 });
+
+test("a text extraction carrying another dialect's key is refused, on both engines' rule", () => {
+  const message = rejectedMessage(
+    blueprint("vector", [
+      {
+        id: "cal",
+        action: "http.request",
+        url: "https://cal.test/ics",
+        extract: { ics: { from: "text", path: "$" } },
+      },
+    ]),
+  );
+  assert.match(message, /from='text' with 'path'/);
+  assert.match(message, /at steps\[0\]\.extract\.ics/);
+});
+
+test("a text extraction on its own is accepted", () => {
+  validateForAct(
+    blueprint("vector", [
+      {
+        id: "cal",
+        action: "http.request",
+        url: "https://cal.test/ics",
+        extract: { ics: { from: "text" } },
+      },
+    ]),
+  );
+});

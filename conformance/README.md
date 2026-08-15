@@ -148,6 +148,7 @@ le reste.
 | `status` | Code de statut (200 par défaut). |
 | `headers` | En-têtes de réponse (un `Set-Cookie`, un `Location`, …). |
 | `body` | Corps littéral ; `Content-Type: text/plain` par défaut. |
+| `charset` | Encodage des octets de `body` : `utf-8` (défaut) ou `iso-8859-1`. Une étiquette inconnue **fait échouer le harnais** au lieu de retomber sur UTF-8 — un cas qui servirait silencieusement de l'UTF-8 passerait en ne prouvant rien. |
 | `json` | Corps sérialisé en JSON compact ; `Content-Type: application/json` par défaut. |
 | `html` | Corps littéral servi en `text/html` — ce qu'un navigateur exige pour parser un document au lieu d'en montrer la source. |
 | `echo` | Répond par une description JSON de la requête reçue : `method`, `path`, `query`, `body`, `headers`. |
@@ -155,6 +156,11 @@ le reste.
 `echo` est l'outil de parité le plus utile du corpus : le **Blueprint** extrait lui-même le corps, la
 query ou un en-tête, donc ce sont les deux moteurs qui sont comparés — le harnais n'a aucune idée de
 la façon dont un formulaire devrait être encodé, et c'est bien ainsi.
+
+`charset`, lui, sert la seule question qu'un corpus en JSON ne peut pas poser autrement : le corps
+qui part sur le réseau n'est plus celui qu'on lit dans le fichier de cas. C'est ce qui permet de
+servir une réponse **mal étiquetée** — des octets UTF-8 annoncés en `iso-8859-1` — et d'exiger des
+deux moteurs le **même** mojibake, plutôt que de faire confiance à chacun pour deviner.
 
 La valeur comparée est un **résumé normalisé** du run. Les identifiants de run et les durées en sont
 absents : ils diffèrent par nature, et les comparer rendrait chaque cas instable.

@@ -4,7 +4,7 @@
 
 Le plus léger. Client HTTP robuste (`httpx` + `tenacity`) : requêtes GET/POST, encodage form/JSON,
 en-têtes, retries/backoff, pagination, auth (cookie, bearer, basic, form-login type CAS), extraction
-déclarative JSON (JSONPath) et HTML (CSS/XPath).
+déclarative JSON (JSONPath), HTML (CSS/XPath) et texte (le corps décodé).
 
 Cas fondateur : les services `axios` de UKit (`PlanningApiService.ts`). Les constantes magiques
 (`resType`, `colourScheme`) deviennent des `inputs`/`vars` explicites.
@@ -78,6 +78,7 @@ Le champ `extract` d'un step `http.request` accepte un dict de specs :
 
 - `from: "json"` → JSONPath via `jsonpath-ng`
 - `from: "html"` → CSS/XPath via `parsel`
+- `from: "text"` → le **corps décodé**, tel quel (jalon 3-I)
 - `where` : expression de comparaison évaluée par AST-walk (seules les comparaisons, la logique booléenne et l'accès aux attributs de `item` sont autorisés ; appels, indexation et **attributs magiques** (`__class__`, `__globals__`, … tout nom en `__`) sont rejetés, fermant l'évasion de sandbox)
 - `fields` : mapping nom → JSONPath relatif à chaque item matché
 
@@ -85,6 +86,55 @@ La construction de ces specs vit dans `core/extraction/dispatch.py` (`dispatch_e
 avec le corpus de conformance. Le moteur embarqué reproduit le même dialecte sur un sous-ensemble
 plus étroit (XPath en moins, JSONPath restreint) : voir
 [docs/embedded.md](../embedded.md#expressions-et-extraction).
+
+### `from: "text"` — les formats à lignes
+
+Une réponse qui n'est ni du JSON ni du HTML est de la donnée aussi : iCalendar (RFC 5545), CSV,
+vCard, `text/plain`. La forme `text` rend le corps entier, décodé :
+
+```json
+"extract": { "ics": { "from": "text" } }
+```
+
+Trois décisions, et chacune ferme une question qu'on ne veut plus rouvrir :
+
+- **Le corps n'est jamais publié tout seul.** `http.request` continue de ne rendre que `status_code`
+  et `headers` ; sans extraction nommée, la charge utile ne traîne ni dans les journaux, ni dans les
+  événements, ni dans la mémoire du run. C'est l'extraction qui dit **ce qu'on garde**.
+- **Il n'y a pas de `from: "regex"`.** Filtrer un texte reste applicatif : une seconde grammaire
+  d'expressions régulières entre Python et JavaScript diverge tôt ou tard (classes de caractères,
+  groupes nommés, quantificateurs), et deux moteurs ne peuvent pas se le permettre. Corollaire visible
+  dans l'exemple livré : la garde de forme s'écrit `{{ 'BEGIN:VCALENDAR' in steps.cal.ics }}` — une
+  **appartenance**, faute de tranche ou de `startswith` dans le sous-ensemble d'expressions.
+- **`path`, `where`, `fields`, `selector`, `attr`, `multiple` sont refusés** avec `from: "text"`, **à
+  la validation**, message à l'appui. Les ignorer laisserait un Blueprint croire qu'il filtre.
+
+#### Le décodage suit l'en-tête
+
+`Content-Type: …; charset=…` décide, avec repli UTF-8. Les octets invalides sont **remplacés**, jamais
+levés : un corps binaire signifie qu'on s'est trompé de source, et ce n'est pas au moteur de le
+deviner. Un BOM est **conservé** (le codec Python ne le retire pas).
+
+| Étiquette | Codec |
+|---|---|
+| `iso-8859-1`, `iso8859-1`, `iso_8859-1`, `latin-1`, `latin1`, `l1` | Latin-1 strict — **pas** l'alias WHATWG vers cp1252 |
+| `windows-1252`, `cp1252`, `win-1252` | cp1252 (les cinq octets indéfinis rendent `U+FFFD`) |
+| toute autre étiquette, ou aucune | UTF-8 |
+
+La table est **bornée et partagée** : le moteur embarqué porte la même
+([`extraction/charset.ts`](../../sdks/engine/src/extraction/charset.ts)), plutôt que chacun
+déléguant à sa plateforme. Accepter ici les centaines de codecs de Python aurait produit exactement
+la divergence silencieuse que le corpus de conformance existe pour empêcher — la première source mal
+étiquetée l'aurait découverte à notre place, sur un téléphone. L'élargir se fait des deux côtés à la
+fois. Le cas `run/18-text-body-and-charset` fige les quatre situations (bien étiqueté, mal étiqueté,
+sans `charset`, corps vide).
+
+> Les dialectes `json` et `html`, eux, continuent de lire le corps en UTF-8 avec remplacement : leur
+> décodage n'a pas changé, et le corriger serait un autre sujet.
+
+Exemple exécutable :
+[`examples/vector/ical-planning-text.blueprint.json`](../../examples/vector/ical-planning-text.blueprint.json)
+(export iCal anonyme d'ADE, zéro configuration).
 
 ## Authentification
 
@@ -135,3 +185,26 @@ EOF
 ```
 
 Voir aussi `tests/integration/test_vector_run.py` pour un exemple complet avec `httpx.MockTransport`.
+
+### Sondes du jalon 3-I (`from: "text"`)
+
+Jouées sur des sources réelles, et **des deux côtés** — le moteur Python puis le moteur embarqué
+sous Node —, parce que la seule question qui compte ici est « les deux décodent-ils pareil ».
+
+| Sonde | Résultat |
+|-------|----------|
+| `examples/vector/ical-planning-text` (export ADE anonyme, `text/calendar;charset=UTF-8`) | `success` des deux côtés, `caracteres: 21461` **identiques**, `accents: true` — 21 592 octets pour 21 461 caractères : les accents sont bien passés par le décodeur, pas à côté |
+| `examples/mobile/ical-large-body-probe` (jours fériés français, ~80 Ko) | `success` des deux côtés, `caracteres: 80712` identiques, `Noël` présent |
+| **Conçue pour échouer** : `examples/mobile/ical-error-page-probe` — le même export **sans paramètres**, qui répond 500 avec une page HTML déclarée `ISO-8859-1` | `failed` au step `shape`, message `ICAL_INVALID`, step `DIAGNOSTIC` jamais atteint, **et le même échec mot pour mot sur les deux moteurs**. Sans la garde de forme, ce run aurait « réussi » en rendant un calendrier vide |
+
+Les trois ont ensuite été rejouées **sur un iPhone** (le pont d'octets de React Native n'existe nulle
+part ailleurs) : mêmes valeurs au caractère près, même échec au même step. Détail :
+[docs/embedded.md](../embedded.md#sur-appareil).
+
+Une aspérité relevée au passage, antérieure au jalon et laissée telle quelle : l'action `assert`
+signale son échec via `StatusAssertionError`, donc le message porte un préfixe `Expected HTTP 1,
+got 0 — <assert>` avant la vraie raison, et la façade mobile classe l'échec en famille `rejected`
+avec `retryable: true` — juste sur le fond (la source a répondu, mais pas comme le Blueprint
+l'exigeait), discutable sur l'invitation à réessayer quand c'est une garde de forme qui a mordu.
+C'est identique sur les deux moteurs, et le changer toucherait le contrat d'erreur d'une action qui
+n'est pas le sujet de ce jalon.

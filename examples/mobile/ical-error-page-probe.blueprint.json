@@ -1,0 +1,32 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.ical.error.probe",
+  "description": "Act I, extraction 'from: text' : une page d'erreur doit-elle passer pour un calendrier vide ? La sonde est CONCUE POUR ECHOUER — le meme export ADE que l'exemple, appele SANS parametres, repond 500 avec une page HTML declaree en ISO-8859-1. Le seul resultat acceptable est un echec nomme au step 'shape' (ICAL_INVALID), pas un run reussi rendant zero cours. Il n'y a volontairement pas d'expect.status : c'est la garde de forme qu'on veut voir mordre, pas le code de statut. Le step diagnostic ne doit JAMAIS s'executer.",
+  "act": "vector",
+  "vars": {
+    "url": "https://ade.bordeaux-inp.fr/jsp/custom/modules/plannings/anonymous_cal.jsp"
+  },
+  "steps": [
+    {
+      "id": "cal",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.url }}",
+      "extract": { "ics": { "from": "text" } }
+    },
+    {
+      "id": "shape",
+      "action": "assert",
+      "condition": "{{ 'BEGIN:VCALENDAR' in steps.cal.ics }}",
+      "message": "ICAL_INVALID: la réponse n'est pas un calendrier (page d'erreur ?)"
+    },
+    {
+      "action": "emit",
+      "message": "DIAGNOSTIC — la garde de forme aurait dû échouer ; statut {{ steps.cal.status_code }}, {{ steps.cal.ics | length }} caractères"
+    }
+  ],
+  "outputs": {
+    "statut": "{{ steps.cal.status_code }}",
+    "caracteres": "{{ steps.cal.ics | length }}"
+  }
+}

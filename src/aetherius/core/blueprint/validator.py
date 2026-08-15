@@ -44,6 +44,20 @@ _CAPABILITY_ORIGIN: dict[str, str] = {
 # Continuum is the floor it escalates *from* (see docs/composition.md).
 FALLBACK_ACTS: frozenset[str] = frozenset({"oracle", "phantom"})
 
+# Keys of the JSON and HTML extraction dialects. ``from: "text"`` renders the whole decoded body, so
+# none of them can do anything — and a spec that carries one believes it filters when it does not.
+# Refused here rather than ignored at extraction time, and by both engines
+# (sdks/engine/src/blueprint/validator.ts).
+_TEXT_FOREIGN_KEYS: tuple[str, ...] = (
+    "path",
+    "where",
+    "fields",
+    "selector",
+    "selector_type",
+    "attr",
+    "multiple",
+)
+
 
 def validate_for_act(blueprint: Blueprint) -> None:
     """Raise BlueprintValidationError if any step uses an action unsupported by its effective act.
@@ -95,6 +109,8 @@ def _validate_step(
     if step.fallback is not None:
         _validate_chain(step.fallback, f"{path}.fallback")
 
+    _validate_extract(step, path)
+
     for field_name in FLOW_NESTED_FIELDS.get(step.action, ()):
         raw = step.extra_fields.get(field_name)
         if raw is None:
@@ -112,6 +128,25 @@ def _validate_step(
                 raise BlueprintValidationError(f"Invalid step at {child_path}: {exc}") from exc
             # Nested steps inherit the enclosing step's effective act.
             _validate_step(child, act, supported_values, child_path)
+
+
+def _validate_extract(step: StepModel, path: str) -> None:
+    """Reject an extraction spec whose dialect and parameters contradict each other."""
+    raw = step.extra_fields.get("extract")
+    if not isinstance(raw, dict):
+        return
+
+    for name, spec in raw.items():
+        if not isinstance(spec, dict) or spec.get("from") != "text":
+            continue
+        foreign = [key for key in _TEXT_FOREIGN_KEYS if key in spec]
+        if not foreign:
+            continue
+        raise BlueprintValidationError(
+            f"Step {step.id!r}: extraction {name!r} declares from='text' with "
+            f"{', '.join(repr(key) for key in foreign)}: a text extraction returns the whole "
+            f"decoded body, so there is nothing to select or filter (at {path}.extract.{name})."
+        )
 
 
 def _validate_chain(chain: list[str], path: str) -> None:

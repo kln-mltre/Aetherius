@@ -1,0 +1,140 @@
+{
+  "name": "run-text-body-and-charset",
+  "kind": "run",
+  "description": "L'extraction from: 'text' rend le corps decode, et le decodage suit l'en-tete de reponse. Le cas qui prouve que les deux moteurs decodent pareil : un corps latin-1 bien etiquete, un corps UTF-8 mal etiquete (le mojibake doit etre le meme des deux cotes, pas 'corrige' par l'un d'eux), un Content-Type sans charset (UTF-8 par defaut) et un corps vide (chaine vide, pas null). Cote embarque, la lecture passe par arrayBuffer plutot que par text().",
+  "server": {
+    "GET /latin1": {
+      "headers": { "Content-Type": "text/csv; charset=ISO-8859-1" },
+      "charset": "iso-8859-1",
+      "body": "Prénom;Ville\nZoé;Bègles\n"
+    },
+    "GET /mislabelled": {
+      "headers": { "Content-Type": "text/csv; charset=iso-8859-1" },
+      "body": "Prénom;Zoé"
+    },
+    "GET /no-charset": {
+      "headers": { "Content-Type": "text/calendar" },
+      "body": "BEGIN:VCALENDAR\r\nSUMMARY:Noël\r\nEND:VCALENDAR\r\n"
+    },
+    "GET /empty": {
+      "headers": { "Content-Type": "text/plain" },
+      "body": ""
+    }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.vector.text",
+    "act": "vector",
+    "inputs": { "base_url": { "type": "string", "required": true } },
+    "steps": [
+      {
+        "id": "latin1",
+        "action": "http.request",
+        "url": "{{ inputs.base_url }}/latin1",
+        "expect": { "status": 200 },
+        "extract": { "raw": { "from": "text" } }
+      },
+      {
+        "id": "mislabelled",
+        "action": "http.request",
+        "url": "{{ inputs.base_url }}/mislabelled",
+        "extract": { "raw": { "from": "text" } }
+      },
+      {
+        "id": "plain",
+        "action": "http.request",
+        "url": "{{ inputs.base_url }}/no-charset",
+        "extract": { "raw": { "from": "text" } }
+      },
+      {
+        "id": "empty",
+        "action": "http.request",
+        "url": "{{ inputs.base_url }}/empty",
+        "extract": { "raw": { "from": "text" } }
+      },
+      {
+        "id": "guard",
+        "action": "assert",
+        "condition": "{{ 'BEGIN:VCALENDAR' in steps.plain.raw }}",
+        "message": "ICAL_SHAPE"
+      }
+    ],
+    "outputs": {
+      "latin1": "{{ steps.latin1.raw }}",
+      "mislabelled": "{{ steps.mislabelled.raw }}",
+      "plain": "{{ steps.plain.raw }}",
+      "empty": "{{ steps.empty.raw }}",
+      "taille": "{{ steps.plain.raw | length }}"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "latin1": "Prénom;Ville\nZoé;Bègles\n",
+          "mislabelled": "PrÃ©nom;ZoÃ©",
+          "plain": "BEGIN:VCALENDAR\r\nSUMMARY:Noël\r\nEND:VCALENDAR\r\n",
+          "empty": "",
+          "taille": 46
+        },
+        "steps": [
+          { "step_id": "latin1", "action": "http.request", "status": "success" },
+          { "step_id": "mislabelled", "action": "http.request", "status": "success" },
+          { "step_id": "plain", "action": "http.request", "status": "success" },
+          { "step_id": "empty", "action": "http.request", "status": "success" },
+          { "step_id": "guard", "action": "assert", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "latin1" },
+          { "type": "step_finished", "step_id": "latin1" },
+          { "type": "step_started", "step_id": "mislabelled" },
+          { "type": "step_finished", "step_id": "mislabelled" },
+          { "type": "step_started", "step_id": "plain" },
+          { "type": "step_finished", "step_id": "plain" },
+          { "type": "step_started", "step_id": "empty" },
+          { "type": "step_finished", "step_id": "empty" },
+          { "type": "step_started", "step_id": "guard" },
+          { "type": "step_finished", "step_id": "guard" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "success",
+        "outputs": {
+          "latin1": "Prénom;Ville\nZoé;Bègles\n",
+          "mislabelled": "PrÃ©nom;ZoÃ©",
+          "plain": "BEGIN:VCALENDAR\r\nSUMMARY:Noël\r\nEND:VCALENDAR\r\n",
+          "empty": "",
+          "taille": 46
+        },
+        "steps": [
+          { "step_id": "latin1", "action": "http.request", "status": "success" },
+          { "step_id": "mislabelled", "action": "http.request", "status": "success" },
+          { "step_id": "plain", "action": "http.request", "status": "success" },
+          { "step_id": "empty", "action": "http.request", "status": "success" },
+          { "step_id": "guard", "action": "assert", "status": "success" }
+        ],
+        "events": [
+          { "type": "progress", "step_id": null },
+          { "type": "step_started", "step_id": "latin1" },
+          { "type": "step_finished", "step_id": "latin1" },
+          { "type": "step_started", "step_id": "mislabelled" },
+          { "type": "step_finished", "step_id": "mislabelled" },
+          { "type": "step_started", "step_id": "plain" },
+          { "type": "step_finished", "step_id": "plain" },
+          { "type": "step_started", "step_id": "empty" },
+          { "type": "step_finished", "step_id": "empty" },
+          { "type": "step_started", "step_id": "guard" },
+          { "type": "step_finished", "step_id": "guard" },
+          { "type": "done", "step_id": null }
+        ]
+      }
+    }
+  }
+}

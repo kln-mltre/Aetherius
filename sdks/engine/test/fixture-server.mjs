@@ -12,34 +12,51 @@
  *     "GET /home":   { html: "<!doctype html>…" }
  *     "POST /login": { status: 302, body: "", headers: { Location: "/home" } }
  *     "POST /echo":  { echo: true }
+ *     "GET /csv":    { body: "Prénom", charset: "iso-8859-1", headers: {...} }
+ *
+ * `charset` encodes the literal `body` in something other than UTF-8 — the only way to serve the
+ * mislabelled and non-UTF-8 responses milestone 3-I is about. An unknown label **throws** rather
+ * than falling back: a case that silently served UTF-8 would pass while proving nothing.
  */
 
 import { createServer } from "node:http";
+
+/** The two labels both harnesses can encode; they must serve the same bytes. */
+const CHARSETS = { "utf-8": "utf8", "iso-8859-1": "latin1", "latin-1": "latin1" };
 
 function render(route, request) {
   if (route.echo === true) {
     return {
       status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      body: Buffer.from(JSON.stringify(request), "utf8"),
     };
   }
 
   const headers = { ...(route.headers ?? {}) };
   let body;
   if (Object.prototype.hasOwnProperty.call(route, "json")) {
-    body = JSON.stringify(route.json);
+    body = Buffer.from(JSON.stringify(route.json), "utf8");
     setDefault(headers, "Content-Type", "application/json");
   } else if (Object.prototype.hasOwnProperty.call(route, "html")) {
     // A browser needs the right content type to parse a document rather than show its source;
     // `body` stays text/plain so the Act I cases are untouched.
-    body = String(route.html);
+    body = Buffer.from(String(route.html), "utf8");
     setDefault(headers, "Content-Type", "text/html; charset=utf-8");
   } else {
-    body = String(route.body ?? "");
+    body = Buffer.from(String(route.body ?? ""), encodingOf(route));
     setDefault(headers, "Content-Type", "text/plain; charset=utf-8");
   }
   return { status: route.status ?? 200, headers, body };
+}
+
+function encodingOf(route) {
+  const label = String(route.charset ?? "utf-8").toLowerCase();
+  const encoding = CHARSETS[label];
+  if (encoding === undefined) {
+    throw new Error(`Fixture route charset '${label}' is not supported by both harnesses.`);
+  }
+  return encoding;
 }
 
 function setDefault(headers, name, value) {
@@ -69,7 +86,11 @@ export async function fixtureServer(routes) {
       const route = routes[`${incoming.method} ${url.pathname}`];
       const answer =
         route === undefined
-          ? { status: 404, headers: { "Content-Type": "text/plain" }, body: "no route" }
+          ? {
+              status: 404,
+              headers: { "Content-Type": "text/plain" },
+              body: Buffer.from("no route", "utf8"),
+            }
           : render(route, request);
 
       outgoing.writeHead(answer.status, {

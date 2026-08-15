@@ -18,12 +18,15 @@
 import { DELIVERED, OUT_OF_SCOPE, PORTAL } from "./delivery";
 
 import deviceIpCheck from "../device-ip-check.blueprint.json";
+import icalErrorPageProbe from "../ical-error-page-probe.blueprint.json";
+import icalLargeBodyProbe from "../ical-large-body-probe.blueprint.json";
 import quotesLoginConfirm from "../quotes-login-confirm.blueprint.json";
 import sessionCookieProbe from "../session-cookie-probe.blueprint.json";
 import sessionPersistProbe from "../session-persist-probe.blueprint.json";
 import unreachableProbe from "../unreachable-probe.blueprint.json";
 import webviewQuotes from "../webview-quotes.blueprint.json";
 import bordeauxCasLogin from "../../continuum/bordeaux-cas-login.blueprint.json";
+import icalPlanning from "../../vector/ical-planning-text.blueprint.json";
 import jsonplaceholderFlow from "../../vector/jsonplaceholder-flow.blueprint.json";
 import quotesWatch from "../../vector/quotes-watch.blueprint.json";
 import ukitPlanning from "../../vector/ukit-inf601a5-test.blueprint.json";
@@ -211,6 +214,32 @@ export const BLUEPRINTS = [
     hint: "Extraction CSS hors navigateur, sur une page reelle.",
     blueprint: quotesWatch,
     status: "done",
+  },
+  // Jalon 3-I — l'extraction `from: "text"`. Sur l'appareil, une lecture en octets emprunte un
+  // chemin que Node n'a pas (blob -> base64 -> pont natif) : ces trois cartes sont la pour l'eprouver.
+  {
+    key: "ical-planning",
+    title: "Texte : l'emploi du temps en iCal",
+    hint: "Export ADE anonyme ramene tel quel par from: text. caracteres doit valoir exactement ce que rend `aetherius run`, et accents: true.",
+    blueprint: icalPlanning,
+    status: "done",
+    note: "caracteres: 21461 sur iPhone, identique au moteur Python — 21 592 octets pour 21 461 caracteres, donc le pont d'octets (blob, base64, natif) et le decodeur UTF-8 embarque rendent ce que rend CPython.",
+  },
+  {
+    key: "ical-large-body",
+    title: "Texte : un corps de 80 Ko",
+    hint: "Meme dialecte, corps quatre fois plus gros et second serveur. Un ecart d'un caractere avec le poste designe le pont d'octets de React Native.",
+    blueprint: icalLargeBodyProbe,
+    status: "done",
+    note: "caracteres: 80712 sur iPhone, identique au poste. Le calendrier est republie de temps en temps : comparer les deux runs au meme moment, pas a une valeur ecrite ici.",
+  },
+  {
+    key: "ical-error-page",
+    title: "Texte : une page d'erreur n'est pas un calendrier",
+    hint: "Concue pour echouer. Le run doit finir en echec sur le step shape (ICAL_INVALID) et la ligne DIAGNOSTIC ne doit jamais paraitre.",
+    blueprint: icalErrorPageProbe,
+    status: "done",
+    note: "Echec au step shape, ICAL_INVALID, aucune ligne DIAGNOSTIC. La pastille dit « Reponse inattendue » (famille rejected) : c'est exact — la source a repondu, avec une page d'erreur. Le « Reessayer peut aboutir » qui l'accompagne vient de ce qu'`assert` leve une StatusAssertionError, comme le prefixe « Expected HTTP 1, got 0 » ; les deux sont anterieurs au jalon.",
   },
   {
     key: "session-cookie-probe",

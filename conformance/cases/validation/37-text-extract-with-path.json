@@ -1,0 +1,29 @@
+{
+  "name": "text-extract-with-path",
+  "description": "from: 'text' rend le corps entier : un 'path' (comme un 'where', un 'selector' ou un 'fields') n'y selectionne rien. Le refuser evite un Blueprint qui croit filtrer et ne filtre pas. C'est une regle du contrat, pas d'un moteur — les deux refusent, a la validation, avant que la requete ne parte.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.extract.text.path",
+    "act": "vector",
+    "steps": [
+      {
+        "id": "cal",
+        "action": "http.request",
+        "url": "https://example.test/calendar.ics",
+        "extract": { "ics": { "from": "text", "path": "$" } }
+      }
+    ]
+  },
+  "expect": {
+    "python": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'ics'", "from='text'", "'path'", "at steps[0].extract.ics"]
+    },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'ics'", "from='text'", "'path'", "at steps[0].extract.ics"]
+    }
+  }
+}

@@ -24,6 +24,13 @@ export interface FetchResponse {
   /** Final URL after redirects, when the host reports it. */
   readonly url?: string;
   text(): Promise<string>;
+  /**
+   * The raw body, read only when an extraction declares `from: "text"` — the one dialect that
+   * decodes per the response's charset. Optional because a host may wrap `fetch` with a narrower
+   * response; the client then fails with a message naming what is missing, rather than silently
+   * decoding as UTF-8. React Native's own `fetch` has it (blob response, `readAsArrayBuffer`).
+   */
+  arrayBuffer?: () => Promise<ArrayBuffer>;
 }
 
 export interface FetchRequestInit {

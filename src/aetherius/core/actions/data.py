@@ -41,7 +41,8 @@ SPECS: Final[tuple[ActionSpec, ...]] = (
             ParamSpec(
                 "extract",
                 "object",
-                help="Named JSONPath/CSS extractions from the response.",
+                help="Named extractions from the response: from='json' (JSONPath), "
+                "from='html' (CSS/XPath) or from='text' (the decoded body).",
                 placeholder='{"items": {"from": "json", "path": "$[*]"}}',
             ),
         ),

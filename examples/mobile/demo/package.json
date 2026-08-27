@@ -1,6 +1,6 @@
 {
   "name": "aetherius-mobile-demo",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "private": true,
   "description": "Banc de verification du moteur embarque : joue un Blueprint sur l'appareil, sans daemon.",
   "main": "index.js",

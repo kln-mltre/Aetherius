@@ -777,7 +777,25 @@ Les trois ont été **vues échouer** par mutation du correctif : réintroduire 
 | `persist` | Vue | Ce que ça coûte |
 |-----------|-----|-----------------|
 | absent / `false` | `incognito`, **libérée à la fin de chaque run** | départ propre à chaque run, ré-authentification à chaque lancement |
-| `true` | magasin de la plateforme (`sharedCookiesEnabled`, `thirdPartyCookiesEnabled`), et **la vue est gardée entre les runs** | pas de re-login, mais une WebView cachée reste vivante jusqu'au changement d'options ou au démontage du composant |
+| `true` | magasin persistant du navigateur, et **la vue est gardée entre les runs** | pas de re-login, mais une WebView cachée reste vivante jusqu'au changement d'options ou au démontage du composant |
+
+### Le pont de cookies natifs est une option à part, et il est cher
+
+`options.session.share_native_cookies` — **faux par défaut**, et le défaut est le sujet.
+
+Il ne sert **pas** à partager entre deux vues navigateur : sans `incognito`, `WKWebView` emploie le
+magasin par défaut, qui vaut pour tout le processus. Une vue de navigateur intégré voit donc déjà la
+session qu'un run vient d'ouvrir, sans rien demander. Il relie le magasin **natif** — celui qu'un
+`http.request` d'Act I remplit — à la vue navigateur, ce dont seul un Blueprint qui mêle les deux Actes
+a besoin.
+
+**Il coûte un gel visible.** Le pont recopie *tous* les cookies de l'application — pas ceux de l'URL
+visée, tous — un par un, chacun avec un aller-retour, **sur la file principale**
+(`RNCWebViewImpl.m`). Le coût est donc proportionnel à ce que l'application a accumulé depuis son
+installation, et il grandit avec l'usage.
+
+Il était lié à `persist` jusqu'à cette version, ce qui faisait payer ce gel à quiconque voulait
+seulement garder sa session. Un Blueprint qui compte sur le pont doit désormais le déclarer.
 
 **Une session persistante garde sa vue**, et c'est une correction venue d'un appareil : détruire la
 vue à la fin du run en recrée une au run suivant, et un **cookie de session** — celui qu'un login

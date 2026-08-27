@@ -5,6 +5,36 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.5] - 2026-08-28
+
+### Modifié
+
+- **Le pont de cookies natifs n'est plus lié à `session.persist`.** Il devient
+  `options.session.share_native_cookies`, **faux par défaut**.
+
+  Le port réel qui l'a levé vient de [UKit](docs-ukit/README.md), et le symptôme était net : passer un
+  parcours de portail en `persist: true` — pour qu'un navigateur intégré s'ouvre déjà authentifié —
+  faisait **geler l'interface une demi-seconde au lancement**, et le gel s'allongeait à mesure que
+  l'application servait.
+
+  La cause est dans `RNCWebViewImpl.m` : `sharedCookiesEnabled` déclenche une recopie de **tous** les
+  cookies de l'application — pas ceux de l'URL visée, tous — un par un, chacun avec un aller-retour,
+  **sur la file principale**. Le coût est donc proportionnel à ce que l'application a accumulé depuis
+  son installation.
+
+  Or ce pont ne servait à rien dans ce cas : il relie le magasin **natif** (celui qu'un `http.request`
+  d'Act I remplit) à la vue navigateur. **Deux vues navigateur partagent déjà leurs cookies** — sans
+  `incognito`, `WKWebView` emploie le magasin par défaut, qui vaut pour tout le processus. Seul un
+  Blueprint qui mêle Act I et Act II a besoin du pont, et c'est à lui de le demander.
+
+  `persist` garde donc sa seule vraie fonction — un magasin persistant plutôt qu'incognito — et
+  cesse de facturer un gel à qui voulait seulement garder sa session. Le corpus de conformance ne
+  porte qu'un cas de cookies, et il est **Act I seul** : il n'est pas touché.
+
+  **Changement de comportement** : un Blueprint qui déclarait `persist: true` et comptait sur le pont
+  doit désormais déclarer aussi `share_native_cookies: true`. Aucun des Blueprints de UKit ne le
+  faisait.
+
 ## [0.5.4] - 2026-08-13
 
 Un second appendice à la Phase 3, ouvert par le même port réel que le premier : l'extraction d'Act I
@@ -1106,7 +1136,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.3...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.5...HEAD
+[0.5.5]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.5
 [0.5.4]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.4
 [0.5.3]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.3
 [0.5.2]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.2

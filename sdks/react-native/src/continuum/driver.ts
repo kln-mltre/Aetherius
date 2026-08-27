@@ -210,6 +210,8 @@ function sessionConfig(ctx: RunContext): SessionConfig {
   const stealth = options.stealth;
   return {
     persist: session?.persist === true,
+    // Opt-in, et jamais deduit de `persist` : voir SessionConfig.shareNativeCookies.
+    shareNativeCookies: session?.share_native_cookies === true,
     debug: options.debug === true,
     // The only piece of stealth inside the phase's scope (decision 8): a portal often serves a
     // different DOM to a mobile user agent, and a Blueprint must be able to decide.

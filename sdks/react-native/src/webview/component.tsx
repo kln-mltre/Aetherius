@@ -15,9 +15,15 @@
  *   - **`key`**. Session options are bound when the view is created on both platforms, so changing
  *     `persist` or the user agent means recreating it. Bumping the key is the only reliable way,
  *     and it is what the hand-written implementations settled on too.
- *   - **`incognito` / `sharedCookiesEnabled`**. This is `options.session.persist`, and on a phone
- *     the choice is visible to the user: an isolated session starts clean and asks for credentials
- *     every time; a persistent one does not, but its state outlives the run.
+ *   - **`incognito`**. This is `options.session.persist`, and on a phone the choice is visible to
+ *     the user: an isolated session starts clean and asks for credentials every time; a persistent
+ *     one does not, but its state outlives the run. Two non-incognito WebViews already share their
+ *     cookies — the default data store is process-wide — so persisting is all it takes for a browser
+ *     screen to open on an authenticated page.
+ *   - **`sharedCookiesEnabled`**. Deliberately **not** tied to `persist`, and off unless a Blueprint
+ *     asks for it. It bridges the *native* cookie jar into the view, which only a Blueprint mixing
+ *     Act I and Act II needs — and it costs a main-queue copy of every cookie the application holds,
+ *     which is a visible freeze that grows with use. See `SessionConfig.shareNativeCookies`.
  *   - **`setSupportMultipleWindows={false}`**. New windows are refused, not followed. In a hidden
  *     WebView, opening one has no meaning — a declared divergence from the Python engine, which
  *     follows new tabs.
@@ -65,11 +71,17 @@ const VISIBLE_CONTAINER = {
 /** The native view always fills its container, hidden or not: it must have a layout. */
 const WEBVIEW_STYLE = { flex: 1 };
 
-const DEFAULT_SESSION: SessionConfig = { persist: false, debug: false, userAgent: undefined };
+const DEFAULT_SESSION: SessionConfig = {
+  persist: false,
+  shareNativeCookies: false,
+  debug: false,
+  userAgent: undefined,
+};
 
 function sameSession(left: SessionConfig, right: SessionConfig): boolean {
   return (
     left.persist === right.persist &&
+    left.shareNativeCookies === right.shareNativeCookies &&
     left.debug === right.debug &&
     left.userAgent === right.userAgent
   );
@@ -154,7 +166,7 @@ export function AetheriusWebView({ onLoadError }: AetheriusWebViewProps = {}): R
       style={WEBVIEW_STYLE}
       containerStyle={session.debug ? VISIBLE_CONTAINER : HIDDEN_CONTAINER}
       incognito={!session.persist}
-      sharedCookiesEnabled={session.persist}
+      sharedCookiesEnabled={session.shareNativeCookies}
       thirdPartyCookiesEnabled={session.persist}
       javaScriptEnabled
       domStorageEnabled

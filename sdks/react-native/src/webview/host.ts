@@ -24,6 +24,22 @@ export interface SessionConfig {
    * state outlives the run and cannot be isolated from the rest of the application.
    */
   readonly persist: boolean;
+  /**
+   * `options.session.share_native_cookies`, **off by default**, and the default is the point.
+   *
+   * It bridges the platform's *native* cookie jar — the one URLSession fills, so the one Act I
+   * writes to — into this WebView. Two WebViews already share their cookies without it: a
+   * non-incognito `WKWebView` uses the process-wide default data store. So this is **only** useful
+   * to a Blueprint that mixes Act I and Act II and needs one to see the other's session.
+   *
+   * It is off by default because it is **expensive, and grows with the application**. On iOS the
+   * bridge copies *every* cookie the application holds — not those of the target URL, all of them —
+   * one at a time, each a round trip, on the main queue. An application that has made many native
+   * requests therefore freezes visibly when the view is created, and it gets worse the longer the
+   * application has been used. It was previously tied to `persist`, which made persisting a session
+   * cost a freeze nobody had asked for.
+   */
+  readonly shareNativeCookies: boolean;
   /** `options.debug`. Shows the WebView instead of parking it off-screen. */
   readonly debug: boolean;
   /** The user agent to serve. A portal often serves a different DOM to a mobile UA. */

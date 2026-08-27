@@ -104,7 +104,8 @@
           "additionalProperties": false,
           "properties": {
             "profile": { "type": "string" },
-            "persist": { "type": "boolean", "default": false }
+            "persist": { "type": "boolean", "default": false },
+            "share_native_cookies": { "type": "boolean", "default": false, "description": "Bridge the platform native cookie jar into the browser view. Only a Blueprint mixing Act I and Act II needs it: two browser views already share cookies. Off by default because the bridge copies every cookie the application holds, one at a time on the main queue, which freezes the interface for as long as that takes." }
           }
         },
         "timeout_ms": { "type": "integer", "minimum": 0 },

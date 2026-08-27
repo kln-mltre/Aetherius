@@ -32,6 +32,16 @@ export interface RetriesOptions {
 export interface SessionOptions {
   readonly profile?: string;
   readonly persist: boolean;
+  /**
+   * Ponter le magasin de cookies **natif** de la plateforme dans la vue navigateur.
+   *
+   * Volontairement **hors** de `persist`, et faux par defaut. Deux vues navigateur partagent deja
+   * leurs cookies sans lui ; il ne sert qu'a un Blueprint qui melange l'Act I et l'Act II et veut que
+   * l'un voie la session de l'autre. Il coute une recopie de **tous** les cookies de l'application,
+   * un par un, sur la file principale — un gel visible, qui s'allonge a mesure que l'application
+   * sert. Le lier a `persist` faisait payer ce gel a qui voulait seulement garder sa session.
+   */
+  readonly share_native_cookies?: boolean;
 }
 
 /**

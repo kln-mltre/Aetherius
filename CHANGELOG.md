@@ -5,6 +5,32 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.6] - 2026-09-05
+
+### Corrigé
+
+- **Une WebView cachée n'était pas seulement cachée à l'utilisateur : elle l'était aussi à WebKit**,
+  qui cessait alors de donner à la page de quoi finir son travail. Conséquence mesurée : un
+  `navigate` vers un service atteint par une **cascade SSO** n'aboutissait jamais.
+
+  Le conteneur était garé à `left: -10000` avec `opacity: 0`. Or WebKit décide qu'une page est
+  cachée à partir de **trois** signaux, et une taille de rendu réelle — la seule que le moteur
+  satisfaisait — n'est que le premier : il faut aussi être **dans les limites de la fenêtre** et **ne
+  pas être entièrement transparent**. La page était donc traitée comme mise en arrière-plan, et une
+  navigation qui a besoin du JavaScript de la page pour se poursuivre — une cascade SSO, un
+  formulaire SAML auto-soumis — cessait d'avancer.
+
+  **Mesuré sur un iPhone le 2026-09-05**, sur un portail universitaire : le premier `navigate`
+  n'aboutissait ni à 30 s ni à 60 s, alors qu'un réessai — session du service déjà ouverte, donc
+  aucune cascade — se posait en **281 ms**. Le même parcours avec `options.debug` passait du premier
+  coup, à chaque fois. C'est ce qui a nommé la cause : hors écran et transparente était toute la
+  différence.
+
+  Le conteneur reste désormais **dans la fenêtre**, à `opacity: 0.01`, derrière tout ce que
+  l'application dessine (`zIndex: -1`) et insensible au toucher. Invisible à l'œil, visible pour la
+  plateforme. Le symptôme côté application était le pire de sa famille : une source parfaitement
+  disponible se présentait comme injoignable, et seul un second essai fonctionnait.
+
 ## [0.5.5] - 2026-08-28
 
 ### Modifié
@@ -1136,7 +1162,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.5...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.6...HEAD
+[0.5.6]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.6
 [0.5.5]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.5
 [0.5.4]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.4
 [0.5.3]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.3

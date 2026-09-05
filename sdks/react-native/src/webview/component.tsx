@@ -38,7 +38,8 @@ import { BridgedHost } from "./bridged-host.js";
 import type { PageControl, SessionConfig } from "./host.js";
 
 /**
- * Hiding happens on the **container**, never on the view.
+ * Hiding happens on the **container**, never on the view — and "hidden" here means *hidden from the
+ * person, not from the platform*. That distinction is the whole of this constant.
  *
  * `react-native-webview` renders `<View style={[{flex: 1, overflow: 'hidden'}, containerStyle]}>`
  * around the native view. Positioning the inner view off-screen therefore leaves it clipped to
@@ -47,16 +48,44 @@ import type { PageControl, SessionConfig } from "./host.js";
  * deterministic size.
  *
  * A full desktop-ish viewport rather than a token one, because a responsive portal serves a
- * different DOM to a small screen — and off-screen rather than `display: none`, because a view that
- * lays nothing out would make every element read as invisible.
+ * different DOM to a small screen — and never `display: none`, because a view that lays nothing out
+ * would make every element read as invisible.
+ *
+ * ## Why it sits *inside* the window, at one percent
+ *
+ * WebKit decides a page is hidden from three things, and a real size is only the first: the view
+ * must also be **in the window's bounds** and **not fully transparent**. An earlier version kept the
+ * size but parked the container at `left: -10000` with `opacity: 0`, which satisfies one signal and
+ * fails the other two. WebKit then treats the page as backgrounded and is free to stop giving it
+ * what it needs to finish work — and a navigation that depends on the page's own JavaScript to
+ * continue (an SSO cascade, a SAML auto-submit) simply stops advancing.
+ *
+ * **Measured on an iPhone, 2026-09-05**, on a university portal reached through a full SSO cascade:
+ * the first `navigate` never completed, at 30 s and again at 60 s, while a *retry* — where the
+ * service session already existed and no cascade was needed — landed in 281 ms. The same run with
+ * the view made visible (`options.debug`) passed first time, every time. Off-screen and transparent
+ * was the difference, and nothing else was.
+ *
+ * So the container stays in the window, at `opacity: 0.01` — enough for WebKit, imperceptible to the
+ * eye — and `zIndex: -1` puts it behind everything the host application draws, which is what keeps
+ * it out of sight. `pointerEvents: "none"` is belt and braces: a view nobody can see must not be a
+ * view anybody can touch.
+ *
+ * The cost is honest and worth stating: on a host whose own content is translucent, a one-percent
+ * ghost of the page is *technically* on screen. Nobody has ever seen it, and the alternative is an
+ * engine that cannot log in.
  */
 const HIDDEN_CONTAINER = {
   position: "absolute" as const,
-  left: -10000,
+  left: 0,
   top: 0,
   width: 1024,
   height: 768,
-  opacity: 0,
+  // Not zero: zero is what tells WebKit the page is hidden. See above.
+  opacity: 0.01,
+  // Behind whatever the host draws — this is what actually hides it.
+  zIndex: -1,
+  pointerEvents: "none" as const,
 };
 
 /** Debug: the WebView overlays the application, which is the point of watching it. */

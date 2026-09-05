@@ -5,6 +5,31 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.7] - 2026-09-05
+
+### Corrigé
+
+- **La vue cachée était toujours ralentie par iOS : elle était dans la fenêtre, mais derrière le
+  contenu de l'application.** La 0.5.6 avait ramené le conteneur dans la fenêtre et lui avait donné
+  une opacité non nulle ; elle le posait aussi en `zIndex: -1`, c'est-à-dire **occulté par le fond
+  opaque de l'hôte**. Pour WebKit, occulté vaut absent : la page reste traitée comme mise en
+  arrière-plan.
+
+  Ce que ce ralentissement casse — et pourquoi il a été si long à voir — n'est pas toute navigation.
+  Une cascade de **redirections côté serveur** aboutit quoi qu'il arrive, rien n'ayant à s'exécuter
+  dans la page. Une cascade qui se poursuit par le **JavaScript de la page** — un portail applicatif
+  qui s'amorce puis se redirige lui-même, un formulaire SAML auto-soumis — cesse simplement
+  d'avancer, et la navigation ne signale jamais de chargement achevé.
+
+  **Mesuré sur un iPhone, session du compte effacée avant chaque essai** : sur un même parcours, deux
+  portails atteints par de simples chaînes 302 continuaient de fonctionner, tandis que celui dont la
+  redirection est pilotée par son propre JavaScript mourait à l'échéance — à 30 s, puis encore à
+  60 s. Au-dessus du contenu à deux pour cent, la même navigation à froid se pose en **286 ms**.
+
+  Le conteneur est donc désormais **au-dessus** de ce que l'hôte dessine, à `opacity: 0.02`, et
+  insensible au toucher. Il n'existe que pendant qu'un run `continuum` tient un document : le voile
+  de deux pour cent n'est pas permanent.
+
 ## [0.5.6] - 2026-09-05
 
 ### Corrigé
@@ -1162,7 +1187,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.6...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.7...HEAD
+[0.5.7]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.7
 [0.5.6]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.6
 [0.5.5]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.5
 [0.5.4]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.4

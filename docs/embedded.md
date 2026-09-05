@@ -842,26 +842,34 @@ processus de contenu web. La vue garde donc `flex: 1` et c'est `containerStyle` 
 
 Mais une taille réelle n'est que **le premier** des trois signaux dont WebKit se sert pour décider
 qu'une page est cachée. Les deux autres sont d'être **dans les limites de la fenêtre** et de **ne pas
-être entièrement transparente**. Une première version gardait la taille et garait le conteneur à
-`left: -10000` avec `opacity: 0` : elle satisfaisait le premier et manquait les deux autres. WebKit
-traitait alors la page comme mise en arrière-plan et cessait de lui donner de quoi travailler — et
-une navigation qui a besoin du JavaScript de la page pour se poursuivre, une cascade SSO ou un
-formulaire SAML auto-soumis, **n'avançait tout simplement plus**.
+être visuellement occultée**. Deux versions ont chacune satisfait une partie de cette règle et
+échoué — et les deux échecs ont été *mesurés sur appareil*, pas argumentés :
 
-**Mesuré sur un iPhone le 2026-09-05**, sur un portail universitaire atteint par une cascade SSO
-complète : le premier `navigate` n'aboutissait jamais, ni à 30 s ni à 60 s, alors qu'un **réessai** —
-où la session du service existait déjà et où aucune cascade n'était nécessaire — se posait en 281 ms.
-Le même parcours avec la vue rendue visible par `options.debug` passait du premier coup, à chaque
-fois. Hors écran et transparente était toute la différence.
+- `left: -10000` avec `opacity: 0` : la bonne taille, hors de la fenêtre ;
+- `left: 0` avec `opacity: 0.01` mais `zIndex: -1` : dans la fenêtre, et **derrière le contenu opaque
+  de l'hôte**. Occulté vaut absent — WebKit ralentit la page de la même façon.
 
-Le conteneur reste donc **dans la fenêtre**, à `opacity: 0.01` — assez pour WebKit, imperceptible à
-l'œil — et c'est `zIndex: -1` qui le met derrière tout ce que l'application dessine, donc hors de vue.
-`pointerEvents: "none"` par précaution : une vue que personne ne voit ne doit pas être une vue que
-quelqu'un touche.
+Ce que ce ralentissement casse n'est pas toute navigation, et c'est ce qui l'a rendu si long à voir.
+Une cascade de **redirections côté serveur** aboutit quoi qu'il arrive : rien n'a à s'exécuter dans
+la page. Une cascade qui se poursuit par le **JavaScript de la page** — un portail applicatif qui
+s'amorce puis se redirige lui-même, un formulaire SAML auto-soumis — cesse simplement d'avancer, et
+la navigation ne signale jamais de chargement achevé.
 
-Le coût est assumé et vaut d'être dit : sur une application dont le contenu est translucide, un
-fantôme à un pour cent de la page est *techniquement* à l'écran. Personne ne l'a jamais vu, et
-l'alternative est un moteur qui ne sait pas se connecter.
+**Mesuré sur un iPhone le 2026-09-05**, session du compte effacée avant chaque essai : sur un même
+parcours, deux portails atteints par de simples chaînes 302 continuaient de fonctionner, tandis que
+celui dont la redirection est pilotée par son propre JavaScript mourait à l'échéance — à 30 s, puis
+encore à 60 s. Au-dessus du contenu à deux pour cent, la même navigation à froid se pose en
+**286 ms**.
+
+Le conteneur reste donc **dans la fenêtre et au-dessus** de ce que l'application dessine, à
+`opacity: 0.02` — assez pour WebKit, imperceptible à l'œil — avec `pointerEvents: "none"` : une vue
+que personne ne voit ne doit pas être une vue que quelqu'un touche. Elle n'existe que pendant qu'un
+run `continuum` tient un document, donc le voile n'est pas permanent.
+
+Le coût est assumé et vaut d'être dit : pendant un run, un fantôme à deux pour cent de la page est
+*techniquement* à l'écran. L'alternative est un moteur qui ne sait pas se connecter. Et **il ne faut
+pas « ranger » cette vue derrière le contenu** : c'est la version qui échoue, et elle échoue en
+silence, sur un portail sur trois.
 
 Le signal `onContentProcessDidTerminate` est écouté par ailleurs : le document ne revient pas tout
 seul, donc les appels en vol échouent en le disant, au lieu d'attendre une page morte jusqu'à leur

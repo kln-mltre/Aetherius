@@ -51,29 +51,40 @@ import type { PageControl, SessionConfig } from "./host.js";
  * different DOM to a small screen — and never `display: none`, because a view that lays nothing out
  * would make every element read as invisible.
  *
- * ## Why it sits *inside* the window, at one percent
+ * ## Why it sits *inside* the window, on top, at two percent
  *
  * WebKit decides a page is hidden from three things, and a real size is only the first: the view
- * must also be **in the window's bounds** and **not fully transparent**. An earlier version kept the
- * size but parked the container at `left: -10000` with `opacity: 0`, which satisfies one signal and
- * fails the other two. WebKit then treats the page as backgrounded and is free to stop giving it
- * what it needs to finish work — and a navigation that depends on the page's own JavaScript to
- * continue (an SSO cascade, a SAML auto-submit) simply stops advancing.
+ * must also be **in the window's bounds** and **not visually occluded**. Two earlier versions each
+ * satisfied a part of that and failed, and both failures were measured on a device rather than
+ * argued:
  *
- * **Measured on an iPhone, 2026-09-05**, on a university portal reached through a full SSO cascade:
- * the first `navigate` never completed, at 30 s and again at 60 s, while a *retry* — where the
- * service session already existed and no cascade was needed — landed in 281 ms. The same run with
- * the view made visible (`options.debug`) passed first time, every time. Off-screen and transparent
- * was the difference, and nothing else was.
+ *   - `left: -10000` with `opacity: 0` — the right size, outside the window. The page is treated as
+ *     backgrounded;
+ *   - `left: 0` with `opacity: 0.01` but `zIndex: -1` — inside the window, and **behind the host's
+ *     opaque content**. Occluded is as good as absent: WebKit still throttles it.
  *
- * So the container stays in the window, at `opacity: 0.01` — enough for WebKit, imperceptible to the
- * eye — and `zIndex: -1` puts it behind everything the host application draws, which is what keeps
- * it out of sight. `pointerEvents: "none"` is belt and braces: a view nobody can see must not be a
- * view anybody can touch.
+ * Throttling does not break every navigation, which is what made this so slow to see. A cascade of
+ * **server-side redirects** completes regardless — nothing on the page has to run. A cascade that
+ * continues through the page's **own JavaScript** — a single-page portal that bootstraps and then
+ * redirects itself, a SAML form that auto-submits — simply stops advancing, and the navigation never
+ * reports a completed load.
  *
- * The cost is honest and worth stating: on a host whose own content is translucent, a one-percent
- * ghost of the page is *technically* on screen. Nobody has ever seen it, and the alternative is an
- * engine that cannot log in.
+ * **Measured on an iPhone, 2026-09-05**, on one university portal reached through a full SSO cascade,
+ * with the account's session wiped before every trial. Two portals on the *same* run kept working
+ * throughout — both reached by plain 302 chains — while the one whose redirect is driven by its own
+ * JavaScript died at the deadline, at 30 s and again at 60 s. On top at two percent, the same cold
+ * navigation lands in **286 ms**.
+ *
+ * So the container stays in the window, **above** what the host draws, at `opacity: 0.02` — enough
+ * for WebKit, imperceptible to the eye — with `pointerEvents: "none"` so that a view nobody can see
+ * is not a view anybody can touch. It exists only while a `continuum` run holds a document, so the
+ * two-percent veil is not permanent.
+ *
+ * The cost is honest and worth stating: during a run, a two-percent ghost of the page is
+ * *technically* on screen. The alternative is an engine that cannot log in.
+ *
+ * **Do not "tidy" this by pushing it behind the content.** That is the version that fails, and it
+ * fails silently, on one portal out of three.
  */
 const HIDDEN_CONTAINER = {
   position: "absolute" as const,
@@ -81,10 +92,9 @@ const HIDDEN_CONTAINER = {
   top: 0,
   width: 1024,
   height: 768,
-  // Not zero: zero is what tells WebKit the page is hidden. See above.
-  opacity: 0.01,
-  // Behind whatever the host draws — this is what actually hides it.
-  zIndex: -1,
+  // Not zero: zero is what tells WebKit the page is hidden.
+  opacity: 0.02,
+  // No negative zIndex: behind opaque content, the view is occluded and throttled just the same.
   pointerEvents: "none" as const,
 };
 

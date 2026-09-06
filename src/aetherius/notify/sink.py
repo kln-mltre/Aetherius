@@ -28,7 +28,9 @@ class NotifySink:
         if event.type is not EventType.DONE:
             return
         status = str(event.data.get("status", ""))
-        failed = status != RunStatus.SUCCESS.value
+        # A partial run is not a failure (Jalon 3-J): it rendered its outputs, and notifying an
+        # error for it would cry wolf.
+        failed = status == RunStatus.FAILED.value
         if (self._on == "failure" and not failed) or (self._on == "success" and failed):
             return
 

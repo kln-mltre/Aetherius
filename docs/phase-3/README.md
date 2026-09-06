@@ -113,6 +113,8 @@ exécutable.
                                                                                             └──► 3-H Noms reserves
 
    3-B Expressions & extraction ──────────────────────────────────────────────► 3-I Extraction texte
+
+   3-C Runtime + Act I ───────────────────────────────────────────────────────► 3-J Lecture facultative
 ```
 
 | Jalon | Spécification | Dépend de | Résumé |
@@ -126,11 +128,28 @@ exécutable.
 | 3-G | [3-g-reference.md](3-g-reference.md) | 3-F | Blueprints de référence exécutables sous `examples/mobile/reference/` (quatre API réelles et un parcours SSO complet) et **guide de migration** : comment un service HTTP et une WebView cachée deviennent des Blueprints. **Livré.** |
 | 3-H | [3-h-portails.md](3-h-portails.md) | 3-F | Étendre la surcouche : un préfixe de noms **réservé** sous lequel un manifeste a le droit d'*ajouter* un Blueprint absent du binaire, en opt-in et borné par un périmètre de secrets obligatoire. Le besoin vient du consommateur — ajouter le portail d'une nouvelle faculté sans publier sur les stores. Le format de manifeste ne change pas. **Livré.** |
 | 3-I | [3-i-extraction-texte.md](3-i-extraction-texte.md) | 3-B | Une extraction `from: "text"` : le corps décodé d'une réponse, dans les deux moteurs. Une réponse qui n'est ni JSON ni HTML — iCalendar, CSV, `text/plain` — était hors de portée d'un Blueprint. Le besoin vient encore du consommateur : atteindre les emplois du temps universitaires par leur export iCal, seule voie qui ne demande pas un port par produit de planning. Le décodage suit l'en-tête de réponse, avec une **table d'encodages bornée et partagée** par les deux moteurs plutôt que déléguée à leurs plateformes. **Livré.** |
+| 3-J | [3-j-lecture-facultative.md](3-j-lecture-facultative.md) | 3-C | Un bloc `optional` : une séquence d'étapes déclarée **facultative**, dont l'échec saute le reste du bloc et laisse le run continuer — en `partial`. Le vocabulaire ne savait exprimer que deux issues, l'étape réussit ou le run meurt, et une **lecture d'enrichissement** n'a pas de façon de dire que son absence est acceptable. Le besoin vient encore du consommateur : un étudiant perdait son identité déjà lue parce qu'une page annexe n'avait pas répondu. Le statut `PARTIAL` est déclaré par les deux moteurs **depuis toujours et produit par rien** ; ce jalon l'honore plutôt que d'en inventer un. **Livré.** |
 
-Les jalons **3-H** et **3-I** sont des appendices : la phase était terminée sans eux, et chacun s'est
-ouvert parce qu'un port réel a rencontré une limite — la garde de 3-F pour le premier, les deux seules
-formes d'extraction de 3-B pour le second. C'était le bon moment pour les traiter : après avoir vu la
-règle d'origine tenir, pas avant.
+Les jalons **3-H**, **3-I** et **3-J** sont des appendices : la phase était terminée sans eux, et
+chacun s'est ouvert parce qu'un port réel a rencontré une limite — la garde de 3-F pour le premier,
+les deux seules formes d'extraction de 3-B pour le second, et pour le troisième le fait qu'une étape
+n'avait que deux issues possibles. C'était le bon moment pour les traiter : après avoir vu la règle
+d'origine tenir, pas avant.
+
+> **Ce que 3-J rappelle.** Le manque n'était pas une capacité oubliée dans le
+> portage vers le moteur embarqué — les deux moteurs sont identiques sur ce point, vérification faite.
+> C'était une **conséquence de la thèse** : « les erreurs cessent d'être avalées » a été appliquée
+> sans réserve, et n'a laissé aucune place à la lecture dont l'absence est légitime. La réponse n'est
+> donc pas un `try` qui fait taire, mais un bloc qui **rend son échec visible** dans un statut que
+> l'architecture réservait déjà.
+>
+> Ce que son implémentation a ajouté à la leçon : le point qui décidait de tout n'était **ni** le
+> bloc **ni** le statut — les deux tiennent en une trentaine de lignes par moteur — mais le **rendu
+> des sorties**. Un run partiel qui n'en rend aucune n'aurait rien réparé, et la règle d'écriture
+> annoncée (`| default(...)`) ne marchait pas : les deux moteurs rejettent l'indéfini au point
+> d'usage, si bien que le filtre ne voyait jamais la valeur. Il a fallu que les steps d'un bloc qui
+> n'ont rien produit publient un dictionnaire vide. La capacité était petite ; ce qu'elle exigeait
+> autour d'elle ne l'était pas.
 
 > **Ce que 3-I a appris, et qui vaut au-delà de lui.** Une capacité qui a l'air d'être « rendre le
 > corps » cachait la seule question qui compte pour deux moteurs : **qui décide de l'encodage**. La
@@ -181,8 +200,11 @@ Deux adaptations pour un jalon TypeScript :
 > phase, et il est *applicatif* (le format du manifeste). Le jalon 3-G **porte un cas d'usage
 > mobile réel** en Blueprints et livre le guide de migration. Le jalon 3-H laisse ce même
 > manifeste **ajouter** un Blueprint sous un préfixe réservé, sans changer son format d'un octet.
-> Le jalon 3-I, enfin, ajoute au vocabulaire d'extraction sa **troisième et dernière** forme,
-> `from: "text"` — une valeur d'énumération, aucune action ni clé de schéma.
+> Le jalon 3-I ajoute au vocabulaire d'extraction sa **troisième et dernière** forme,
+> `from: "text"` — une valeur d'énumération, aucune action ni clé de schéma. Le jalon 3-J, enfin,
+> ajoute la **quatrième action de flux**, `optional`, et **produit** pour la première fois le statut
+> `partial` : une capacité par Act de plus dans les six tables, aucun statut, aucun événement, et une
+> seule description de schéma retouchée.
 > Le corpus de conformance vit sous [`conformance/`](../../conformance/README.md) et
 > `make conformance` rejoue les deux moteurs — depuis 3-C sur des **runs entiers**, pas seulement des
 > verdicts, et depuis 3-D sur des runs **navigateur** (un cas déclare alors `requires: "browser"`,

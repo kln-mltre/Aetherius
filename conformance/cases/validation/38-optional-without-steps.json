@@ -1,0 +1,22 @@
+{
+  "name": "optional-without-steps",
+  "description": "Un bloc facultatif sans 'steps' est refuse a la validation par LES DEUX moteurs, alors qu'un repeat sans 'steps' passe encore et n'echoue qu'a l'execution. L'asymetrie est voulue et vaut d'etre figee : un optional mal forme se tolererait LUI-MEME — l'erreur d'interpretation naitrait a l'interieur du bloc — et deviendrait un no-op parfaitement silencieux, c'est-a-dire l'inverse exact d'un jalon dont le propos est qu'une defaillance reste visible. Le schema ne peut pas porter cette regle : il ne connait pas les actions.",
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.flow.optional.empty",
+    "act": "vector",
+    "steps": [{ "id": "blk", "action": "optional" }]
+  },
+  "expect": {
+    "python": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'blk'", "'optional'", "'steps'", "steps[0].steps"]
+    },
+    "embedded": {
+      "outcome": "rejected",
+      "error": "BlueprintValidationError",
+      "message_contains": ["'blk'", "'optional'", "'steps'", "steps[0].steps"]
+    }
+  }
+}

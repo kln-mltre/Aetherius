@@ -286,7 +286,12 @@ export default function App() {
         {result !== undefined && failure === undefined && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              Resultat<Text style={{ color: COLORS.laurel }}>{`  ${result.status}`}</Text>
+              Resultat
+              {/* Ambre pour un run partiel, comme la Console : un bloc facultatif a cede, les
+                  sorties sont la mais incompletes. Le peindre en vert dirait le contraire. */}
+              <Text style={{ color: result.status === "partial" ? COLORS.amber : COLORS.laurel }}>
+                {`  ${result.status}`}
+              </Text>
             </Text>
             {/* Un `outputs` vide ici veut dire « la source n'avait rien a dire » — pas « ca a
                 casse ». C'est toute la difference que le modele d'erreur preserve. */}

@@ -54,12 +54,16 @@ kind du registre de notifications (`webhook`, `discord`, `telegram`, `ntfy`, plu
 Jalon E). `target`/`config` acceptent `{{ secrets.x }}`, rendu au tir avec les secrets du schedule :
 les adresses de canal ne sont **jamais persistées**. `on` :
 
-- `failure` (défaut) — alerte quand le run n'est pas `success` (`partial` compte comme échec) ;
+- `failure` (défaut) — alerte quand le run a **échoué**. Un run `partial` (un bloc `optional` a cédé,
+  voir [blueprint-schema.md](blueprint-schema.md#lecture-facultative)) n'est pas un échec : il a rendu
+  les lectures qui sont arrivées, et réveiller quelqu'un pour lui ferait perdre son sens à l'alerte ;
 - `success` / `always` ;
 - `change` — alerte seulement quand les **outputs d'un run réussi diffèrent** du tir précédent
   (`state.compare_and_set`, scope = id du schedule — voir [notifications.md](notifications.md)
   § Déduplication). Les runs échoués n'alertent pas et ne déplacent pas la référence : un échec
-  transitoire ne fabrique jamais de fausse « transition ».
+  transitoire ne fabrique jamais de fausse « transition ». **Un run `partial` non plus**, et c'est le
+  seul endroit où il s'aligne sur l'échec : des sorties incomplètes ne sont pas une référence, et les
+  adopter ferait passer le prochain run **complet** pour un changement.
 
 Un échec d'alerte (secret manquant, canal cassé, livraison) est **contenu** : loggé
 (`aetherius.scheduler`), jamais fatal au tick ni au run.

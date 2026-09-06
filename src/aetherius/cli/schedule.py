@@ -223,6 +223,7 @@ def run(ident: str) -> None:
     from rich.console import Console as RichConsole
 
     from ..core.errors import AetheriusError
+    from ..core.runtime.result import RunStatus
     from ..server.scheduler import fire_schedule
     from ..store import get_store
 
@@ -241,5 +242,7 @@ def run(ident: str) -> None:
         f"Run {result.run_id}: [bold]{result.status.value}[/bold] "
         f"in {result.duration_ms:.1f} ms — {alert}."
     )
-    if result.status.value != "success":
+    # A partial run (Jalon 3-J) exits 0: it lost an optional reading, not the run. Only a hard
+    # failure is a non-zero exit.
+    if result.status.value == RunStatus.FAILED.value:
         raise typer.Exit(1)

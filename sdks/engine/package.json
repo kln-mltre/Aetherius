@@ -1,6 +1,6 @@
 {
   "name": "@aetherius/engine",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "Moteur Aetherius embarque : coeur neutre plateforme + Act I (Vector) sur fetch.",
   "type": "module",
   "main": "dist/index.js",

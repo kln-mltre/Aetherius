@@ -37,6 +37,7 @@ appels réseau du navigateur et pique les champs JSON à extraire. Voir
 | `if` | Exécute la branche `then` ou `else` selon `condition` (steps imbriqués). |
 | `repeat` | Exécute `steps` un nombre fixe de fois (`times`, interpolable). |
 | `for_each` | Exécute `steps` une fois par élément de `items`, variable de boucle via `as`. |
+| `optional` | Exécute `steps` ; à la première défaillance, saute le reste du bloc et laisse le run finir en `partial`. Pour une lecture d'enrichissement dont l'absence est acceptable — voir [blueprint-schema.md](../blueprint-schema.md#lecture-facultative). |
 | `notify` | Envoie une alerte (webhook, Discord, Telegram, ntfy). Champs : `channel`, `message`, `title`, `level`, `target`, `url`, `config` — voir [docs/notifications.md](../notifications.md). |
 | `extract` | Déclaré mais en attente en step autonome (l'extraction vit dans `http.request`). |
 
@@ -51,11 +52,12 @@ Le cas fondateur — n'alerter que si une condition extraite est vraie — s'éc
 { "id": "alert_done", "action": "emit", "when": "{{ steps.fetch.completed | first }}", "message": "TODO_DONE" }
 ```
 
-`if`/`repeat`/`for_each` sont interprétés par le moteur (jamais par le driver) et peuvent
+`if`/`repeat`/`for_each`/`optional` sont interprétés par le moteur (jamais par le driver) et peuvent
 s'imbriquer librement ; la validation descend dans les branches. Exemples exécutables zéro
 config : [`jsonplaceholder-todo-alert`](../../examples/vector/jsonplaceholder-todo-alert.blueprint.json)
-(garde `when`) et [`jsonplaceholder-flow`](../../examples/vector/jsonplaceholder-flow.blueprint.json)
-(`if` + `for_each`).
+(garde `when`), [`jsonplaceholder-flow`](../../examples/vector/jsonplaceholder-flow.blueprint.json)
+(`if` + `for_each`) et [`optional-bonus-read`](../../examples/vector/optional-bonus-read.blueprint.json)
+(un bloc facultatif qui cède, et le run `partial` qui rend quand même ses sorties).
 
 ## Extraction
 

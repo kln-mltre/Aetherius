@@ -117,8 +117,21 @@ def test_always_policy_alerts_on_both(store: Store, capture: CaptureChannel) -> 
     assert _apply(store, _policy(on="always"), status="failed") is True
 
 
-def test_partial_counts_as_failure(store: Store, capture: CaptureChannel) -> None:
-    assert _apply(store, _policy(), status="partial") is True
+def test_partial_is_not_a_failure(store: Store, capture: CaptureChannel) -> None:
+    # Jalon 3-J: a partial run delivered the readings that did arrive. Waking someone for it would
+    # make the failure alert mean nothing — so `failure` stays silent and `success` fires.
+    assert _apply(store, _policy(), status="partial") is None
+    assert _apply(store, _policy(on="success"), status="partial") is True
+
+
+def test_partial_never_moves_the_change_baseline(store: Store, capture: CaptureChannel) -> None:
+    # Incomplete outputs are not a reference: adopting them would make the next *complete* run
+    # look like a change. Same reason a failure does not move it.
+    policy = _policy(on="change")
+
+    assert _apply(store, policy, outputs={"in_stock": False}) is True  # first observation
+    assert _apply(store, policy, status="partial", outputs={"in_stock": True}) is None
+    assert _apply(store, policy, outputs={"in_stock": False}) is None  # baseline untouched
 
 
 def test_change_policy_alerts_only_on_transition(store: Store, capture: CaptureChannel) -> None:

@@ -1,0 +1,249 @@
+{
+  "name": "run-optional-block-yields-partial",
+  "kind": "run",
+  "description": "Le bloc facultatif, joue en entier des deux cotes. Une lecture principale reussit, une lecture bonus cede sur un 503, et ce qui suit DANS le bloc est saute — pas ce qui suit apres lui. Le run finit partial et rend quand meme ses sorties : celle qui ne depend pas du bloc telle quelle, celle qui en depend a son repli. C'est le seul endroit qui prouve que les deux executeurs sautent EXACTEMENT les memes etapes, avec les memes identifiants et dans le meme ordre. Les identifiants imbriques (bonus.coord) et la position du StepResult du bloc APRES ses enfants font partie de ce qui est fige. Deux details que seul un run entier revele : le bloc emet un step_finished — il n'a pas plante, il rapporte partial — et le message d'echec du RUN reste vide, l'erreur appartenant au step qui l'a portee.",
+  "server": {
+    "GET /identity": {
+      "json": {
+        "name": "Ada Lovelace"
+      }
+    },
+    "GET /extras": {
+      "status": 503,
+      "body": "annex is down"
+    }
+  },
+  "blueprint": {
+    "aetherius": "1.0",
+    "name": "conformance.flow.optional",
+    "act": "vector",
+    "inputs": {
+      "base_url": {
+        "type": "string",
+        "required": true
+      }
+    },
+    "steps": [
+      {
+        "id": "identity",
+        "action": "http.request",
+        "method": "GET",
+        "url": "{{ inputs.base_url }}/identity",
+        "expect": {
+          "status": 200
+        },
+        "extract": {
+          "name": {
+            "from": "json",
+            "path": "$.name"
+          }
+        }
+      },
+      {
+        "id": "bonus",
+        "action": "optional",
+        "steps": [
+          {
+            "id": "coord",
+            "action": "http.request",
+            "method": "GET",
+            "url": "{{ inputs.base_url }}/extras",
+            "expect": {
+              "status": 200
+            }
+          },
+          {
+            "id": "unreached",
+            "action": "emit",
+            "message": "NEVER"
+          }
+        ]
+      },
+      {
+        "id": "after",
+        "action": "emit",
+        "message": "STILL RUNNING"
+      }
+    ],
+    "outputs": {
+      "name": "{{ steps.identity.name | first }}",
+      "city": "{{ steps.coord.city | default(none) }}"
+    }
+  },
+  "expect": {
+    "python": {
+      "outcome": "rendered",
+      "value": {
+        "status": "partial",
+        "outputs": {
+          "name": "Ada Lovelace",
+          "city": null
+        },
+        "steps": [
+          {
+            "step_id": "identity",
+            "action": "http.request",
+            "status": "success"
+          },
+          {
+            "step_id": "bonus.coord",
+            "action": "http.request",
+            "status": "failed"
+          },
+          {
+            "step_id": "bonus.unreached",
+            "action": "emit",
+            "status": "skipped"
+          },
+          {
+            "step_id": "bonus",
+            "action": "optional",
+            "status": "partial"
+          },
+          {
+            "step_id": "after",
+            "action": "emit",
+            "status": "success"
+          }
+        ],
+        "events": [
+          {
+            "type": "progress",
+            "step_id": null
+          },
+          {
+            "type": "step_started",
+            "step_id": "identity"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "identity"
+          },
+          {
+            "type": "step_started",
+            "step_id": "bonus"
+          },
+          {
+            "type": "step_started",
+            "step_id": "bonus.coord"
+          },
+          {
+            "type": "error",
+            "step_id": "bonus.coord"
+          },
+          {
+            "type": "step_skipped",
+            "step_id": "bonus.unreached"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "bonus"
+          },
+          {
+            "type": "step_started",
+            "step_id": "after"
+          },
+          {
+            "type": "progress",
+            "step_id": "after"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "after"
+          },
+          {
+            "type": "done",
+            "step_id": null
+          }
+        ]
+      }
+    },
+    "embedded": {
+      "outcome": "rendered",
+      "value": {
+        "status": "partial",
+        "outputs": {
+          "name": "Ada Lovelace",
+          "city": null
+        },
+        "steps": [
+          {
+            "step_id": "identity",
+            "action": "http.request",
+            "status": "success"
+          },
+          {
+            "step_id": "bonus.coord",
+            "action": "http.request",
+            "status": "failed"
+          },
+          {
+            "step_id": "bonus.unreached",
+            "action": "emit",
+            "status": "skipped"
+          },
+          {
+            "step_id": "bonus",
+            "action": "optional",
+            "status": "partial"
+          },
+          {
+            "step_id": "after",
+            "action": "emit",
+            "status": "success"
+          }
+        ],
+        "events": [
+          {
+            "type": "progress",
+            "step_id": null
+          },
+          {
+            "type": "step_started",
+            "step_id": "identity"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "identity"
+          },
+          {
+            "type": "step_started",
+            "step_id": "bonus"
+          },
+          {
+            "type": "step_started",
+            "step_id": "bonus.coord"
+          },
+          {
+            "type": "error",
+            "step_id": "bonus.coord"
+          },
+          {
+            "type": "step_skipped",
+            "step_id": "bonus.unreached"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "bonus"
+          },
+          {
+            "type": "step_started",
+            "step_id": "after"
+          },
+          {
+            "type": "progress",
+            "step_id": "after"
+          },
+          {
+            "type": "step_finished",
+            "step_id": "after"
+          },
+          {
+            "type": "done",
+            "step_id": null
+          }
+        ]
+      }
+    }
+  }
+}

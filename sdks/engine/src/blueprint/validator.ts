@@ -62,6 +62,7 @@ function validateStep(step: StepModel, inheritedAct: string, path: string): void
 
   checkExtractDialects(step, stepLabel(step), path);
   checkPortableParams(step, stepLabel(step), path);
+  checkOptionalBlock(step, stepLabel(step), path);
 
   for (const field of nestedStepFields(step.action)) {
     const nested = step[field];
@@ -76,6 +77,24 @@ function validateStep(step: StepModel, inheritedAct: string, path: string): void
     nested.forEach((child, index) =>
       // Nested steps inherit the enclosing step's effective act.
       validateStep(child as StepModel, act, `${path}.${field}[${index}]`),
+    );
+  }
+}
+
+/**
+ * Reject an `optional` block with no `steps`, the one flow action that must not fail late.
+ *
+ * The three other flow actions report a missing parameter at run time, and that is harmless: the
+ * run dies with a clear message. An `optional` block would instead tolerate its *own* malformed
+ * interpretation and become a silent no-op — the exact opposite of a milestone whose point is that
+ * a failure stays visible. Mirror of `core/blueprint/validator.py`: the rule is the contract's, and
+ * the schema cannot carry it because it knows nothing about actions.
+ */
+function checkOptionalBlock(step: StepModel, label: string, path: string): void {
+  if (step.action !== "optional") return;
+  if (!Array.isArray(step["steps"])) {
+    throw new BlueprintValidationError(
+      `Step ${label}: 'optional' requires a 'steps' list of steps to attempt (at ${path}.steps).`,
     );
   }
 }

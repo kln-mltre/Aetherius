@@ -1,5 +1,6 @@
 /**
- * Flow actions (`if` / `repeat` / `for_each`), mirror of `src/aetherius/core/runtime/flow.py`.
+ * Flow actions (`if` / `repeat` / `for_each` / `optional`), mirror of
+ * `src/aetherius/core/runtime/flow.py`.
  *
  * They are interpreted before any driver sees them, so every Act inherits the semantics without
  * wiring anything. The executor re-enters itself through `FlowHost` for the nested lists.
@@ -10,10 +11,12 @@
  * — it is in the event stream — so it is part of the contract, not an implementation detail.
  */
 
+import { nestedStepFields } from "../blueprint/contract.js";
 import type { StepModel } from "../blueprint/types.js";
 import type { Renderer, RunContext } from "../driver.js";
 import { ActionError } from "../errors.js";
 import { isTruthy, pythonRepr } from "../expr/index.js";
+import type { RunStatus } from "../result.js";
 
 /** Template names a `for_each` loop variable would shadow (see `templateContext`). */
 const RESERVED_NAMES = new Set(["inputs", "secrets", "vars", "env", "steps"]);
@@ -31,10 +34,23 @@ const DEFAULT_LOOP_VAR = "item";
  */
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+/**
+ * What a flow step reports back: its outputs, and the status the executor must record.
+ *
+ * Only `optional` ever reports anything but `success`. Carrying the status here rather than
+ * inferring it in the executor keeps a single rule — the step that *interpreted* the block says
+ * how it went.
+ */
+export interface FlowOutcome {
+  readonly outputs: Record<string, unknown>;
+  readonly status: RunStatus;
+}
+
 /** The slice of the executor a flow action needs: recursion, plus the run scope. */
 export interface FlowHost {
   readonly ctx: RunContext;
   run(steps: readonly StepModel[], path: string, act: string): Promise<void>;
+  runTolerant(steps: readonly StepModel[], path: string, act: string): Promise<boolean>;
 }
 
 /** Interpret one flow step; nested lists re-enter *host* with the step's effective *act*. */
@@ -44,10 +60,65 @@ export async function runFlow(
   render: Renderer,
   path: string,
   act: string,
-): Promise<Record<string, unknown>> {
-  if (step.action === "if") return flowIf(host, step, render, path, act);
-  if (step.action === "repeat") return flowRepeat(host, step, render, path, act);
-  return flowForEach(host, step, render, path, act);
+): Promise<FlowOutcome> {
+  if (step.action === "if") return done(await flowIf(host, step, render, path, act));
+  if (step.action === "repeat") return done(await flowRepeat(host, step, render, path, act));
+  // Explicit, because `for_each` is the fallback below: without this branch an `optional` block
+  // would be interpreted as a malformed loop, and fail on a missing `items`.
+  if (step.action === "optional") return flowOptional(host, step, path, act);
+  return done(await flowForEach(host, step, render, path, act));
+}
+
+function done(outputs: Record<string, unknown>): FlowOutcome {
+  return { outputs, status: "success" };
+}
+
+/**
+ * Run a block whose failure is an acceptable outcome (milestone 3-J).
+ *
+ * The block publishes no data of its own: what happened is read from `Result.step_results`, never
+ * from the template context — the same split the milestone installs everywhere.
+ */
+async function flowOptional(
+  host: FlowHost,
+  step: StepModel,
+  path: string,
+  act: string,
+): Promise<FlowOutcome> {
+  const nested = nestedSteps(step, "steps", path);
+  const gaveWay = await host.runTolerant(nested, path, act);
+  return { outputs: {}, status: gaveWay ? "partial" : "success" };
+}
+
+/**
+ * Publish `{}` for every identified step of an `optional` block that produced nothing.
+ *
+ * Both engines reject the undefined at the point of *use*, so `steps.coord.city | default(null)`
+ * throws when `steps.coord` is missing altogether — the filter never sees the value, the member
+ * access already failed. Seeding an empty object is what makes the documented writing rule true.
+ * `??=` is the whole subtlety: a step that published before giving way keeps what it published.
+ *
+ * It recurses through nested blocks so the rule holds at any depth inside the block, and never
+ * touches anything outside it. The consequence is deliberate and documented: `steps.coord` is
+ * defined even when the block gave way — the template context carries *data*, while
+ * `Result.step_results` carries what *happened*.
+ */
+export function seedBlockOutputs(ctx: RunContext, step: StepModel): void {
+  seed(ctx, step.id, step.action, step as Record<string, unknown>);
+}
+
+function seed(ctx: RunContext, stepId: unknown, action: string, fields: Record<string, unknown>): void {
+  if (typeof stepId === "string" && stepId !== "") ctx.stepOutputs[stepId] ??= {};
+  for (const name of nestedStepFields(action)) {
+    const nested = fields[name];
+    if (!Array.isArray(nested)) continue;
+    for (const item of nested) {
+      if (item !== null && typeof item === "object") {
+        const child = item as Record<string, unknown>;
+        seed(ctx, child["id"], typeof child["action"] === "string" ? child["action"] : "", child);
+      }
+    }
+  }
 }
 
 async function flowIf(

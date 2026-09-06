@@ -68,7 +68,7 @@ toujours accepté par le moteur Python ; l'inverse est faux, et c'est voulu.
 | Périmètre | Détail |
 |-----------|--------|
 | Acts | `vector`, `continuum`. Oracle et Phantom restent au moteur Python. |
-| Vector | `http.request`, `extract`, `set`, `assert`, `emit`, `wait`, `if`, `repeat`, `for_each`, `confirm`. |
+| Vector | `http.request`, `extract`, `set`, `assert`, `emit`, `wait`, `if`, `repeat`, `for_each`, `optional`, `confirm`. |
 | Continuum | le jeu Vector + `navigate`, `back`, `forward`, `reload`, `click`, `fill`, `type`, `press`, `select`, `hover`, `scroll`, `evaluate`, `wait_for`. |
 | Hors périmètre | `upload`, `drag`, `screenshot` (pas d'équivalent honnête en WebView), `notify` (l'application a déjà ses notifications), `read` et les Acts cognitifs. |
 
@@ -132,6 +132,19 @@ satisfait, la clé étant présente. Côté Python c'est le modèle pydantic qui
 embarqué n'a pas de pydantic : la règle est reproduite explicitement dans
 [`loader.ts`](../sdks/engine/src/blueprint/loader.ts), et c'est le cas de conformance
 `model-empty-steps` qui garantit que les deux restent d'accord.
+
+### Une seconde règle hors du schéma : `optional` sans `steps`
+
+Même situation, autre cause. Le schéma ne connaît **pas les actions** — `$defs/step` accepte
+n'importe quelle clé — donc il ne peut pas exiger qu'un bloc facultatif porte ce qu'il doit tenter.
+Les deux moteurs le refusent donc à la validation, et eux seuls le peuvent.
+
+L'asymétrie avec les trois autres actions de flux est délibérée : un `repeat` sans `steps` passe
+encore la validation et n'échoue qu'à l'exécution. Ce n'est pas une négligence qu'on aurait alignée
+si on avait pu, c'est que le piège n'existe que pour `optional` : l'erreur d'interprétation naîtrait
+**à l'intérieur du bloc**, qui la tolérerait — le bloc se tolérerait lui-même et deviendrait un no-op
+parfaitement silencieux, l'inverse exact d'un jalon dont le propos est qu'une défaillance reste
+visible. Cas de conformance : `optional-without-steps`.
 
 ### Trois refus, trois messages
 
@@ -357,9 +370,35 @@ Quelques points de sémantique qui décident du résultat :
   (`status: "failed"`, message dans `error`, aucun `outputs` publié) ; toute autre exception est
   enveloppée dans une `RunError` et **relancée** — un bug du moteur ne doit pas se déguiser en run
   qui « n'a pas marché ».
+- **`optional` est la seule exception à « une défaillance tue le run »**, et il ne l'est que dans ses
+  accolades — voir [Le bloc facultatif](#le-bloc-facultatif-et-le-run-partiel) juste en dessous.
 - **Les `outputs` sont rendus après coup, hors du rattrapage d'erreur** : une `TemplateError` dans
   un `outputs` remonte à l'appelant au lieu d'être maquillée en run échoué. C'est aussi le
-  comportement Python.
+  comportement Python. Depuis le jalon 3-J ils sont rendus dès que le run **n'a pas échoué** — donc
+  aussi pour un run `partial`, sans quoi un bloc facultatif qui cède emporterait des lectures qui,
+  elles, avaient abouti.
+
+#### Le bloc facultatif, et le run partiel
+
+Sémantique complète et règle d'écriture :
+[blueprint-schema.md](blueprint-schema.md#lecture-facultative). Ce qu'il faut savoir **ici**, parce
+que c'est propre à ce moteur ou à sa mise en œuvre :
+
+- **`RunStatus` a toujours déclaré `partial`** des deux côtés, sans que rien ne le produise. Le bloc
+  l'honore plutôt que d'inventer un statut ; le SDK daemon, lui, continue de traduire `partial` en
+  `succeeded` — un job qui a rendu un résultat.
+- **Une annulation traverse le bloc.** L'ordre des branches de rattrapage y suffit :
+  `RunCancelledError` est relancée **avant** de pouvoir devenir un `StepFailed`, et le bloc n'absorbe
+  que `StepFailed`. Attraper `AetheriusError` à sa place transformerait silencieusement une
+  annulation en succès partiel — une application afficherait un écran pour quelqu'un qui est parti.
+  Un test le fige.
+- **Ce que le bloc tolère est ce qui devient un `StepFailed`**, c'est-à-dire toute erreur typée
+  levée par un step. Cela inclut une source injoignable (famille `unavailable`) et un `wait_for`
+  expiré — le cas exact qui a ouvert le jalon. Cette dernière tolérance ne tient que parce que le
+  pont d'erreurs type les échecs de la WebView et de Playwright **avant** que l'exécuteur les voie ;
+  la retirer casserait le bloc sans que rien ne le nomme.
+- **Un défaut du moteur n'est pas toléré** : une exception non typée traverse le bloc et finit en
+  `RunError`. Ce qu'on tolère est une lecture qui n'est pas arrivée, jamais un bug.
 
 Le driver d'un act est résolu par un **registre** (`registerDriver`), là où le moteur Python nomme
 ses quatre drivers dans un `match`. La raison est la frontière des paquets : le driver Continuum a
@@ -1469,6 +1508,14 @@ Le bus ([`events/bus.ts`](../sdks/engine/src/events/bus.ts)) diffuse en ordre d'
 synchrone, et **avale l'exception d'un sink** en la journalisant : le bug d'un consommateur n'est
 jamais l'échec d'un run. Le logger est injectable, pour qu'une application le route vers le sien.
 
+> **Depuis le jalon 3-J, un événement `error` ne signifie plus à lui seul que le run a échoué.** Une
+> étape qui cède dans un bloc `optional` émet le sien exactement comme avant — la défaillance ne doit
+> jamais devenir invisible —, et le run se poursuit. Le verdict est `Result.status` ; ce qu'on n'a pas
+> obtenu se lit dans `Result.step_results`. Aucun type d'événement n'a été ajouté : une application
+> qui décide sur le résultat, ce que font les consommateurs actuels, n'a rien à changer ; une
+> application qui aurait déduit l'échec de la seule présence d'un `error` afficherait désormais une
+> panne là où il n'y en a pas.
+
 **Le flux est déjà une interface de progression.** Les événements portent le `step_id`, le niveau et
 le message — de quoi afficher où en est un run, étape par étape, sans machine à états applicative.
 C'est précisément ce qu'une application réimplémente aujourd'hui à la main. Le hook
@@ -2056,6 +2103,48 @@ L'aspérité relevée, antérieure au jalon et laissée telle quelle : l'action 
 via `StatusAssertionError`, donc le message porte un préfixe `Expected HTTP 1, got 0 — <assert>`
 avant la vraie raison. Identique sur les deux moteurs ; le changer toucherait le contrat d'erreur
 d'une action qui n'est pas le sujet de ce jalon.
+
+### Sondes du jalon 3-J
+
+Le jalon ajoute une action de flux, donc les sondes visent une **sémantique** : ce qui est perdu
+quand un bloc cède, et surtout ce qui ne l'est pas. Les deux sont jouées des deux côtés.
+
+| Sonde | Résultat |
+|-------|----------|
+| [`optional-bonus-read`](../examples/vector/optional-bonus-read.blueprint.json) — identité publique lue, fiche étendue visant une ressource absente (404 contre un `expect: 200`) | `partial` des deux côtés, **mêmes sorties** (`nom`, `ville` rendus, `societe: null`), mêmes statuts de step, et le run se poursuit après le bloc. Code de sortie **0** à la CLI |
+| **Conçue pour échouer** : la même, sortie `societe` écrite **sans** `\| default(...)` | Le run échoue au rendu de ses sorties, `Undefined variable in expression: 'steps.fiche.societe'`. C'est le comportement voulu : la règle d'écriture est une règle, pas une magie du moteur, et un trou silencieux vaudrait moins qu'une erreur lisible |
+| [`optional-bonus-probe`](../examples/mobile/optional-bonus-probe.blueprint.json) — Act II, citation réelle lue puis page annexe injoignable (`127.0.0.1:4`) | La forme exacte du défaut qui a ouvert le jalon. Sur le poste (Chromium réel) **et sur iPhone** : `navigate` `failed`, les deux steps suivants `skipped`, bloc `partial`, run `partial`, citation rendue et `apres_le_bloc: "oui"` |
+
+Ce que l'appareil a prouvé et que le poste ne pouvait pas : **un échec de chargement de la WebView
+est de ceux qu'un bloc tolère.** Playwright et `react-native-webview` n'échouent pas par le même
+chemin — c'est précisément l'angle mort qui avait valu le correctif 0.5.3 —, si bien que la
+tolérance de la famille `unavailable` restait une déduction tant qu'un téléphone ne l'avait pas
+jouée. Le relevé, mot pour mot :
+
+```
+[error] enrichissement.annexe the WebView could not load the document: Could not connect to the server.
+[step_skipped] enrichissement._step_1 skipped: an earlier step of the optional block failed
+[step_skipped] enrichissement.bonus   skipped: an earlier step of the optional block failed
+[step_finished] enrichissement
+[progress] APRES_LE_BLOC
+[done] run finished: partial
+```
+
+Deux détails s'y lisent au passage. Le step anonyme sauté garde son **index d'origine**
+(`_step_1`, pas `_step_0`) : le marquage du reste du bloc travaille sur une tranche, et un décalage
+oublié aurait fait collisionner deux identifiants — et diverger les deux moteurs. Et le bloc émet un
+`step_finished`, pas un `error` : il n'a pas planté, il rapporte.
+
+L'application de démonstration affiche par ailleurs une ligne dorée au-dessus du résultat
+(« Could not connect to the server. »). Ce n'est **pas** un bandeau d'échec mais le fil de
+diagnostic de la vue (`onLoadError`) : la WebView rapporte ce qui lui est arrivé, et le bloc l'a
+toléré. Le bandeau d'échec, lui, porterait un titre et une invitation à réessayer — et le bloc
+`Resultat` ne s'afficherait pas.
+
+L'adresse morte est le **port 4** du loopback et non 1, 7 ou 9 : la leçon avait déjà été payée par
+`unreachable-probe`, dont la note explique qu'un port bloqué par politique fait rendre à WebKit une
+erreur que `react-native-webview` avale. Cette sonde prouve donc aussi qu'un échec de la famille
+`unavailable` est bien de ceux qu'un bloc tolère.
 
 ### Sur appareil
 

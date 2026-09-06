@@ -106,9 +106,19 @@ class RunEngine:
         finally:
             manager.teardown_all(ctx)
 
-        # Render the outputs dict through the template engine.
+        # An `optional` block that gave way (Jalon 3-J) reports PARTIAL without raising, so the
+        # verdict is read from the results rather than propagated. The guard is what makes a hard
+        # failure always win — and the scan looks for PARTIAL, never for FAILED: a step marked
+        # failed inside a tolerated block is no longer a verdict on the run.
+        if final_status == RunStatus.SUCCESS and any(
+            r.status == RunStatus.PARTIAL for r in step_results
+        ):
+            final_status = RunStatus.PARTIAL
+
+        # Render the outputs dict through the template engine. A partial run renders them too:
+        # holding them back would lose the readings that did arrive, which is the whole point.
         final_outputs: dict[str, Any] = {}
-        if final_status == RunStatus.SUCCESS:
+        if final_status != RunStatus.FAILED:
             if blueprint.outputs:
                 final_outputs = render_value(blueprint.outputs, ctx.template_ctx())
             elif not blueprint.steps and isinstance(ctx.step_outputs.get("agent"), dict):
@@ -122,7 +132,7 @@ class RunEngine:
                 run_id=run_id,
                 type=EventType.DONE,
                 message=f"run finished: {final_status.value}",
-                level="info" if final_status == RunStatus.SUCCESS else "error",
+                level="error" if final_status == RunStatus.FAILED else "info",
                 data={"status": final_status.value, "error": run_error},
             )
         )

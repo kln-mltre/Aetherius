@@ -7,7 +7,8 @@ built-in est un simple POST JSON via `httpx`, déjà au cœur. Deux surfaces d'u
    partagé de `acts/_shared.py` sur Vector comme Continuum). Se combine à la garde `when` pour
    l'alerte conditionnelle.
 2. **Le `NotifySink`** — un sink de run qui alerte automatiquement en fin de run selon une
-   politique (`failure` / `success` / `always`). Passable à `RunEngine.run(sinks=...)`, consommé
+   politique (`failure` / `success` / `always` — un run `partial` n'est pas un échec, voir
+   [blueprint-schema.md](blueprint-schema.md#lecture-facultative)). Passable à `RunEngine.run(sinks=...)`, consommé
    par le scheduler (Jalon D).
 
 ## L'action `notify`

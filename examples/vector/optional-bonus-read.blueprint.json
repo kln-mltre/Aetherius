@@ -1,0 +1,52 @@
+{
+  "aetherius": "1.0",
+  "name": "vector.optional.bonus",
+  "description": "Lecture facultative (Jalon 3-J) : l'identite est obligatoire, la fiche etendue est un bonus. Le bloc optional vise une ressource absente, cede, et le run finit 'partial' en rendant quand meme l'identite. Zero configuration. Regle d'ecriture a retenir : une sortie qui reference un bloc facultatif se termine par | default(...), sinon le rendu echoue bruyamment — ce qui est le bon comportement.",
+  "act": "vector",
+  "vars": {
+    "api": "https://jsonplaceholder.typicode.com",
+    "fiche_absente": "https://jsonplaceholder.typicode.com/users/999999"
+  },
+  "steps": [
+    {
+      "id": "identite",
+      "action": "http.request",
+      "method": "GET",
+      "url": "{{ vars.api }}/users/1",
+      "expect": { "status": 200 },
+      "extract": {
+        "nom": { "from": "json", "path": "$.name" },
+        "ville": { "from": "json", "path": "$.address.city" }
+      }
+    },
+    {
+      "id": "enrichissement",
+      "action": "optional",
+      "steps": [
+        {
+          "id": "fiche",
+          "action": "http.request",
+          "method": "GET",
+          "url": "{{ vars.fiche_absente }}",
+          "expect": { "status": 200 },
+          "extract": { "societe": { "from": "json", "path": "$.company.name" } }
+        },
+        {
+          "id": "jamais",
+          "action": "emit",
+          "message": "Cette etape ne doit pas s'executer : la precedente a cede."
+        }
+      ]
+    },
+    {
+      "id": "suite",
+      "action": "emit",
+      "message": "Le run continue apres le bloc facultatif."
+    }
+  ],
+  "outputs": {
+    "nom": "{{ steps.identite.nom | first }}",
+    "ville": "{{ steps.identite.ville | first }}",
+    "societe": "{{ steps.fiche.societe | default(none) }}"
+  }
+}

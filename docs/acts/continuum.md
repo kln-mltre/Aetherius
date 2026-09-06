@@ -74,6 +74,7 @@ Vector — aucune duplication.
 | `emit`, `wait`, `set`, `assert` | Hérités du core (mixin partagé). | cf. [Act I](vector.md) |
 | `notify` | Alerte multi-canaux (mixin partagé), voir [docs/notifications.md](../notifications.md). | `channel`, `message`, `title`, `level`, `target`, `url`, `config` |
 | `if` / `repeat` / `for_each` | Flux conditionnel et itération (steps imbriqués), interprétés par le moteur. | `condition`/`then`/`else`, `times`/`steps`, `items`/`as`/`steps` |
+| `optional` | Bloc de lecture **facultative** : la première défaillance saute le reste du bloc, le run continue en `partial`. C'est ici qu'il sert le plus — une page annexe qui ne répond pas n'emporte plus la session ouverte ni ce qui a déjà été lu. Voir [blueprint-schema.md](../blueprint-schema.md#lecture-facultative). | `steps` |
 
 Tout step accepte aussi la garde **`when`** (sauté si l'expression rend faux). Sémantique :
 [docs/blueprint-schema.md](../blueprint-schema.md#garde-when).

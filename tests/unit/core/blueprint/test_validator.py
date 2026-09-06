@@ -286,3 +286,32 @@ def test_text_extraction_is_checked_inside_flow_branches() -> None:
     )
     with pytest.raises(BlueprintValidationError, match="steps\\[0\\].then\\[0\\].extract.raw"):
         validate_for_act(bp)
+
+
+# ── optional (Jalon 3-J) ─────────────────────────────────────────────────────
+
+
+def test_optional_without_steps_is_refused_at_validation() -> None:
+    # The one flow action that must not fail late: an `optional` block whose interpretation raises
+    # would be tolerated *by itself* and become a silent no-op — the exact opposite of a milestone
+    # whose point is that a failure stays visible. Its three sisters keep reporting at run time.
+    with pytest.raises(BlueprintValidationError, match="'steps'") as exc_info:
+        validate_for_act(_make_nested("vector", {"id": "blk", "action": "optional"}))
+    assert "steps[0].steps" in str(exc_info.value)
+
+
+def test_optional_with_a_non_list_steps_is_refused() -> None:
+    with pytest.raises(BlueprintValidationError):
+        validate_for_act(_make_nested("vector", {"action": "optional", "steps": "nope"}))
+
+
+def test_optional_is_accepted_on_every_act() -> None:
+    for act in ("vector", "continuum", "oracle", "phantom"):
+        validate_for_act(_make_nested(act, {"action": "optional", "steps": [{"action": "emit"}]}))
+
+
+def test_optional_validates_its_nested_steps() -> None:
+    # The block is a flow action like any other: the walk descends into it, with a readable path.
+    bp = _make_nested("vector", {"action": "optional", "steps": [{"action": "click"}]})
+    with pytest.raises(BlueprintValidationError, match="steps\\[0\\].steps\\[0\\]"):
+        validate_for_act(bp)

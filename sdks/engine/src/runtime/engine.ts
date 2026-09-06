@@ -110,10 +110,19 @@ export class RunEngine {
     }
     await manager.teardownAll(ctx);
 
+    // An `optional` block that gave way (milestone 3-J) reports `partial` without throwing, so the
+    // verdict is read from the results rather than propagated. The guard is what makes a hard
+    // failure always win — and the scan looks for `partial`, never for `failed`: a step marked
+    // failed inside a tolerated block is no longer a verdict on the run.
+    if (status === "success" && stepResults.some((step) => step.status === "partial")) {
+      status = "partial";
+    }
+
     // Outside the failure handling on purpose, exactly as in Python: a `TemplateError` in the
-    // outputs is the caller's problem to see, not a run quietly reported as failed.
+    // outputs is the caller's problem to see, not a run quietly reported as failed. A partial run
+    // renders them too: holding them back would lose the readings that did arrive.
     let outputs: Record<string, unknown> = {};
-    if (status === "success" && blueprint.outputs !== undefined) {
+    if (status !== "failed" && blueprint.outputs !== undefined) {
       outputs = renderValue(blueprint.outputs, templateContext(ctx)) as Record<string, unknown>;
     }
 
@@ -121,7 +130,7 @@ export class RunEngine {
       run_id: runId,
       ts: nowIso(),
       type: "done",
-      level: status === "success" ? "info" : "error",
+      level: status === "failed" ? "error" : "info",
       message: `run finished: ${status}`,
       data: { status, error: error ?? null },
     });

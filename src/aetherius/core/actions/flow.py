@@ -1,8 +1,8 @@
-"""Control-flow actions: wait, wait_for, emit, if, repeat, for_each.
+"""Control-flow actions: wait, wait_for, emit, if, repeat, for_each, optional.
 
-Specs projected by the builder catalogue. ``if``/``repeat``/``for_each`` are interpreted by the
-step executor (core/runtime/steps.py) for every Act, so they never reach a driver; their nested
-step lists (``then``/``else``/``steps``) are formalised in contracts/blueprint.schema.json.
+Specs projected by the builder catalogue. The four flow actions are interpreted by the step
+executor (core/runtime/steps.py) for every Act, so they never reach a driver; their nested step
+lists (``then``/``else``/``steps``) are formalised in contracts/blueprint.schema.json.
 """
 
 from __future__ import annotations
@@ -90,6 +90,19 @@ SPECS: Final[tuple[ActionSpec, ...]] = (
             ),
             ParamSpec("as", "string", help="Loop variable name (default: item)."),
             ParamSpec("steps", "array", required=True, help="Steps to run per item."),
+        ),
+    ),
+    ActionSpec(
+        "optional",
+        "Run nested steps whose failure is an acceptable outcome.",
+        params=(
+            ParamSpec(
+                "steps",
+                "array",
+                required=True,
+                help="Steps to attempt. On the first failure the rest are skipped and the run "
+                "continues, reporting 'partial'.",
+            ),
         ),
     ),
 )

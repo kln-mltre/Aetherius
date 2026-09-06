@@ -23,6 +23,7 @@ import icalLargeBodyProbe from "../ical-large-body-probe.blueprint.json";
 import quotesLoginConfirm from "../quotes-login-confirm.blueprint.json";
 import sessionCookieProbe from "../session-cookie-probe.blueprint.json";
 import sessionPersistProbe from "../session-persist-probe.blueprint.json";
+import optionalBonusProbe from "../optional-bonus-probe.blueprint.json";
 import unreachableProbe from "../unreachable-probe.blueprint.json";
 import webviewQuotes from "../webview-quotes.blueprint.json";
 import bordeauxCasLogin from "../../continuum/bordeaux-cas-login.blueprint.json";
@@ -251,5 +252,17 @@ export const BLUEPRINTS = [
     // promesse du jalon 3-C, qu'aucun test hors appareil ne peut montrer.
     status: "done",
     note: "carried: true sur l'appareil, false sous Node : l'asymetrie declaree, observee.",
+  },
+  {
+    key: "optional-bonus-probe",
+    title: "Lecture facultative : le bloc qui cede",
+    hint: "La forme exacte du defaut qui a ouvert le jalon 3-J. La citation doit arriver, le bloc doit ceder sur l'adresse morte, et le verdict doit etre « partial » — pas « failed ». apres_le_bloc: oui prouve que le run a continue.",
+    blueprint: optionalBonusProbe,
+    // Verifie sur iPhone : verdict `partial`, citation rendue, `apres_le_bloc: "oui"`, et l'echec de
+    // chargement de la WebView (famille unavailable) absorbe par le bloc — le seul point que le poste
+    // ne pouvait pas prouver, Playwright et react-native-webview n'echouant pas par le meme chemin.
+    // L'anonyme saute a garde son index (`_step_1`), ce qui verifie l'offset du marquage.
+    status: "done",
+    note: "Le fil de diagnostic de la vue affiche « Could not connect to the server. » en dore au-dessus du resultat : c'est `onLoadError`, pas un echec de run — la vue rapporte ce qui lui est arrive, et le bloc l'a tolere. Aucun bandeau d'echec, et RESULTAT PARTIAL en ambre juste en dessous.",
   },
 ];

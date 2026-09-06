@@ -541,6 +541,7 @@ def test_flow_actions_never_reach_the_driver() -> None:
             "if": {"action": "if", "condition": "false"},
             "repeat": {"action": "repeat", "times": 0, "steps": []},
             "for_each": {"action": "for_each", "items": "{{ [] }}", "steps": []},
+            "optional": {"action": "optional", "steps": []},
         }[cap.value]
         run_steps(_steps(step), ctx, bus, ExplodingDriver(), results)
         assert results[-1].status == RunStatus.SUCCESS

@@ -2,8 +2,8 @@
 
 Since Jalon 2-D a step may override the Blueprint act (``step.act``, multi-Act composition);
 nested flow steps inherit the enclosing step's effective act. Recurses into the nested step
-lists of the flow actions (``if``/``repeat``/``for_each``) so an unsupported action buried in a
-branch is rejected before the run starts, with a readable path. Self-healing chains
+lists of the flow actions (``if``/``repeat``/``for_each``/``optional``) so an unsupported action
+buried in a branch is rejected before the run starts, with a readable path. Self-healing chains
 (``options.fallback`` / ``step.fallback``) are checked here too.
 """
 
@@ -13,7 +13,7 @@ from typing import Callable
 
 from pydantic import ValidationError
 
-from ..actions.base import ACT_CAPABILITIES
+from ..actions.base import ACT_CAPABILITIES, Capability
 from ..actions.base import FLOW_NESTED_FIELDS as FLOW_NESTED_FIELDS  # re-export (public surface)
 from ..actions.registry import plugin_actions
 from ..errors import BlueprintValidationError
@@ -110,6 +110,7 @@ def _validate_step(
         _validate_chain(step.fallback, f"{path}.fallback")
 
     _validate_extract(step, path)
+    _validate_optional(step, path)
 
     for field_name in FLOW_NESTED_FIELDS.get(step.action, ()):
         raw = step.extra_fields.get(field_name)
@@ -128,6 +129,24 @@ def _validate_step(
                 raise BlueprintValidationError(f"Invalid step at {child_path}: {exc}") from exc
             # Nested steps inherit the enclosing step's effective act.
             _validate_step(child, act, supported_values, child_path)
+
+
+def _validate_optional(step: StepModel, path: str) -> None:
+    """Reject an ``optional`` block with no ``steps``, the one flow action that must not fail late.
+
+    The three other flow actions report a missing parameter at run time, and that is harmless: the
+    run dies with a clear message. An ``optional`` block would instead *tolerate its own* malformed
+    interpretation and become a silent no-op — the exact opposite of a milestone whose point is that
+    a failure stays visible. Hence a rule here rather than in the schema, which knows nothing about
+    actions (see docs/phase-3/3-j-lecture-facultative.md).
+    """
+    if step.action != Capability.OPTIONAL.value:
+        return
+    if not isinstance(step.extra_fields.get("steps"), list):
+        raise BlueprintValidationError(
+            f"Step {step.id!r}: 'optional' requires a 'steps' list of steps to attempt "
+            f"(at {path}.steps)."
+        )
 
 
 def _validate_extract(step: StepModel, path: str) -> None:

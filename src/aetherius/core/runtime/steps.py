@@ -26,11 +26,15 @@ from ..events.bus import EventBus
 from ..events.models import EventType, RunEvent
 from .context import RunContext
 from .flow import is_truthy as is_truthy  # re-export: historical home of the truthiness rule
-from .flow import run_flow
+from .flow import run_flow, seed_block_outputs
 from .healing import attempt_healing
 from .result import RunStatus, StepResult
 
 _FLOW_VALUES: frozenset[str] = frozenset(cap.value for cap in FLOW_ACTIONS)
+
+# Reason a step of an `optional` block was never attempted. Worded identically in the embedded
+# engine: the two must not describe the same skip in two ways.
+_SKIPPED_AFTER_FAILURE = "skipped: an earlier step of the optional block failed"
 
 
 class StepDriver(Protocol):
@@ -102,87 +106,125 @@ class _Executor:
     results: list[StepResult]
 
     def run(self, steps: Sequence[StepModel], path: str = "", act: str | None = None) -> None:
+        self._walk(steps, path, act, tolerate=False)
+
+    def run_tolerant(self, steps: Sequence[StepModel], path: str, act: str) -> bool:
+        """Run the body of an ``optional`` block; report whether a failure was absorbed.
+
+        Only ``StepFailed`` is absorbed — the marker of a step failure already recorded and already
+        reported as an ERROR event. Anything else keeps killing the run: a bug escaping a driver is
+        not a reading that did not arrive. Tolerance is an argument, never state, so it stops at the
+        block that asked for it and never leaks into a nested one.
+        """
+        return self._walk(steps, path, act, tolerate=True)
+
+    def _walk(
+        self, steps: Sequence[StepModel], path: str, act: str | None, *, tolerate: bool
+    ) -> bool:
         inherited = act or self.ctx.blueprint.act
         for i, step in enumerate(steps):
-            step_path = _join(path, step.id or f"_step_{i}")
-            # Root steps keep their bare id (None when anonymous) so linear Blueprints are
-            # untouched; nested steps expose their full path for traceability.
-            display_id = step.id if not path else step_path
-            output_key = step.id or step_path
-            effective_act = step.act or inherited
-
-            def renderer(value: Any) -> Any:
-                return render_value(value, self.ctx.template_ctx())
-
-            t0 = time.monotonic()
             try:
-                if step.when is not None and not is_truthy(renderer(step.when)):
-                    self.results.append(
-                        StepResult(
-                            step_id=display_id,
-                            action=step.action,
-                            status=RunStatus.SKIPPED,
-                            duration_ms=(time.monotonic() - t0) * 1000,
-                        )
-                    )
-                    # Report the raw expression, never its rendered value: it may derive from
-                    # a secret.
-                    self._emit(
-                        EventType.STEP_SKIPPED,
-                        display_id,
-                        message=f"skipped: when {step.when!r} is false",
-                        level="info",
-                        data={"when": step.when},
-                    )
-                    continue
+                self._run_one(step, i, path, inherited)
+            except StepFailed:
+                if not tolerate:
+                    raise
+                seed_block_outputs(self.ctx, step)
+                self._skip_rest(steps[i + 1 :], i + 1, path)
+                return True
+        return False
 
-                self._emit(EventType.STEP_STARTED, display_id, level="debug")
+    def _run_one(self, step: StepModel, index: int, path: str, inherited: str) -> None:
+        step_path = _join(path, step.id or f"_step_{index}")
+        # Root steps keep their bare id (None when anonymous) so linear Blueprints are
+        # untouched; nested steps expose their full path for traceability.
+        display_id = step.id if not path else step_path
+        output_key = step.id or step_path
+        effective_act = step.act or inherited
 
-                healed_by: str | None = None
-                if step.action in _FLOW_VALUES:
-                    outputs = run_flow(self, step, renderer, step_path, effective_act)
-                else:
-                    outputs, healed_by = self._run_leaf(step, effective_act, display_id, renderer)
+        def renderer(value: Any) -> Any:
+            return render_value(value, self.ctx.template_ctx())
 
-                self.ctx.step_outputs[output_key] = outputs
-                self.results.append(
-                    StepResult(
-                        step_id=display_id,
-                        action=step.action,
-                        status=RunStatus.SUCCESS,
-                        outputs=outputs,
-                        healed_by=healed_by,
-                        duration_ms=(time.monotonic() - t0) * 1000,
-                    )
+        t0 = time.monotonic()
+        try:
+            if step.when is not None and not is_truthy(renderer(step.when)):
+                self._record(step, display_id, RunStatus.SKIPPED, t0)
+                # Report the raw expression, never its rendered value: it may derive from
+                # a secret.
+                self._emit(
+                    EventType.STEP_SKIPPED,
+                    display_id,
+                    message=f"skipped: when {step.when!r} is false",
+                    level="info",
+                    data={"when": step.when},
                 )
-                self._emit(EventType.STEP_FINISHED, display_id, level="debug")
+                return
 
-            except StepFailed as exc:
-                # A nested step already recorded the failure and emitted ERROR: mark this flow
-                # step failed too, without a duplicate event.
-                self.results.append(
-                    StepResult(
-                        step_id=display_id,
-                        action=step.action,
-                        status=RunStatus.FAILED,
-                        error=str(exc),
-                        duration_ms=(time.monotonic() - t0) * 1000,
-                    )
-                )
-                raise
-            except AetheriusError as exc:
-                message = _named(exc)
-                self.results.append(
-                    StepResult(
-                        step_id=display_id,
-                        action=step.action,
-                        status=RunStatus.FAILED,
-                        error=message,
-                        duration_ms=(time.monotonic() - t0) * 1000,
-                    )
-                )
-                self._emit(EventType.ERROR, display_id, message=message, level="error")
-                raise StepFailed(message) from exc
+            self._emit(EventType.STEP_STARTED, display_id, level="debug")
+
+            healed_by: str | None = None
+            status = RunStatus.SUCCESS
+            if step.action in _FLOW_VALUES:
+                # Only a flow step reports a status of its own: an `optional` block that gave way
+                # is PARTIAL, and says so here rather than letting the executor guess.
+                outcome = run_flow(self, step, renderer, step_path, effective_act)
+                outputs, status = outcome.outputs, outcome.status
+            else:
+                outputs, healed_by = self._run_leaf(step, effective_act, display_id, renderer)
+
+            self.ctx.step_outputs[output_key] = outputs
+            self._record(step, display_id, status, t0, outputs=outputs, healed_by=healed_by)
+            self._emit(EventType.STEP_FINISHED, display_id, level="debug")
+
+        except StepFailed as exc:
+            # A nested step already recorded the failure and emitted ERROR: mark this flow
+            # step failed too, without a duplicate event.
+            self._record(step, display_id, RunStatus.FAILED, t0, error=str(exc))
+            raise
+        except AetheriusError as exc:
+            message = _named(exc)
+            self._record(step, display_id, RunStatus.FAILED, t0, error=message)
+            self._emit(EventType.ERROR, display_id, message=message, level="error")
+            raise StepFailed(message) from exc
+
+    def _skip_rest(self, steps: Sequence[StepModel], base: int, path: str) -> None:
+        """Record what an ``optional`` block will not attempt after one of its steps gave way.
+
+        *base* is the index of the first remaining step in the block, not zero: an anonymous step
+        skipped in third position must keep the path it would have had (``opt._step_2``), or it
+        would collide with the first one — and the two engines would disagree on the id.
+        """
+        for offset, step in enumerate(steps):
+            step_path = _join(path, step.id or f"_step_{base + offset}")
+            display_id = step.id if not path else step_path
+            t0 = time.monotonic()
+            seed_block_outputs(self.ctx, step)
+            self._record(step, display_id, RunStatus.SKIPPED, t0)
+            self._emit(
+                EventType.STEP_SKIPPED, display_id, message=_SKIPPED_AFTER_FAILURE, level="info"
+            )
+
+    def _record(
+        self,
+        step: StepModel,
+        display_id: str | None,
+        status: RunStatus,
+        t0: float,
+        *,
+        outputs: dict[str, Any] | None = None,
+        error: str | None = None,
+        healed_by: str | None = None,
+    ) -> None:
+        self.results.append(
+            StepResult(
+                step_id=display_id,
+                action=step.action,
+                status=status,
+                outputs=outputs or {},
+                error=error,
+                healed_by=healed_by,
+                duration_ms=(time.monotonic() - t0) * 1000,
+            )
+        )
 
     def _run_leaf(
         self,

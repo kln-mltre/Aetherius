@@ -35,6 +35,9 @@ class Capability(str, Enum):
     IF = "if"
     REPEAT = "repeat"
     FOR_EACH = "for_each"
+    # A block whose failure is an acceptable outcome: the rest of the block is skipped and the run
+    # continues, reporting PARTIAL. See docs/phase-3/3-j-lecture-facultative.md.
+    OPTIONAL = "optional"
 
     # ── Extract (all Acts) ───────────────────────────────────────────────────
     EXTRACT = "extract"
@@ -65,6 +68,7 @@ _VECTOR_CAPS: frozenset[Capability] = frozenset(
         Capability.IF,
         Capability.REPEAT,
         Capability.FOR_EACH,
+        Capability.OPTIONAL,
         Capability.EXTRACT,
         Capability.NOTIFY,
         Capability.CONFIRM,
@@ -111,7 +115,7 @@ ACT_CAPABILITIES: dict[str, frozenset[Capability]] = {
 # the driver sees the step: a driver must never dispatch them. They are therefore neither pending
 # nor driver-dispatched; tests/unit/acts/test_action_dispatch.py enforces both properties.
 FLOW_ACTIONS: frozenset[Capability] = frozenset(
-    {Capability.IF, Capability.REPEAT, Capability.FOR_EACH}
+    {Capability.IF, Capability.REPEAT, Capability.FOR_EACH, Capability.OPTIONAL}
 )
 
 # Step fields holding nested step lists, per flow action: the shape of the step tree. Everything
@@ -122,6 +126,7 @@ FLOW_NESTED_FIELDS: dict[str, tuple[str, ...]] = {
     Capability.IF.value: ("then", "else"),
     Capability.REPEAT.value: ("steps",),
     Capability.FOR_EACH.value: ("steps",),
+    Capability.OPTIONAL.value: ("steps",),
 }
 
 

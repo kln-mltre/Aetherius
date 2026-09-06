@@ -735,8 +735,10 @@ binaire : un **registre** le résout entre un socle embarqué et une surcouche d
 **un site qui change se répare sans republier sur les stores**. Le jalon 3-G clôt la phase en
 **portant un cas d'usage mobile réel** — quatre API tierces et un parcours authentifiant complet —
 et en livrant le guide de migration ; le jalon 3-H, appendice ouvert par ce port, laisse le même
-manifeste **ajouter** un Blueprint sous un préfixe réservé, et le jalon 3-I, ouvert par le même,
-rend atteignables les réponses qui ne sont ni JSON ni HTML (`from: "text"` — iCalendar, CSV). Référence d'usage :
+manifeste **ajouter** un Blueprint sous un préfixe réservé, le jalon 3-I, ouvert par le même,
+rend atteignables les réponses qui ne sont ni JSON ni HTML (`from: "text"` — iCalendar, CSV), et le
+jalon 3-J donne enfin au vocabulaire de quoi dire qu'une **lecture est facultative** (`optional`),
+pour qu'une page annexe qui ne répond pas cesse d'emporter tout ce qui a déjà été lu. Référence d'usage :
 [docs/embedded.md](docs/embedded.md).
 
 - [x] **3-A** — Socle TypeScript & parité : le moteur embarqué **charge, valide et refuse** un
@@ -962,7 +964,39 @@ rend atteignables les réponses qui ne sont ni JSON ni HTML (`from: "text"` — 
   [docs/acts/vector.md](docs/acts/vector.md#from-text--les-formats-à-lignes),
   [docs/phase-3/3-i-extraction-texte.md](docs/phase-3/3-i-extraction-texte.md).
 
-**Phase 3 terminée (A–I).** Le même Blueprint tourne sur une machine et sur un téléphone, se corrige
+- [x] **3-J** — **Une lecture facultative, et le run partiel qui la rend visible.** Troisième
+  appendice, même origine que les deux premiers. Une étape n'avait que deux issues — elle réussit, ou
+  le run meurt —, si bien qu'une **lecture d'enrichissement** n'avait aucune façon de dire que son
+  absence est un résultat acceptable : sur un iPhone, un étudiant perdait son nom, son numéro
+  national et sa formation, **tous trois déjà lus**, parce qu'une page de coordonnées n'avait pas
+  répondu. Le jalon ajoute une **action de flux**, `optional`, et rien d'autre : ni `try/catch`
+  générique — qui inviterait à envelopper une authentification et rendrait silencieux ce que le
+  modèle d'erreur existe pour rendre lisible —, ni drapeau sur une étape isolée — rendre un seul
+  `navigate` inoffensif laisserait les suivantes sur une page **inconnue**. Ce qui est facultatif
+  n'est jamais une étape, c'est une **séquence**. Rien n'est avalé : l'étape qui cède garde son
+  `failed`, son message et son événement `error`, les suivantes du bloc passent `skipped`, le bloc
+  est `partial`, et le run l'est aussi — **le statut que les deux moteurs déclaraient depuis toujours
+  sans que rien ne le produise**, que le daemon traduisait déjà et que la Console colorait déjà en
+  ambre. Un échec **hors** bloc reste un échec de run : aucune tolérance ne fuit hors des accolades,
+  et une annulation le traverse sans être convertie. Le point qui décidait de tout n'était pourtant
+  ni le bloc ni le statut, mais le **rendu des sorties** : un run partiel qui n'en rend aucune
+  n'aurait rien réparé, et la règle d'écriture annoncée — `{{ steps.x.y | default(null) }}` — **ne
+  marchait pas**, les deux moteurs rejetant l'indéfini au point d'usage, avant que le filtre voie
+  quoi que ce soit. Il a donc fallu que les steps d'un bloc qui n'ont rien produit publient un
+  dictionnaire vide, à n'importe quelle profondeur. Trois consommateurs du statut ont été arbitrés
+  (`partial` n'est pas un échec — sortie 0 à la CLI, pas d'alerte —, **sauf** pour une baseline
+  `on: change`, que des sorties incomplètes ne doivent pas déplacer), et un quatrième a été trouvé au
+  passage : le `NotifySink` aurait notifié une **erreur** pour un run qui a rendu ses lectures.
+  Exemple exécutable zéro configuration
+  ([`optional-bonus-read`](examples/vector/optional-bonus-read.blueprint.json)) avec sa contre-épreuve
+  — la même sortie **sans** `default`, qui doit échouer bruyamment — et une sonde Act II jouée **sur
+  un iPhone**, qui rejoue la forme exacte du défaut d'origine : c'est le seul endroit où se vérifie
+  qu'un échec de chargement de WebView est bien de ceux qu'un bloc tolère, Playwright et
+  `react-native-webview` n'échouant pas par le même chemin.
+  [docs/blueprint-schema.md](docs/blueprint-schema.md#lecture-facultative),
+  [docs/phase-3/3-j-lecture-facultative.md](docs/phase-3/3-j-lecture-facultative.md).
+
+**Phase 3 terminée (A–J).** Le même Blueprint tourne sur une machine et sur un téléphone, se corrige
 et s'ajoute à distance, et un cas d'usage réel le prouve — et continue de désigner ce qui manque.
 
 > **Correctif 0.5.3 — une source injoignable atteint enfin `unavailable`.** La phase reste close ;

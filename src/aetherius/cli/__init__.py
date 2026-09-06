@@ -59,6 +59,7 @@ def run(
     from ..core.events.sinks import LogSink, Sink
     from ..core.runtime.approvals import ApprovalRegistry
     from ..core.runtime.engine import RunEngine
+    from ..core.runtime.result import RunStatus
     from .approvals import StdinApprovalSink
 
     rich_console = RichConsole()
@@ -105,7 +106,9 @@ def run(
         rich_console.print("[bold]Outputs:[/bold]")
         rich_console.print(json.dumps(result.outputs, indent=2, default=str))
 
-    if result.status.value != "success":
+    # A partial run (Jalon 3-J) exits 0: it lost an optional reading, not the run. Only a hard
+    # failure is a non-zero exit.
+    if result.status.value == RunStatus.FAILED.value:
         raise typer.Exit(1)
 
 

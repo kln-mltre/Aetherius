@@ -133,6 +133,36 @@ Le même fichier, côté machine, doit échouer de la même façon :
 aetherius run examples/mobile/unreachable-probe.blueprint.json    # NetworkError, au step nav
 ```
 
+## La sonde de lecture facultative
+
+[`optional-bonus-probe.blueprint.json`](optional-bonus-probe.blueprint.json) rejoue, en Act II, **la
+forme exacte du défaut qui a ouvert le jalon 3-J** : une lecture principale aboutit, une lecture
+d'enrichissement vise une page annexe injoignable. Avant le jalon, la seconde emportait la première ;
+c'est tout ce que la sonde a à montrer.
+
+Elle réutilise l'adresse morte de la sonde précédente — **port 4** du loopback, pour la raison
+ci-dessus — et prouve donc au passage qu'un échec de la famille `unavailable` est bien de ceux qu'un
+bloc facultatif tolère.
+
+| Geste | Ce qui doit se passer |
+|-------|------------------------|
+| Lancer le run | verdict **`partial`**, en ambre — surtout pas `failed`, et surtout pas `success` |
+| Lire les sorties | `citation` et `auteur` renseignés, `bonus: null`, `apres_le_bloc: "oui"` — la dernière prouve que le run a continué **après** le bloc |
+| Lire la progression | un `error` sur `enrichissement.annexe`, puis **deux** steps sautés du même bloc — et aucun bandeau d'échec : depuis ce jalon, un `error` ne veut plus dire que le run a échoué |
+
+> **Une ligne dorée apparaît au-dessus du résultat — « Could not connect to the server. » — et ce
+> n'est pas un échec.** C'est le fil de diagnostic de la vue (`onLoadError`, remis à zéro à chaque
+> run), qui rapporte fidèlement ce qui est arrivé à la WebView. Le bandeau d'échec, lui, est
+> reconnaissable à autre chose : un titre (« Service indisponible »), une explication, et parfois
+> « Réessayer peut aboutir ». Ici il n'y en a pas, et le bloc **Resultat** s'affiche juste en
+> dessous — c'est la preuve à l'écran que `describeFailure` n'a rien vu à décrire.
+
+Le même fichier, côté machine, doit rendre exactement le même verdict :
+
+```bash
+aetherius run examples/mobile/optional-bonus-probe.blueprint.json   # partial, citation rendue
+```
+
 ## La livraison des Blueprints
 
 [`delivery-quotes.blueprint.json`](delivery-quotes.blueprint.json) est le témoin du jalon 3-F, et le
@@ -281,6 +311,7 @@ Un run affiche sa progression puis son `Result`. Les valeurs attendues, à compa
 | `ukit-planning` | la liste d'événements de la semaine, identique à `aetherius run` — c'est l'encodage `form` (clé répétée `federationIds[]`) éprouvé sur l'appareil |
 | `session-persist-probe` | `connecte: 1` si la session tient, `0` sinon — voir ci-dessous |
 | `unreachable-probe` | un **échec** « Service indisponible » au step `nav` — voir ci-dessus |
+| `optional-bonus-probe` | un verdict **`partial`** en ambre, la citation rendue, `bonus: null` et `apres_le_bloc: "oui"` — voir ci-dessus |
 | `delivery-quotes` | « Réponse inattendue » avant Rafraîchir, la citation d'Einstein après — voir ci-dessus |
 | `reference-annonces` | la liste des annonces publiées, **identique** à `aetherius run` |
 | `reference-restaurants` | les restaurants moins la catégorie écartée, puis les repas et les plats d'un jour |

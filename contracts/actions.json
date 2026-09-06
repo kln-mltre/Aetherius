@@ -448,6 +448,19 @@
         }
       ]
     },
+    "optional": {
+      "summary": "Run nested steps whose failure is an acceptable outcome.",
+      "params": [
+        {
+          "name": "steps",
+          "kind": "array",
+          "required": true,
+          "default": null,
+          "help": "Steps to attempt. On the first failure the rest are skipped and the run continues, reporting 'partial'.",
+          "placeholder": ""
+        }
+      ]
+    },
     "press": {
       "summary": "Press a keyboard key, optionally focused on an element.",
       "params": [
@@ -782,6 +795,7 @@
       "http.request",
       "if",
       "notify",
+      "optional",
       "repeat",
       "set",
       "wait"
@@ -803,6 +817,7 @@
       "if",
       "navigate",
       "notify",
+      "optional",
       "press",
       "reload",
       "repeat",
@@ -832,6 +847,7 @@
       "if",
       "navigate",
       "notify",
+      "optional",
       "press",
       "read",
       "reload",
@@ -862,6 +878,7 @@
       "if",
       "navigate",
       "notify",
+      "optional",
       "press",
       "read",
       "reload",
@@ -879,6 +896,7 @@
   "flow_actions": [
     "for_each",
     "if",
+    "optional",
     "repeat"
   ],
   "flow_nested_fields": {
@@ -888,6 +906,9 @@
     "if": [
       "then",
       "else"
+    ],
+    "optional": [
+      "steps"
     ],
     "repeat": [
       "steps"

@@ -80,7 +80,9 @@ def apply_notify_policy(
     policy = record.notify
     if not policy:
         return None
-    failed = status != RunStatus.SUCCESS.value
+    # A partial run is not a failure (Jalon 3-J): it delivered the readings that did arrive, and
+    # waking someone for it would make the alert mean nothing.
+    failed = status == RunStatus.FAILED.value
     on = str(policy.get("on", "failure"))
 
     if on == "failure" and not failed:
@@ -88,9 +90,11 @@ def apply_notify_policy(
     if on == "success" and failed:
         return None
     if on == "change":
-        # Failures neither alert nor move the baseline: a transient error must not turn the next
-        # successful run into a false "change" alert.
-        if failed:
+        # Neither a failure nor a partial run alerts or moves the baseline. For a failure, a
+        # transient error must not turn the next successful run into a false "change"; for a
+        # partial run the reason is its own — incomplete outputs are not a reference, and adopting
+        # them would make the next *complete* run look like a change.
+        if failed or status == RunStatus.PARTIAL.value:
             return None
         fingerprint = json.dumps(outputs, sort_keys=True, default=str)
         if not store.state.compare_and_set(record.id, _STATE_KEY, fingerprint):
@@ -124,7 +128,7 @@ def _notification(
     error: str | None,
     outputs: dict[str, Any],
 ) -> Notification:
-    failed = status != RunStatus.SUCCESS.value
+    failed = status == RunStatus.FAILED.value
     # Basename only: the stored blueprint is usually an absolute path, noise in an alert.
     lines = [f"{PurePath(record.blueprint).name}: run {status}"]
     if error:

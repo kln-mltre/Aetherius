@@ -24,7 +24,7 @@ import { renderValue } from "../template.js";
 import { throwIfCancelled } from "./cancel.js";
 import { monotonicMs, nowIso } from "./clock.js";
 import { templateContext } from "./context.js";
-import { runFlow, type FlowHost } from "./flow.js";
+import { runFlow, seedBlockOutputs, type FlowHost } from "./flow.js";
 
 /**
  * Internal marker: a step error already recorded further down (`StepResult` + `error` event).
@@ -44,6 +44,12 @@ export class StepFailed extends AetheriusError {
     this.original = original instanceof StepFailed ? original.original : original;
   }
 }
+
+/**
+ * Reason a step of an `optional` block was never attempted. Worded identically in the Python
+ * engine: the two must not describe the same skip in two ways.
+ */
+const SKIPPED_AFTER_FAILURE = "skipped: an earlier step of the optional block failed";
 
 /** Resolves the live driver for a step's effective act (satisfied by `DriverManager`). */
 export interface DriverResolver {
@@ -87,65 +93,132 @@ class Executor implements FlowHost {
   ) {}
 
   async run(steps: readonly StepModel[], path = "", act?: string): Promise<void> {
+    await this.walk(steps, path, act, false);
+  }
+
+  /**
+   * Run the body of an `optional` block; report whether a failure was absorbed.
+   *
+   * Only `StepFailed` is absorbed — the marker of a step failure already recorded and already
+   * reported as an `error` event. Everything else keeps killing the run, and the order of the
+   * `catch` below is what makes that free: a `RunCancelledError` is rethrown before it could ever
+   * become a `StepFailed`, so a cancelled run stays `failed` no matter how deep the block. Catching
+   * `AetheriusError` here instead would silently turn a cancellation into a partial success.
+   *
+   * Tolerance is an argument, never state, so it stops at the block that asked for it.
+   */
+  async runTolerant(steps: readonly StepModel[], path: string, act: string): Promise<boolean> {
+    return this.walk(steps, path, act, true);
+  }
+
+  private async walk(
+    steps: readonly StepModel[],
+    path: string,
+    act: string | undefined,
+    tolerate: boolean,
+  ): Promise<boolean> {
     const inherited = act ?? this.ctx.blueprint.act;
 
     for (const [index, step] of steps.entries()) {
-      // Before the step is recorded, not after: a run the caller cancelled must not leave a trail of
-      // steps marked failed for work that never started.
-      throwIfCancelled(this.ctx.signal);
-
-      const stepPath = join(path, step.id ?? `_step_${index}`);
-      // Root steps keep their bare id (null when anonymous) so linear Blueprints are untouched;
-      // nested steps expose their full path.
-      const displayId = path === "" ? (step.id ?? null) : stepPath;
-      const outputKey = step.id ?? stepPath;
-      const effectiveAct = step.act ?? inherited;
-      const render: Renderer = (value) => renderValue(value, templateContext(this.ctx));
-
-      const started = monotonicMs();
       try {
-        if (step.when !== undefined && !isTruthy(render(step.when))) {
-          this.results.push(result(displayId, step.action, "skipped", started));
-          // Report the raw expression, never its rendered value: it may derive from a secret.
-          this.emit("step_skipped", displayId, {
-            message: `skipped: when ${pythonRepr(step.when)} is false`,
-            level: "info",
-            data: { when: step.when },
-          });
-          continue;
-        }
-
-        this.emit("step_started", displayId, { level: "debug" });
-
-        const outputs = isFlowAction(step.action)
-          ? await runFlow(this, step, render, stepPath, effectiveAct)
-          : await this.runLeaf(step, effectiveAct, render);
-
-        this.ctx.stepOutputs[outputKey] = outputs;
-        this.results.push(result(displayId, step.action, "success", started, { outputs }));
-        this.emit("step_finished", displayId, { level: "debug" });
+        await this.runOne(step, index, path, inherited);
       } catch (error) {
-        if (error instanceof RunCancelledError) {
-          // Cancellation is not a step failure: an interrupted `wait` — or an interrupted WebView
-          // call — leaves nothing to report about the step, and an `error` event here would tell an
-          // application that something broke when the user simply left.
-          throw error;
-        }
-        if (error instanceof StepFailed) {
-          // A nested step already recorded the failure and emitted `error`: mark this flow step
-          // failed too, without a duplicate event.
-          this.results.push(
-            result(displayId, step.action, "failed", started, { error: error.message }),
-          );
-          throw error;
-        }
-        if (!(error instanceof AetheriusError)) throw error;
+        if (!tolerate || !(error instanceof StepFailed)) throw error;
+        seedBlockOutputs(this.ctx, step);
+        this.skipRest(steps.slice(index + 1), index + 1, path);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private async runOne(
+    step: StepModel,
+    index: number,
+    path: string,
+    inherited: string,
+  ): Promise<void> {
+    // Before the step is recorded, not after: a run the caller cancelled must not leave a trail of
+    // steps marked failed for work that never started.
+    throwIfCancelled(this.ctx.signal);
+
+    const stepPath = join(path, step.id ?? `_step_${index}`);
+    // Root steps keep their bare id (null when anonymous) so linear Blueprints are untouched;
+    // nested steps expose their full path.
+    const displayId = path === "" ? (step.id ?? null) : stepPath;
+    const outputKey = step.id ?? stepPath;
+    const effectiveAct = step.act ?? inherited;
+    const render: Renderer = (value) => renderValue(value, templateContext(this.ctx));
+
+    const started = monotonicMs();
+    try {
+      if (step.when !== undefined && !isTruthy(render(step.when))) {
+        this.results.push(result(displayId, step.action, "skipped", started));
+        // Report the raw expression, never its rendered value: it may derive from a secret.
+        this.emit("step_skipped", displayId, {
+          message: `skipped: when ${pythonRepr(step.when)} is false`,
+          level: "info",
+          data: { when: step.when },
+        });
+        return;
+      }
+
+      this.emit("step_started", displayId, { level: "debug" });
+
+      let outputs: Record<string, unknown>;
+      let status: RunStatus = "success";
+      if (isFlowAction(step.action)) {
+        // Only a flow step reports a status of its own: an `optional` block that gave way is
+        // `partial`, and says so here rather than letting the executor guess.
+        const outcome = await runFlow(this, step, render, stepPath, effectiveAct);
+        outputs = outcome.outputs;
+        status = outcome.status;
+      } else {
+        outputs = await this.runLeaf(step, effectiveAct, render);
+      }
+
+      this.ctx.stepOutputs[outputKey] = outputs;
+      this.results.push(result(displayId, step.action, status, started, { outputs }));
+      this.emit("step_finished", displayId, { level: "debug" });
+    } catch (error) {
+      if (error instanceof RunCancelledError) {
+        // Cancellation is not a step failure: an interrupted `wait` — or an interrupted WebView
+        // call — leaves nothing to report about the step, and an `error` event here would tell an
+        // application that something broke when the user simply left.
+        throw error;
+      }
+      if (error instanceof StepFailed) {
+        // A nested step already recorded the failure and emitted `error`: mark this flow step
+        // failed too, without a duplicate event.
         this.results.push(
           result(displayId, step.action, "failed", started, { error: error.message }),
         );
-        this.emit("error", displayId, { message: error.message, level: "error" });
-        throw new StepFailed(error);
+        throw error;
       }
+      if (!(error instanceof AetheriusError)) throw error;
+      this.results.push(
+        result(displayId, step.action, "failed", started, { error: error.message }),
+      );
+      this.emit("error", displayId, { message: error.message, level: "error" });
+      throw new StepFailed(error);
+    }
+  }
+
+  /**
+   * Record what an `optional` block will not attempt after one of its steps gave way.
+   *
+   * *base* is the index of the first remaining step in the block, not zero: an anonymous step
+   * skipped in third position must keep the path it would have had (`opt._step_2`), or it would
+   * collide with the first one — and the two engines would disagree on the id.
+   */
+  private skipRest(steps: readonly StepModel[], base: number, path: string): void {
+    for (const [offset, step] of steps.entries()) {
+      const stepPath = join(path, step.id ?? `_step_${base + offset}`);
+      const displayId = path === "" ? (step.id ?? null) : stepPath;
+      const started = monotonicMs();
+      seedBlockOutputs(this.ctx, step);
+      this.results.push(result(displayId, step.action, "skipped", started));
+      this.emit("step_skipped", displayId, { message: SKIPPED_AFTER_FAILURE, level: "info" });
     }
   }
 

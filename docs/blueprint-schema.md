@@ -122,7 +122,7 @@ sortie : y référer ensuite via `steps.<id>` est une erreur de template.
 
 ## Actions de flux
 
-Trois actions exécutent des **steps imbriqués** ; elles sont interprétées par le moteur (pas par
+Quatre actions exécutent des **steps imbriqués** ; elles sont interprétées par le moteur (pas par
 les drivers), donc disponibles à l'identique sur tous les Acts qui les déclarent :
 
 | Action | Paramètres | Sémantique | Sorties |
@@ -130,13 +130,90 @@ les drivers), donc disponibles à l'identique sur tous les Acts qui les déclare
 | `if` | `condition`, `then` (steps), `else` (steps, optionnel) | Rend `condition` et exécute la branche correspondante. | `{"branch": "then"\|"else"\|null}` |
 | `repeat` | `times` (entier, interpolable), `steps` | Exécute `steps` n fois (`0` = no-op). | `{"iterations": n}` |
 | `for_each` | `items` (expression → liste), `as` (défaut `item`), `steps` | Exécute `steps` une fois par élément, la variable de boucle étant exposée au template le temps de l'itération. | `{"iterations": n}` |
+| `optional` | `steps` (**requis**) | Exécute `steps` jusqu'à la première défaillance ; le reste du bloc est sauté et le run continue. Voir [Lecture facultative](#lecture-facultative). | `{}` |
 
 Les sorties des steps vivent dans un espace **plat** (`steps.<id>`) : dans une boucle, chaque
 itération écrase la précédente — dans le corps de l'itération, `steps.<id>` vaut la valeur
 courante ; après la boucle, celle de la dernière itération. Les identifiants affichés (événements,
 résultats) portent le chemin complet (`walk.each_user[2].announce`). Une erreur dans une branche
-avorte le run, comme pour un step de premier niveau. La garde `when` s'applique aussi aux actions
-de flux (un `when` faux saute le bloc entier).
+avorte le run, comme pour un step de premier niveau — **sauf** à l'intérieur d'un bloc `optional`,
+seule exception, décrite ci-dessous. La garde `when` s'applique aussi aux actions de flux (un
+`when` faux saute le bloc entier).
+
+### Lecture facultative
+
+Une étape n'a longtemps eu que deux issues : elle réussit, ou le run meurt. Une **lecture
+d'enrichissement** — des coordonnées, un libellé, une pièce jointe qui complète une fiche — n'avait
+donc aucune façon de dire que son absence est un résultat acceptable, et un portail qui ne répondait
+pas emportait avec lui tout ce qui avait déjà été lu.
+
+`optional` déclare cette asymétrie. Ce qui est facultatif n'est jamais **une étape** mais une
+**séquence** : rendre un seul `navigate` inoffensif laisserait les étapes suivantes sur une page
+inconnue, où elles échoueraient plus loin en accusant un sélecteur.
+
+```json
+{
+  "action": "optional",
+  "steps": [
+    { "action": "navigate", "url": "{{ vars.coordonnees }}" },
+    { "action": "wait_for", "selector": ".ville", "timeout_ms": 30000 },
+    { "id": "coord", "action": "extract", "outputs": { "ville": { "selector": ".ville" } } }
+  ]
+}
+```
+
+Rien n'est avalé. L'étape qui cède garde son statut `failed`, son message et son événement `error` ;
+les suivantes **du bloc** passent `skipped` ; le bloc lui-même est `partial` ; et le run se termine
+en `partial` — un statut que les deux moteurs déclaraient depuis toujours sans que rien ne le
+produise.
+
+| Ce qui est observé | Statut |
+|---|---|
+| l'étape qui a cédé | `failed`, avec son message |
+| les étapes suivantes **du bloc** | `skipped` |
+| le bloc `optional` | `partial` |
+| le run, si rien d'autre n'a échoué | `partial` |
+| le run, si une étape **hors** bloc échoue | `failed` — l'échec dur gagne toujours |
+
+Un bloc dont tout réussit est un `success` ordinaire : `optional` ne teinte rien quand il n'y a rien
+à signaler. La tolérance ne remonte pas non plus : un `optional` imbriqué qui cède laisse le bloc qui
+l'entoure poursuivre en `success` — mais le **run**, lui, est `partial`, parce que son statut se lit
+en balayant les résultats, jamais en se propageant de proche en proche.
+
+Ce qu'un bloc ne rattrape pas : une **annulation** (moteur embarqué) et un défaut du moteur
+lui-même. Ce sont la volonté de quelqu'un ou un bug, pas une lecture qui n'est pas arrivée.
+
+> **Un événement `error` ne signifie plus à lui seul que le run a échoué.** Le verdict est
+> `Result.status`, et ce qu'on n'a pas obtenu se lit dans `Result.step_results`.
+
+#### La règle d'écriture : `| default(...)`
+
+Une sortie qui référence un bloc facultatif **doit** finir par le filtre `default` :
+
+```json
+"outputs": {
+  "identite": "{{ steps.dossier.nom }}",
+  "ville":    "{{ steps.coord.ville | default(none) }}"
+}
+```
+
+C'est une règle d'écriture, pas une magie du moteur : un Blueprint qui l'oublie échoue au rendu de
+ses sorties, bruyamment — ce qui est le bon comportement, un trou silencieux valant moins qu'une
+erreur lisible. Les deux moteurs rejettent l'indéfini, et un run `partial` rend ses sorties (seul un
+run `failed` n'en rend aucune).
+
+Pour que la règle fonctionne, les steps d'un bloc qui **n'ont rien produit** — celui qui a cédé comme
+ceux qui ont été sautés, à n'importe quelle profondeur — publient un dictionnaire vide. Sans cela
+l'accès `steps.coord.ville` échouerait avant même que `default` voie la valeur. La conséquence est
+assumée : `steps.coord is defined` vaut vrai même quand le bloc a cédé. Le contexte de template porte
+de la **donnée** ; ce qui s'est **passé** se lit dans le résultat.
+
+Un `optional` sans `steps` est refusé à la validation, alors qu'un `repeat` sans `steps` n'échoue
+qu'à l'exécution. L'asymétrie est voulue : un bloc mal formé se tolérerait lui-même et deviendrait un
+no-op silencieux.
+
+Exemple exécutable zéro configuration :
+[`optional-bonus-read`](../examples/vector/optional-bonus-read.blueprint.json).
 
 ## Validation
 

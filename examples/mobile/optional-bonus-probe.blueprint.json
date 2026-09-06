@@ -1,0 +1,53 @@
+{
+  "aetherius": "1.0",
+  "name": "mobile.optional.bonus",
+  "description": "Sonde du jalon 3-J sur appareil, en Act II — la forme exacte du defaut qui a ouvert le jalon : une lecture principale reussit, une lecture d'enrichissement vise une page annexe injoignable. Le bloc facultatif doit ceder SANS emporter la premiere lecture : citation rendue, bloc 'partial', run 'partial' — pas 'failed'. Le run doit se poursuivre APRES le bloc, ce que prouve la sortie 'apres_le_bloc'. L'adresse morte est choisie, pas prise au hasard : le port 4 du loopback REFUSE la connexion, la ou un port bloque par politique (1, 7, 9…) fait rendre a WebKit une erreur que react-native-webview avale (voir unreachable-probe et docs/embedded.md). Elle prouve donc aussi qu'un echec de la famille 'unavailable' est tolerable par un bloc.",
+  "act": "continuum",
+  "vars": {
+    "domain": "https://quotes.toscrape.com",
+    "annexe_injoignable": "http://127.0.0.1:4/"
+  },
+  "options": { "debug": false, "timeout_ms": 20000 },
+  "steps": [
+    { "id": "home", "action": "navigate", "url": "{{ vars.domain }}/" },
+    {
+      "action": "wait_for",
+      "selector": ".quote",
+      "timeout_ms": 15000,
+      "on_timeout": "fail:PAGE_VIDE"
+    },
+    {
+      "id": "principal",
+      "action": "extract",
+      "outputs": {
+        "citation": { "selector": ".quote .text", "as": "text" },
+        "auteur": { "selector": ".quote .author", "as": "text" }
+      }
+    },
+    {
+      "id": "enrichissement",
+      "action": "optional",
+      "steps": [
+        { "id": "annexe", "action": "navigate", "url": "{{ vars.annexe_injoignable }}" },
+        {
+          "action": "wait_for",
+          "selector": "#jamais",
+          "timeout_ms": 3000,
+          "on_timeout": "fail:JAMAIS_ATTEINT"
+        },
+        {
+          "id": "bonus",
+          "action": "extract",
+          "outputs": { "titre": { "selector": "h1", "as": "text" } }
+        }
+      ]
+    },
+    { "action": "emit", "message": "APRES_LE_BLOC" }
+  ],
+  "outputs": {
+    "citation": "{{ steps.principal.citation }}",
+    "auteur": "{{ steps.principal.auteur }}",
+    "bonus": "{{ steps.bonus.titre | default(none) }}",
+    "apres_le_bloc": "oui"
+  }
+}

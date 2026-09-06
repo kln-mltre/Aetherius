@@ -46,6 +46,7 @@ const VECTOR_CAPABILITIES: readonly string[] = [
   "if",
   "repeat",
   "for_each",
+  "optional",
   "confirm",
 ];
 

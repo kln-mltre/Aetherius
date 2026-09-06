@@ -241,7 +241,7 @@
         },
         "steps": {
           "type": "array",
-          "description": "Nested steps for repeat and for_each.",
+          "description": "Nested steps for repeat, for_each and optional.",
           "items": { "$ref": "#/$defs/step" }
         }
       },

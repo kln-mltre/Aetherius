@@ -5,6 +5,81 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.8] - 2026-09-06
+
+Un troisième appendice à la Phase 3, et la même origine que les deux premiers : un port réel a
+rencontré une limite du contrat. Une étape n'avait que **deux** issues — elle réussit, ou le run
+meurt —, si bien qu'une lecture d'enrichissement n'avait aucune façon de dire que son absence est un
+résultat acceptable. Le vocabulaire gagne une **action de flux**, `optional`, et le statut `partial`
+cesse d'être déclaré par les deux moteurs sans que rien ne le produise.
+
+### Ajouté
+- **Jalon 3-J — Une lecture facultative, et le run partiel qui la rend visible**
+  ([docs/blueprint-schema.md](docs/blueprint-schema.md#lecture-facultative),
+  [docs/phase-3/3-j-lecture-facultative.md](docs/phase-3/3-j-lecture-facultative.md)). Le besoin
+  vient de [UKit](docs-ukit/README.md) : sur un iPhone, un étudiant perdait son nom, son numéro
+  national et sa formation — **tous trois déjà lus** — parce qu'une page de coordonnées n'avait pas
+  répondu. Les quatre dernières lectures de ce parcours sont des bonus ; l'auteur du Blueprint le
+  savait et n'avait aucun moyen de l'écrire.
+  - **`{ "action": "optional", "steps": [...] }`** exécute ses étapes jusqu'à la première
+    défaillance, saute le reste **du bloc**, et laisse le run continuer. Ce qui est facultatif n'est
+    jamais une étape mais une **séquence** : rendre un seul `navigate` inoffensif laisserait les
+    suivantes sur une page inconnue, où elles échoueraient plus loin en accusant un sélecteur.
+  - **Rien n'est avalé.** L'étape qui cède garde son statut `failed`, son message et son événement
+    `error` ; les suivantes du bloc passent `skipped` ; le bloc est `partial` ; le run l'est aussi.
+    Pas de `try`/`catch` générique : il inviterait à envelopper une authentification et rendrait
+    silencieux exactement ce que le modèle d'erreur existe pour rendre lisible. Le nom compte —
+    `optional` décrit une propriété de la lecture, `try` une technique de programmation.
+  - **Aucun statut inventé.** `RunStatus.PARTIAL` était déclaré par les deux moteurs depuis le
+    début, traduit par le daemon, coloré en ambre par la Console — et posé par **zéro ligne de
+    code**. Aucun `EventType` non plus : l'information « ce run est incomplet » vit dans le statut.
+  - **Le rendu des sorties était le vrai sujet.** Les deux moteurs ne les rendaient que pour un run
+    `success` : un run partiel n'aurait rendu **aucune** sortie, pas même les lectures d'avant le
+    bloc, et le jalon n'aurait rien réparé. La condition devient « le run n'a pas échoué ».
+  - **La règle d'écriture annoncée ne marchait pas**, et c'est la correction de fond du jalon :
+    `{{ steps.coord.ville | default(null) }}` **lève** quand le bloc a cédé, les deux moteurs
+    rejetant l'indéfini au **point d'usage** — l'accès `.ville` échoue avant que le filtre voie quoi
+    que ce soit. Les steps d'un bloc qui n'ont rien produit publient donc un dictionnaire vide, à
+    n'importe quelle profondeur, ce qui rend la règle vraie. Conséquence assumée et documentée :
+    `steps.coord is defined` vaut désormais vrai même quand le bloc a cédé — le contexte de template
+    porte de la *donnée*, `Result.step_results` porte ce qui s'est *passé*.
+  - **La tolérance ne fuit pas.** Un échec **hors** bloc reste un échec de run ; un `optional`
+    imbriqué qui cède laisse le bloc englobant poursuivre en `success` (le *run*, lui, est `partial`,
+    son statut étant lu en balayant les résultats et non propagé) ; une **annulation** traverse le
+    bloc sans être convertie, l'ordre des rattrapages garantissant qu'elle ne devienne jamais un
+    échec de step ; et un défaut du moteur n'est pas toléré — on tolère une lecture qui n'est pas
+    arrivée, jamais un bug.
+  - **`optional` sans `steps` est refusé à la validation**, alors qu'un `repeat` sans `steps` passe
+    encore et n'échoue qu'à l'exécution. L'asymétrie est voulue et le piège lui est propre : un bloc
+    mal formé **se tolérerait lui-même** et deviendrait un no-op parfaitement silencieux. Le schéma
+    ne peut pas porter cette règle, il ne connaît pas les actions.
+  - Exemple exécutable zéro configuration
+    ([`optional-bonus-read`](examples/vector/optional-bonus-read.blueprint.json)), joué contre une
+    source publique par **les deux moteurs** avec les mêmes sorties, sa contre-épreuve conçue pour
+    échouer (la même sortie sans `| default(...)`), et une sonde Act II
+    ([`optional-bonus-probe`](examples/mobile/optional-bonus-probe.blueprint.json)) qui rejoue la
+    forme exacte du défaut d'origine — page annexe injoignable, citation quand même rendue, et
+    **jouée sur un iPhone** : c'est là, et seulement là, qu'on vérifie qu'un échec de chargement de
+    WebView est de ceux qu'un bloc tolère, Playwright et `react-native-webview` n'échouant pas par
+    le même chemin.
+  - Deux cas de conformance, dont celui qui compte : le seul endroit qui prouve que les deux
+    exécuteurs sautent **exactement** les mêmes étapes, avec les mêmes identifiants et dans le même
+    ordre.
+
+### Modifié
+- **Un run `partial` n'est pas un échec pour ceux qui lisent le statut.** `aetherius run` et
+  `aetherius schedule fire` sortent en **0**, l'alerte `on: failure` d'un schedule ne se déclenche
+  pas, et le `NotifySink` ne notifie plus une **erreur** pour un run qui a rendu ses lectures. Une
+  seule exception, et elle a sa raison : l'alerte `on: change` **ignore** un run partiel sans
+  déplacer sa baseline — des sorties incomplètes ne sont pas une référence, et les adopter ferait
+  passer le prochain run *complet* pour un changement. C'est déjà pourquoi un échec ne la déplace
+  pas ; on suit ce précédent plutôt que d'inventer une règle.
+- **Un événement `error` ne signifie plus à lui seul que le run a échoué.** Le verdict est
+  `Result.status`. Les consommateurs qui lisent le résultat — c'est-à-dire tous ceux qui existent —
+  n'ont rien à changer.
+- `contracts/actions.json` régénéré ; la description du champ `steps` du schéma nomme la quatrième
+  action de flux. Aucune autre évolution de contrat.
+
 ## [0.5.7] - 2026-09-05
 
 ### Corrigé
@@ -1187,7 +1262,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.7...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.8...HEAD
+[0.5.8]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.8
 [0.5.7]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.7
 [0.5.6]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.6
 [0.5.5]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.5

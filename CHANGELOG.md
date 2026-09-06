@@ -5,6 +5,31 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.9] - 2026-09-06
+
+### Corrigé
+
+- **La WebView cachée est redevenue réellement invisible.** La 0.5.7 la posait dans la fenêtre à
+  `opacity: 0.02` — assez pour que le voile se voie sur l'application hôte, et en permanence dès
+  qu'une session persiste, puisque la vue survit alors au run qui l'a créée.
+
+  L'opacité n'avait jamais eu besoin d'être non nulle. Ce que WebKit lit, c'est **où** la vue se
+  trouve : dans les limites de la fenêtre, et non occultée par du contenu opaque. L'alpha n'est pas
+  l'un de ces signaux. La 0.5.7 avait été établie en changeant deux variables à la fois — la position
+  *et* l'opacité — et la seconde avait été créditée d'un effet qui revenait à la première.
+
+  La matrice complète, mesurée sur iPhone, session du compte effacée avant chaque essai :
+
+  | Dans la fenêtre | Occultée | Opacité | Résultat |
+  |---|---|---|---|
+  | non | — | 0 | échoue |
+  | oui | oui (`zIndex: -1`) | 0,01 | échoue |
+  | oui | non | 0,02 | passe |
+  | oui | non | **0** | **passe** |
+
+  Le conteneur est donc **entièrement transparent**. Plus de voile sur l'application, et plus de
+  nombre magique à régler contre une heuristique non documentée.
+
 ## [0.5.8] - 2026-09-06
 
 Un troisième appendice à la Phase 3, et la même origine que les deux premiers : un port réel a
@@ -1262,7 +1287,8 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - SemVer `0.x` : l'API peut évoluer pendant le durcissement de la Phase 1.
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
-[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.8...HEAD
+[Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.9...HEAD
+[0.5.9]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.9
 [0.5.8]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.8
 [0.5.7]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.7
 [0.5.6]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.6

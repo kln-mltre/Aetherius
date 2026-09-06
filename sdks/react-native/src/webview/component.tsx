@@ -51,49 +51,51 @@ import type { PageControl, SessionConfig } from "./host.js";
  * different DOM to a small screen — and never `display: none`, because a view that lays nothing out
  * would make every element read as invisible.
  *
- * ## Why it sits *inside* the window, on top, at two percent
+ * ## Why it sits *inside* the window and on top — and why it is fully transparent
  *
- * WebKit decides a page is hidden from three things, and a real size is only the first: the view
- * must also be **in the window's bounds** and **not visually occluded**. Two earlier versions each
- * satisfied a part of that and failed, and both failures were measured on a device rather than
- * argued:
+ * WebKit decides a page is hidden from **where the view is**, not from how opaque it is. Two things
+ * matter, and a real size is only the first: the view must be **within the window's bounds** and
+ * **not visually occluded**. Alpha is not one of them.
  *
- *   - `left: -10000` with `opacity: 0` — the right size, outside the window. The page is treated as
- *     backgrounded;
- *   - `left: 0` with `opacity: 0.01` but `zIndex: -1` — inside the window, and **behind the host's
- *     opaque content**. Occluded is as good as absent: WebKit still throttles it.
+ * That took three device measurements to establish, because the first attempt changed two variables
+ * at once. The full matrix, all on a cold SSO cascade with the account's session wiped beforehand:
  *
- * Throttling does not break every navigation, which is what made this so slow to see. A cascade of
- * **server-side redirects** completes regardless — nothing on the page has to run. A cascade that
- * continues through the page's **own JavaScript** — a single-page portal that bootstraps and then
- * redirects itself, a SAML form that auto-submits — simply stops advancing, and the navigation never
- * reports a completed load.
+ * | In the window | Occluded | Opacity | Result |
+ * |---|---|---|---|
+ * | no (`left: -10000`) | — | 0 | **fails** |
+ * | yes | yes (`zIndex: -1`) | 0.01 | **fails** |
+ * | yes | no | 0.02 | works |
+ * | yes | no | **0** | **works** |
  *
- * **Measured on an iPhone, 2026-09-05**, on one university portal reached through a full SSO cascade,
- * with the account's session wiped before every trial. Two portals on the *same* run kept working
- * throughout — both reached by plain 302 chains — while the one whose redirect is driven by its own
- * JavaScript died at the deadline, at 30 s and again at 60 s. On top at two percent, the same cold
- * navigation lands in **286 ms**.
+ * The last row is the one that matters: fully transparent, and the page still runs at full speed. So
+ * the container is invisible in the ordinary sense — there is no veil over the host application, and
+ * no magic opacity to tune against an undocumented heuristic.
  *
- * So the container stays in the window, **above** what the host draws, at `opacity: 0.02` — enough
- * for WebKit, imperceptible to the eye — with `pointerEvents: "none"` so that a view nobody can see
- * is not a view anybody can touch. It exists only while a `continuum` run holds a document, so the
- * two-percent veil is not permanent.
+ * ## What the throttling actually breaks
  *
- * The cost is honest and worth stating: during a run, a two-percent ghost of the page is
- * *technically* on screen. The alternative is an engine that cannot log in.
+ * Not every navigation, which is what made this so slow to see. A cascade of **server-side
+ * redirects** completes regardless — nothing on the page has to run. A cascade that continues
+ * through the page's **own JavaScript** — a single-page portal that bootstraps and then redirects
+ * itself, a SAML form that auto-submits — simply stops advancing, and the navigation never reports a
+ * completed load.
  *
- * **Do not "tidy" this by pushing it behind the content.** That is the version that fails, and it
- * fails silently, on one portal out of three.
+ * **Measured on an iPhone**: two portals on the *same* run kept working throughout, both reached by
+ * plain 302 chains, while the one whose redirect is driven by its own JavaScript died at the
+ * deadline — at 30 s, and again at 60 s. Placed in the window and on top, the same cold navigation
+ * lands in a few hundred milliseconds.
+ *
+ * **Do not "tidy" this by pushing it behind the content**, and do not park it off-screen. Those are
+ * the two versions that fail, and they fail silently, on one portal out of three.
  */
 const HIDDEN_CONTAINER = {
   position: "absolute" as const,
+  // In the window: outside it, WebKit treats the page as backgrounded.
   left: 0,
   top: 0,
   width: 1024,
   height: 768,
-  // Not zero: zero is what tells WebKit the page is hidden.
-  opacity: 0.02,
+  // Fully transparent, and it costs nothing: alpha is not one of the signals WebKit reads.
+  opacity: 0,
   // No negative zIndex: behind opaque content, the view is occluded and throttled just the same.
   pointerEvents: "none" as const,
 };

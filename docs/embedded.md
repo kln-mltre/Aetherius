@@ -879,14 +879,23 @@ autour de la vue native ; positionner la vue *interne* la laisse rognée à néa
 une WKWebView sans aire de rendu, ce qui est précisément la façon dont iOS finit par tuer le
 processus de contenu web. La vue garde donc `flex: 1` et c'est `containerStyle` qui décide.
 
-Mais une taille réelle n'est que **le premier** des trois signaux dont WebKit se sert pour décider
-qu'une page est cachée. Les deux autres sont d'être **dans les limites de la fenêtre** et de **ne pas
-être visuellement occultée**. Deux versions ont chacune satisfait une partie de cette règle et
-échoué — et les deux échecs ont été *mesurés sur appareil*, pas argumentés :
+Mais une taille réelle n'est que **le premier** des signaux dont WebKit se sert pour décider qu'une
+page est cachée. Les deux autres tiennent à **où** la vue se trouve : dans les limites de la fenêtre,
+et non occultée par du contenu opaque. **L'opacité n'en fait pas partie.**
 
-- `left: -10000` avec `opacity: 0` : la bonne taille, hors de la fenêtre ;
-- `left: 0` avec `opacity: 0.01` mais `zIndex: -1` : dans la fenêtre, et **derrière le contenu opaque
-  de l'hôte**. Occulté vaut absent — WebKit ralentit la page de la même façon.
+Trois mesures sur appareil ont été nécessaires pour l'établir, parce que la première tentative a
+changé deux variables à la fois — la position *et* l'opacité — et a crédité la seconde d'un effet qui
+revenait à la première. La matrice complète, session du compte effacée avant chaque essai :
+
+| Dans la fenêtre | Occultée | Opacité | Résultat |
+|---|---|---|---|
+| non (`left: -10000`) | — | 0 | échoue |
+| oui | oui (`zIndex: -1`) | 0,01 | échoue |
+| oui | non | 0,02 | passe |
+| oui | non | **0** | **passe** |
+
+La dernière ligne est celle qui compte : **entièrement transparente, et la page tourne quand même à
+pleine vitesse.**
 
 Ce que ce ralentissement casse n'est pas toute navigation, et c'est ce qui l'a rendu si long à voir.
 Une cascade de **redirections côté serveur** aboutit quoi qu'il arrive : rien n'a à s'exécuter dans
@@ -901,14 +910,16 @@ encore à 60 s. Au-dessus du contenu à deux pour cent, la même navigation à f
 **286 ms**.
 
 Le conteneur reste donc **dans la fenêtre et au-dessus** de ce que l'application dessine, à
-`opacity: 0.02` — assez pour WebKit, imperceptible à l'œil — avec `pointerEvents: "none"` : une vue
-que personne ne voit ne doit pas être une vue que quelqu'un touche. Elle n'existe que pendant qu'un
-run `continuum` tient un document, donc le voile n'est pas permanent.
+`opacity: 0` — donc invisible au sens ordinaire — avec `pointerEvents: "none"` : une vue que personne
+ne voit ne doit pas être une vue que quelqu'un touche.
 
-Le coût est assumé et vaut d'être dit : pendant un run, un fantôme à deux pour cent de la page est
-*techniquement* à l'écran. L'alternative est un moteur qui ne sait pas se connecter. Et **il ne faut
-pas « ranger » cette vue derrière le contenu** : c'est la version qui échoue, et elle échoue en
-silence, sur un portail sur trois.
+Il n'y a **aucun coût visuel** : ni voile sur l'application, ni nombre magique à régler contre une
+heuristique non documentée. Une version intermédiaire en a porté un — `opacity: 0.02`, visible en
+permanence dès qu'une session persistait, puisque la vue survit alors au run qui l'a créée — et c'est
+ce que la mesure ci-dessus a supprimé.
+
+Et **il ne faut ni « ranger » cette vue derrière le contenu, ni la garer hors écran** : ce sont les
+deux versions qui échouent, et elles échouent en silence, sur un portail sur trois.
 
 Le signal `onContentProcessDidTerminate` est écouté par ailleurs : le document ne revient pas tout
 seul, donc les appels en vol échouent en le disant, au lieu d'attendre une page morte jusqu'à leur

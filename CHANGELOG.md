@@ -5,6 +5,21 @@ Toutes les évolutions notables du projet sont consignées ici. Le format s'insp
 [SemVer](https://semver.org/lang/fr/). Tant que la version reste en `0.x`, l'API publique peut encore
 évoluer entre deux versions mineures.
 
+## [0.5.10] - 2026-09-21
+
+### Corrigé
+
+- **Le registre ne télécharge plus ce qu'il va rejeter.** `refresh()` lisait chaque document annoncé
+  par le manifeste avant de lui appliquer les gardes de compatibilité et d'antériorité, que le
+  manifeste suffit pourtant à juger. Or le cas ordinaire d'un manifeste est d'annoncer **les versions
+  mêmes que le binaire embarque** : chaque rafraîchissement téléchargeait donc le socle entier pour
+  le rejeter document par document, sans que rien n'entre jamais en cache, et recommençait au
+  suivant. Mesuré sur UKit le 2026-09-21, dans les journaux de son CDN : 90 Ko par
+  rafraîchissement, 24 000 rafraîchissements par jour, 2,2 Go par jour, neuf dixièmes de l'egress du
+  projet, et l'origine réelle de l'avertissement *Fair Use* reçu le 14. Les deux gardes sont
+  désormais jouées sur le manifeste, avant le réseau (`verifyBounds`), et rejouées à la lecture
+  comme avant : un refus ne remplace toujours pas la version en place.
+
 ## [0.5.9] - 2026-09-06
 
 ### Corrigé
@@ -1288,6 +1303,7 @@ Première release publique. Elle clôt la **Phase 1** : le socle d'Aetherius, ut
 - La **Phase 2** ajoutera Act III (Oracle, vision) et Act IV (Phantom, agent autonome).
 
 [Non publié]: https://github.com/kln-mltre/Aetherius/compare/v0.5.9...HEAD
+[0.5.10]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.10
 [0.5.9]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.9
 [0.5.8]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.8
 [0.5.7]: https://github.com/kln-mltre/Aetherius/releases/tag/v0.5.7

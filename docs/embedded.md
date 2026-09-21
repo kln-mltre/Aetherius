@@ -1233,6 +1233,13 @@ Trois conséquences, et ce sont des règles, pas des détails :
   [Étendre : les noms réservés](#étendre--les-noms-réservés). Les deux premières, elles, ne se
   lèvent pas.
 
+Et une quatrième, apprise en production (0.5.10) : **`refresh()` ne télécharge que ce qu'il peut
+adopter**. Les gardes que le manifeste suffit à juger — le préfixe, `min_engine`, l'antériorité —
+se jouent avant tout téléchargement. Le cas ordinaire d'un manifeste est d'annoncer les versions
+mêmes que le binaire embarque ; les télécharger pour les rejeter coûtait, à chaque rafraîchissement
+et sur chaque appareil, le poids de tout ce que le manifeste annonce, sans que rien n'entre jamais
+en cache. Un manifeste sans nouveauté ne coûte plus que sa propre lecture.
+
 ### Le manifeste
 
 C'est le **contrat applicatif** que ce jalon définit — le seul contrat ajouté par la phase, et il

@@ -12,6 +12,8 @@
  *   2. **compatibilite** — un Blueprint ecrit pour un moteur plus recent est ignore ;
  *   3. **anteriorite** — le distant ne gagne que s'il est plus recent que l'embarque (sans objet
  *      pour un nom **ajoute** sous le prefixe reserve du jalon 3-H : il n'y a pas d'embarque) ;
+ *      la deuxieme et la troisieme se jugent sur le manifeste seul, et `verifyBounds` les expose
+ *      pour qu'elles se jouent **avant le reseau** au rafraichissement (0.5.10) ;
  *   4. **validite** — schema, modele, et portabilite sur ce moteur (`validateForAct`) ;
  *   5. **perimetre** — les secrets reclames sont bornes par l'application, pas par le fichier.
  *
@@ -44,6 +46,12 @@ export interface Candidate {
   readonly minEngine?: string | undefined;
 }
 
+/** Ce que le manifeste annonce d'un candidat, avant d'avoir son texte. */
+export interface Announced {
+  readonly version: string;
+  readonly minEngine?: string | undefined;
+}
+
 export interface Bounds {
   /**
    * La version embarquee que le candidat doit battre.
@@ -56,6 +64,41 @@ export interface Bounds {
   readonly allowedSecrets: ReadonlySet<string>;
 }
 
+/**
+ * Les gardes 2 et 3, compatibilite et anteriorite : celles que le manifeste suffit a juger.
+ *
+ * Exportees a part parce qu'elles se jouent **avant le reseau** au rafraichissement. Le cas ordinaire
+ * d'un manifeste est d'annoncer les versions memes que le binaire embarque ; telecharger chaque
+ * document pour le rejeter ensuite sur sa version coutait, a chaque rafraichissement et sur chaque
+ * appareil, le poids de tout ce que le manifeste annonce. `verify` les rejoue quand meme a la
+ * lecture : un cache local n'est pas plus digne de confiance qu'un CDN.
+ */
+export function verifyBounds(announced: Announced, bounds: Bounds): Rejection | undefined {
+  if (
+    announced.minEngine !== undefined &&
+    compareVersions(announced.minEngine, bounds.engineVersion) > 0
+  ) {
+    return {
+      ok: false,
+      outcome: "ignored",
+      reason: `needs engine ${announced.minEngine}, this one is ${bounds.engineVersion}`,
+    };
+  }
+
+  if (
+    bounds.bundledVersion !== undefined &&
+    compareVersions(announced.version, bounds.bundledVersion) <= 0
+  ) {
+    return {
+      ok: false,
+      outcome: "ignored",
+      reason: `version ${announced.version} is not newer than the bundled ${bounds.bundledVersion}`,
+    };
+  }
+
+  return undefined;
+}
+
 export function verify(candidate: Candidate, bounds: Bounds): Verdict {
   const digest = sha256Hex(candidate.text);
   if (digest !== candidate.sha256) {
@@ -66,27 +109,8 @@ export function verify(candidate: Candidate, bounds: Bounds): Verdict {
     };
   }
 
-  if (
-    candidate.minEngine !== undefined &&
-    compareVersions(candidate.minEngine, bounds.engineVersion) > 0
-  ) {
-    return {
-      ok: false,
-      outcome: "ignored",
-      reason: `needs engine ${candidate.minEngine}, this one is ${bounds.engineVersion}`,
-    };
-  }
-
-  if (
-    bounds.bundledVersion !== undefined &&
-    compareVersions(candidate.version, bounds.bundledVersion) <= 0
-  ) {
-    return {
-      ok: false,
-      outcome: "ignored",
-      reason: `version ${candidate.version} is not newer than the bundled ${bounds.bundledVersion}`,
-    };
-  }
+  const bounded = verifyBounds(candidate, bounds);
+  if (bounded !== undefined) return bounded;
 
   let blueprint: Blueprint;
   try {

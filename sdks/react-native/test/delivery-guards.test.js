@@ -297,3 +297,41 @@ test("a bundled key that lies about its Blueprint name is refused at constructio
     { name: "BlueprintValidationError" },
   );
 });
+
+test("an entry that does not beat the bundled version is not even downloaded", async () => {
+  // Le cas ordinaire : le manifeste annonce la version meme que le binaire embarque. Avant la 0.5.10,
+  // le document etait telecharge puis rejete — a chaque rafraichissement, sur chaque appareil.
+  const { subject, network } = registry({
+    [MANIFEST_URL]: manifest({ [NAME]: { version: "1", url: FIX_URL, body: fix } }),
+    [FIX_URL]: fix,
+  });
+  const report = await subject.refresh();
+  assert.ok(report.ok);
+  assert.deepEqual(network.calls, [MANIFEST_URL]);
+  const entry = report.entries.find((line) => line.name === NAME);
+  assert.equal(entry.outcome, "ignored");
+  assert.match(entry.reason, /not newer than the bundled 1/);
+  assert.equal(await marker(subject), "bundled-v1");
+});
+
+test("an entry written for a newer engine is not downloaded either", async () => {
+  const { subject, network } = registry({
+    [MANIFEST_URL]: manifest({ [NAME]: { version: "2", url: FIX_URL, body: fix, min_engine: "99.0.0" } }),
+    [FIX_URL]: fix,
+  });
+  const report = await subject.refresh();
+  assert.ok(report.ok);
+  assert.deepEqual(network.calls, [MANIFEST_URL]);
+  assert.match(report.entries.find((line) => line.name === NAME).reason, /needs engine 99\.0\.0/);
+  assert.equal(await marker(subject), "bundled-v1");
+});
+
+test("a refused entry still keeps the version already in place", async () => {
+  // La regle du fichier, appliquee au refus sans reseau : ce qui marchait survit.
+  const { subject, network } = await delivered();
+  network.put(MANIFEST_URL, manifest({ [NAME]: { version: "1", url: FIX_URL, body: fix } }));
+  const before = network.calls.length;
+  await subject.refresh();
+  assert.equal(network.calls.length, before + 1);
+  assert.equal(await marker(subject), "remote-v2");
+});

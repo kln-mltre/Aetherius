@@ -20,7 +20,7 @@ import type {
   RefreshReport,
   RegistryConfig,
 } from "./types.js";
-import { verify, type Bounds } from "./verify.js";
+import { verify, verifyBounds, type Bounds } from "./verify.js";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 512 * 1024;
@@ -74,6 +74,16 @@ export async function refreshOverlay(
     if (known?.version === entry.version && known.sha256 === entry.sha256) {
       kept[name] = known;
       entries.push({ name, outcome: "kept", version: known.version });
+      continue;
+    }
+
+    // Les gardes que le manifeste suffit a juger se jouent avant le reseau. Un binaire a jour voit
+    // ses propres versions dans le manifeste : sans ce pas, chaque rafraichissement telechargeait
+    // le socle entier pour le rejeter document par document, et recommencait au suivant.
+    const bounded = verifyBounds({ version: entry.version, minEngine: entry.minEngine }, bounds(name));
+    if (bounded !== undefined) {
+      if (known !== undefined) kept[name] = known;
+      entries.push({ name, outcome: bounded.outcome, reason: bounded.reason });
       continue;
     }
 

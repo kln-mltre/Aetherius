@@ -16,4 +16,4 @@ Sa documentation n'est pas dupliquée ici : elle est maintenue sur son propre d�
 Ce dossier ne contient volontairement aucune copie : une documentation miroir diverge de sa source.
 
 En local, les deux dépôts s'ouvrent ensemble via `aetherius-ukit.code-workspace` ; l'indexation de
-l'éditeur donne accès aux fichiers d'UKit sans rien recopier ici.
+l'éditeur donne accès aux fichiers de UKit sans rien recopier ici.

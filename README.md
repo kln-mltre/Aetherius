@@ -1000,7 +1000,7 @@ pour qu'une page annexe qui ne répond pas cesse d'emporter tout ce qui a déjà
 et s'ajoute à distance, et un cas d'usage réel le prouve — et continue de désigner ce qui manque.
 
 > **Correctif 0.5.3 — une source injoignable atteint enfin `unavailable`.** La phase reste close ;
-> ceci n'ouvre pas de jalon. Le port d'UKit a trouvé sur iPhone que le signal d'échec de chargement
+> ceci n'ouvre pas de jalon. Le port de UKit a trouvé sur iPhone que le signal d'échec de chargement
 > d'une WebView, câblé depuis le jalon 3-E, n'était **jamais lu** : la plateforme tire un événement
 > de fin de chargement pour une navigation en échec, l'agent s'installait sur sa page d'erreur, et la
 > navigation passait pour réussie. Aucune panne réseau de l'Act II n'ouvrait donc de bouton
